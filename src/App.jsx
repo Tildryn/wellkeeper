@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import dummy_data from "./players.json";
 import PlayerListItem from "./PlayerListItem";
 import Navbar from "./Navbar";
@@ -18,6 +18,37 @@ function App() {
   const [activePage, setActivePage] = useState("Online Players");
   const [sortKey, setSortKey] = useState("logged_on_at");
   const [sortDir, setSortDir] = useState("desc");
+  const [players, setPlayers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const useDummyData = import.meta.env.VITE_USE_DUMMY_DATA === "true";
+
+  function fetchPlayers() {
+    if (useDummyData) {
+      setPlayers(dummy_data);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    fetch("http://localhost:8000")
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        setPlayers(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+      });
+  }
+
+  useEffect(() => {
+    fetchPlayers();
+  }, []);
 
   function handleSort(key) {
     if (key === sortKey) {
@@ -29,8 +60,8 @@ function App() {
   }
 
   const onlinePlayers = useMemo(
-    () => sortPlayers(dummy_data, sortKey, sortDir),
-    [sortKey, sortDir]
+    () => sortPlayers(players, sortKey, sortDir),
+    [players, sortKey, sortDir]
   );
 
   return (
@@ -41,17 +72,21 @@ function App() {
           <>
             <div className="list-toolbar">
               <SortBar sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-              <button className="refresh-btn">⟳ Refresh</button>
+              <button className="refresh-btn" onClick={fetchPlayers}>⟳ Refresh</button>
             </div>
-            <div className="player-list">
-              <div className="player-list__header">
-                <span>Player</span><span>Character</span><span>CD Key</span>
-                <span>IP Address</span><span>Logged On</span><span></span>
+            {loading && <p>Loading...</p>}
+            {error && <p style={{ color: "#c0323a" }}>Error: {error}</p>}
+            {!loading && !error && (
+              <div className="player-list">
+                <div className="player-list__header">
+                  <span>Player</span><span>Character</span><span>CD Key</span>
+                  <span>IP Address</span><span>Logged On</span><span></span>
+                </div>
+                {onlinePlayers.map((player) => (
+                  <PlayerListItem key={player.public_cd_key} {...player} />
+                ))}
               </div>
-              {onlinePlayers.map((player) => (
-                <PlayerListItem key={player.public_cd_key} {...player} />
-              ))}
-            </div>
+            )}
           </>
         )}
         {activePage === "Banned Players" && <p>Banned Players — coming soon.</p>}
