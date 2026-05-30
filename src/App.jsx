@@ -49,8 +49,8 @@ function App() {
         return res.json();
       });
     Promise.allSettled([
-      getJson("http://localhost:8000/online_players"),
-      getJson("http://localhost:8000/pending_bans"),
+      getJson("import.meta.env.VITE_API_URL/online_players"),
+      getJson("import.meta.env.VITE_API_URL/pending_bans"),
     ]).then(([playersResult, pendingResult]) => {
       if (playersResult.status === "fulfilled") setPlayers(playersResult.value);
       else if (!silent) setError(playersResult.reason.message);
@@ -63,7 +63,7 @@ function App() {
   function banPlayer(cdKey) {
     if (useDummyData) return;
     setPendingBanKeys((prev) => new Set(prev).add(cdKey));
-    fetch("http://localhost:8000/pending_bans", {
+    fetch("import.meta.env.VITE_API_URL/pending_bans", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ public_cd_key: cdKey }),
@@ -72,7 +72,7 @@ function App() {
 
   function unbanPlayer(cdKey) {
     if (useDummyData) return;
-    fetch("http://localhost:8000/unban", {
+    fetch("import.meta.env.VITE_API_URL/unban", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ public_cd_key: cdKey }),
@@ -84,7 +84,7 @@ function App() {
   function fetchBannedPlayers() {
     setBannedLoading(true);
     setBannedError(null);
-    fetch("http://localhost:8000/banned_players", { cache: "no-store" })
+    fetch("import.meta.env.VITE_API_URL/banned_players", { cache: "no-store" })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
