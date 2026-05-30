@@ -30,49 +30,38 @@ function App() {
 
   const useDummyData = import.meta.env.VITE_USE_DUMMY_DATA === "true";
 
-  function fetchPlayers() {
+  function fetchPlayers(silent = false) {
     if (useDummyData) {
       setPlayers(dummy_data);
       return;
     }
-    setLoading(true);
-    setError(null);
-    fetch("http://localhost:8000/online_players")
-      .then((res) => {
+    if (!silent) { setLoading(true); setError(null); }
+    const getJson = (url) =>
+      fetch(url, { cache: "no-store" }).then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
-      })
-      .then((data) => {
-        setPlayers(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
       });
-  }
-
-  function fetchPendingBans() {
-    if (useDummyData) return;
-    fetch("http://localhost:8000/pending_bans")
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
-        setPendingBanKeys(new Set(data.map((b) => b.public_cd_key)));
-      })
-      .catch(() => {});
+    Promise.allSettled([
+      getJson("http://localhost:8000/online_players"),
+      getJson("http://localhost:8000/pending_bans"),
+    ]).then(([playersResult, pendingResult]) => {
+      if (playersResult.status === "fulfilled") setPlayers(playersResult.value);
+      else if (!silent) setError(playersResult.reason.message);
+      if (pendingResult.status === "fulfilled")
+        setPendingBanKeys(new Set(pendingResult.value.map((b) => b.public_cd_key)));
+      if (!silent) setLoading(false);
+    });
   }
 
   function banPlayer(cdKey) {
     if (useDummyData) return;
+    setPendingBanKeys((prev) => new Set(prev).add(cdKey));
     fetch("http://localhost:8000/pending_bans", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ public_cd_key: cdKey }),
     }).then(() => {
-      setPendingBanKeys((prev) => new Set(prev).add(cdKey));
+      fetchPlayers(true);
     });
   }
 
@@ -88,7 +77,7 @@ function App() {
   function fetchBannedPlayers() {
     setBannedLoading(true);
     setBannedError(null);
-    fetch("http://localhost:8000/banned_players")
+    fetch("http://localhost:8000/banned_players", { cache: "no-store" })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -104,12 +93,23 @@ function App() {
   }
 
   useEffect(() => {
-    fetchPlayers();
-    fetchPendingBans();
-  }, []);
-
-  useEffect(() => {
-    if (activePage === "Banned Players" && !useDummyData) fetchBannedPlayers();
+    if (activePage === "Online Players") {
+      fetchPlayers();
+      if (useDummyData) {
+        return () => setPendingBanKeys(new Set());
+      }
+      const id = setInterval(() => fetchPlayers(true), 10000);
+      return () => {
+        clearInterval(id);
+        setPendingBanKeys(new Set());
+      };
+    }
+    if (activePage === "Banned Players") {
+      if (useDummyData) return;
+      fetchBannedPlayers();
+      const id = setInterval(fetchBannedPlayers, 10000);
+      return () => clearInterval(id);
+    }
   }, [activePage]);
 
   function handleSort(key) {

@@ -12,7 +12,7 @@ function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_
         <button className="player-card__action-btn">Description</button>
         <button className="player-card__action-btn">Inner World</button>
         {isPending
-          ? <button className="player-card__pending-btn" disabled>Pending</button>
+          ? <button className="player-card__pending-btn" disabled>Ban Pending</button>
           : <button className="player-card__ban-btn" onClick={onBan}>Ban</button>
         }
       </div>
