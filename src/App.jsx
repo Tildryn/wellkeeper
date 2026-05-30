@@ -2,7 +2,9 @@ import { useState, useEffect, useMemo } from "react";
 import dummy_data from "./players.json";
 import PlayerListItem from "./PlayerListItem";
 import BannedPlayerItem from "./BannedPlayerItem";
+import PlayerSearchItem from "./PlayerSearchItem";
 import "./BannedPlayerItem.css";
+import "./PlayerSearchItem.css";
 import Navbar from "./Navbar";
 import SortBar from "./SortBar";
 import "./App.css";
@@ -29,6 +31,9 @@ function App() {
   const [bannedSortKey, setBannedSortKey] = useState("banned_at");
   const [bannedSortDir, setBannedSortDir] = useState("desc");
   const [pendingBanKeys, setPendingBanKeys] = useState(new Set());
+  const [playerSearchData, setPlayerSearchData] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState(null);
 
   const useDummyData = import.meta.env.VITE_USE_DUMMY_DATA === "true";
 
@@ -99,6 +104,24 @@ function App() {
       });
   }
 
+  function fetchPlayerSearch() {
+    setSearchLoading(true);
+    setSearchError(null);
+    fetch(`${import.meta.env.VITE_API_URL}/player_data`, { cache: "no-store" })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        setPlayerSearchData(Array.isArray(data) ? data.filter((e) => e.public_cd_key) : []);
+        setSearchLoading(false);
+      })
+      .catch((err) => {
+        setSearchError(err.message);
+        setSearchLoading(false);
+      });
+  }
+
   useEffect(() => {
     if (activePage === "Online Players") {
       fetchPlayers();
@@ -110,6 +133,12 @@ function App() {
       if (useDummyData) return;
       fetchBannedPlayers();
       const id = setInterval(fetchBannedPlayers, 10000);
+      return () => clearInterval(id);
+    }
+    if (activePage === "Player Search") {
+      if (useDummyData) return;
+      fetchPlayerSearch();
+      const id = setInterval(fetchPlayerSearch, 10000);
       return () => clearInterval(id);
     }
   }, [activePage]);
@@ -200,7 +229,26 @@ function App() {
             )}
           </>
         )}
-        {activePage === "Player Search" && <p>Player Search — coming soon.</p>}
+        {activePage === "Player Search" && (
+          <>
+            <div className="list-toolbar">
+              <span className="result-count">{playerSearchData.length} result{playerSearchData.length !== 1 ? "s" : ""}</span>
+              <button className="refresh-btn" onClick={fetchPlayerSearch}>⟳ Refresh</button>
+            </div>
+            {searchLoading && <p>Loading...</p>}
+            {searchError && <p style={{ color: "#c0323a" }}>Error: {searchError}</p>}
+            {!searchLoading && !searchError && (
+              <div className="search-list">
+                {playerSearchData.length === 0
+                  ? <p>No results.</p>
+                  : playerSearchData.map((entry) => (
+                      <PlayerSearchItem key={entry.public_cd_key} {...entry} />
+                    ))
+                }
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
