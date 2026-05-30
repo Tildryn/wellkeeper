@@ -1,4 +1,5 @@
 import "./PlayerSearchItem.css";
+import "./PlayerListItem.css";
 
 function TagList({ items }) {
   if (!items || items.length === 0) return <span className="search-card__empty">—</span>;
@@ -19,6 +20,10 @@ function CharacterList({ characters }) {
         <div key={pcid} className="search-card__character">
           <span className="search-card__char-name">{character_name || "Unknown"}</span>
           <code className="search-card__pcid">{pcid}</code>
+          <div className="search-card__char-actions">
+            <button className="player-card__action-btn" disabled>Description</button>
+            <button className="player-card__action-btn" disabled>Inner World</button>
+          </div>
         </div>
       ))}
     </div>

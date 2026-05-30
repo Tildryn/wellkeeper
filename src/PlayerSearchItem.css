@@ -77,15 +77,19 @@
 }
 
 .search-card__character-list {
+  display: grid;
+  grid-template-columns: max-content max-content auto;
+  gap: 2px 20px;
+  align-items: center;
+}
+
+.search-card__char-actions {
   display: flex;
-  flex-direction: column;
   gap: 4px;
 }
 
 .search-card__character {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
+  display: contents;
 }
 
 .search-card__char-name {
