@@ -1,6 +1,6 @@
 import "./SortBar.css";
 
-const SORT_FIELDS = [
+const DEFAULT_FIELDS = [
   { key: "online_player_name", label: "Name" },
   { key: "character_name",     label: "Character" },
   { key: "public_cd_key",      label: "CD Key" },
@@ -8,11 +8,11 @@ const SORT_FIELDS = [
   { key: "logged_on_at",       label: "Logged On" },
 ];
 
-function SortBar({ sortKey, sortDir, onSort }) {
+function SortBar({ sortKey, sortDir, onSort, fields = DEFAULT_FIELDS }) {
   return (
     <div className="sort-bar">
       <span className="sort-bar__label">Sort by</span>
-      {SORT_FIELDS.map(({ key, label }) => {
+      {fields.map(({ key, label }) => {
         const active = sortKey === key;
         return (
           <button

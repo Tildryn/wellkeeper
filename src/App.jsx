@@ -26,6 +26,8 @@ function App() {
   const [bannedPlayers, setBannedPlayers] = useState([]);
   const [bannedLoading, setBannedLoading] = useState(false);
   const [bannedError, setBannedError] = useState(null);
+  const [bannedSortKey, setBannedSortKey] = useState("banned_at");
+  const [bannedSortDir, setBannedSortDir] = useState("desc");
   const [pendingBanKeys, setPendingBanKeys] = useState(new Set());
 
   const useDummyData = import.meta.env.VITE_USE_DUMMY_DATA === "true";
@@ -126,6 +128,20 @@ function App() {
     [players, sortKey, sortDir]
   );
 
+  const sortedBannedPlayers = useMemo(
+    () => sortPlayers(bannedPlayers, bannedSortKey, bannedSortDir),
+    [bannedPlayers, bannedSortKey, bannedSortDir]
+  );
+
+  function handleBannedSort(key) {
+    if (key === bannedSortKey) {
+      setBannedSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setBannedSortKey(key);
+      setBannedSortDir("asc");
+    }
+  }
+
   return (
     <div className="App">
       <Navbar activePage={activePage} onNavigate={navigateTo} />
@@ -154,7 +170,18 @@ function App() {
         {activePage === "Banned Players" && (
           <>
             <div className="list-toolbar">
-              <div />
+              <SortBar
+                sortKey={bannedSortKey}
+                sortDir={bannedSortDir}
+                onSort={handleBannedSort}
+                fields={[
+                  { key: "player_name", label: "Name" },
+                  { key: "public_cd_key", label: "CD Key" },
+                  { key: "ip_address", label: "IP Address" },
+                  { key: "banned_by", label: "Banned By" },
+                  { key: "banned_at", label: "Banned At" },
+                ]}
+              />
               <button className="refresh-btn" onClick={fetchBannedPlayers}>⟳ Refresh</button>
             </div>
             {bannedLoading && <p>Loading...</p>}
@@ -165,9 +192,9 @@ function App() {
                   <span>Player</span><span>CD Key</span><span>IP Address</span>
                   <span>Banned By</span><span>Banned At</span><span></span>
                 </div>
-                {bannedPlayers.length === 0
+                {sortedBannedPlayers.length === 0
                   ? <p style={{ gridColumn: "1 / -1", padding: "12px 0" }}>No banned players.</p>
-                  : bannedPlayers.map((p) => <BannedPlayerItem key={p.public_cd_key} {...p} onUnban={() => unbanPlayer(p.public_cd_key)} />)
+                  : sortedBannedPlayers.map((p) => <BannedPlayerItem key={p.public_cd_key} {...p} onUnban={() => unbanPlayer(p.public_cd_key)} />)
                 }
               </div>
             )}
