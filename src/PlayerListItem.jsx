@@ -1,6 +1,6 @@
 import "./PlayerListItem.css";
 
-function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_address, logged_on_at }) {
+function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_address, logged_on_at, onBan }) {
   return (
     <div className="player-card">
       <span className="player-card__username">{online_player_name}</span>
@@ -11,7 +11,7 @@ function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_
       <div className="player-card__actions">
         <button className="player-card__action-btn">Description</button>
         <button className="player-card__action-btn">Inner World</button>
-        <button className="player-card__ban-btn">Ban</button>
+        <button className="player-card__ban-btn" onClick={onBan}>Ban</button>
       </div>
     </div>
   );

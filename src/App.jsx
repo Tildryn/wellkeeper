@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import dummy_data from "./players.json";
 import PlayerListItem from "./PlayerListItem";
+import BannedPlayerItem from "./BannedPlayerItem";
+import "./BannedPlayerItem.css";
 import Navbar from "./Navbar";
 import SortBar from "./SortBar";
 import "./App.css";
@@ -21,6 +23,9 @@ function App() {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [bannedPlayers, setBannedPlayers] = useState([]);
+  const [bannedLoading, setBannedLoading] = useState(false);
+  const [bannedError, setBannedError] = useState(null);
 
   const useDummyData = import.meta.env.VITE_USE_DUMMY_DATA === "true";
 
@@ -31,7 +36,7 @@ function App() {
     }
     setLoading(true);
     setError(null);
-    fetch("http://localhost:8000")
+    fetch("http://localhost:8000/online_players")
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -46,9 +51,49 @@ function App() {
       });
   }
 
+  function banPlayer(cdKey) {
+    if (useDummyData) return;
+    fetch("http://localhost:8000/pending_bans", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ public_cd_key: cdKey }),
+    });
+  }
+
+  function unbanPlayer(cdKey) {
+    if (useDummyData) return;
+    fetch("http://localhost:8000/unban", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ public_cd_key: cdKey }),
+    });
+  }
+
+  function fetchBannedPlayers() {
+    setBannedLoading(true);
+    setBannedError(null);
+    fetch("http://localhost:8000/banned_players")
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        setBannedPlayers(data);
+        setBannedLoading(false);
+      })
+      .catch((err) => {
+        setBannedError(err.message);
+        setBannedLoading(false);
+      });
+  }
+
   useEffect(() => {
     fetchPlayers();
   }, []);
+
+  useEffect(() => {
+    if (activePage === "Banned Players" && !useDummyData) fetchBannedPlayers();
+  }, [activePage]);
 
   function handleSort(key) {
     if (key === sortKey) {
@@ -83,13 +128,34 @@ function App() {
                   <span>IP Address</span><span>Logged On</span><span></span>
                 </div>
                 {onlinePlayers.map((player) => (
-                  <PlayerListItem key={player.public_cd_key} {...player} />
+                  <PlayerListItem key={player.public_cd_key} {...player} onBan={() => banPlayer(player.public_cd_key)} />
                 ))}
               </div>
             )}
           </>
         )}
-        {activePage === "Banned Players" && <p>Banned Players — coming soon.</p>}
+        {activePage === "Banned Players" && (
+          <>
+            <div className="list-toolbar">
+              <div />
+              <button className="refresh-btn" onClick={fetchBannedPlayers}>⟳ Refresh</button>
+            </div>
+            {bannedLoading && <p>Loading...</p>}
+            {bannedError && <p style={{ color: "#c0323a" }}>Error: {bannedError}</p>}
+            {!bannedLoading && !bannedError && (
+              <div className="banned-list">
+                <div className="banned-list__header">
+                  <span>Player</span><span>CD Key</span><span>IP Address</span>
+                  <span>Banned By</span><span>Banned At</span><span></span>
+                </div>
+                {bannedPlayers.length === 0
+                  ? <p style={{ gridColumn: "1 / -1", padding: "12px 0" }}>No banned players.</p>
+                  : bannedPlayers.map((p) => <BannedPlayerItem key={p.public_cd_key} {...p} onUnban={() => unbanPlayer(p.public_cd_key)} />)
+                }
+              </div>
+            )}
+          </>
+        )}
         {activePage === "Player Search" && <p>Player Search — coming soon.</p>}
       </div>
     </div>
