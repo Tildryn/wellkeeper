@@ -21,7 +21,7 @@ function App() {
   const [sortKey, setSortKey] = useState("logged_on_at");
   const [sortDir, setSortDir] = useState("desc");
   const [players, setPlayers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [bannedPlayers, setBannedPlayers] = useState([]);
   const [bannedLoading, setBannedLoading] = useState(false);
@@ -29,6 +29,11 @@ function App() {
   const [pendingBanKeys, setPendingBanKeys] = useState(new Set());
 
   const useDummyData = import.meta.env.VITE_USE_DUMMY_DATA === "true";
+
+  function navigateTo(page) {
+    if (page === "Online Players") setLoading(true);
+    setActivePage(page);
+  }
 
   function fetchPlayers(silent = false) {
     if (useDummyData) {
@@ -47,7 +52,7 @@ function App() {
     ]).then(([playersResult, pendingResult]) => {
       if (playersResult.status === "fulfilled") setPlayers(playersResult.value);
       else if (!silent) setError(playersResult.reason.message);
-      if (pendingResult.status === "fulfilled")
+      if (pendingResult.status === "fulfilled" && Array.isArray(pendingResult.value))
         setPendingBanKeys(new Set(pendingResult.value.map((b) => b.public_cd_key)));
       if (!silent) setLoading(false);
     });
@@ -60,8 +65,6 @@ function App() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ public_cd_key: cdKey }),
-    }).then(() => {
-      fetchPlayers(true);
     });
   }
 
@@ -97,14 +100,9 @@ function App() {
   useEffect(() => {
     if (activePage === "Online Players") {
       fetchPlayers();
-      if (useDummyData) {
-        return () => setPendingBanKeys(new Set());
-      }
+      if (useDummyData) return;
       const id = setInterval(() => fetchPlayers(true), 10000);
-      return () => {
-        clearInterval(id);
-        setPendingBanKeys(new Set());
-      };
+      return () => clearInterval(id);
     }
     if (activePage === "Banned Players") {
       if (useDummyData) return;
@@ -130,7 +128,7 @@ function App() {
 
   return (
     <div className="App">
-      <Navbar activePage={activePage} onNavigate={setActivePage} />
+      <Navbar activePage={activePage} onNavigate={navigateTo} />
       <div className="page-content">
         {activePage === "Online Players" && (
           <>
