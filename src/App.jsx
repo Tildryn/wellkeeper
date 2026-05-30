@@ -49,8 +49,8 @@ function App() {
         return res.json();
       });
     Promise.allSettled([
-      getJson("import.meta.env.VITE_API_URL/online_players"),
-      getJson("import.meta.env.VITE_API_URL/pending_bans"),
+      getJson(`${import.meta.env.VITE_API_URL}/online_players`),
+      getJson(`${import.meta.env.VITE_API_URL}/pending_bans`),
     ]).then(([playersResult, pendingResult]) => {
       if (playersResult.status === "fulfilled") setPlayers(playersResult.value);
       else if (!silent) setError(playersResult.reason.message);
@@ -63,7 +63,7 @@ function App() {
   function banPlayer(cdKey) {
     if (useDummyData) return;
     setPendingBanKeys((prev) => new Set(prev).add(cdKey));
-    fetch("import.meta.env.VITE_API_URL/pending_bans", {
+    fetch(`${import.meta.env.VITE_API_URL}/pending_bans`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ public_cd_key: cdKey }),
@@ -72,7 +72,7 @@ function App() {
 
   function unbanPlayer(cdKey) {
     if (useDummyData) return;
-    fetch("import.meta.env.VITE_API_URL/unban", {
+    fetch(`${import.meta.env.VITE_API_URL}/unban`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ public_cd_key: cdKey }),
@@ -84,7 +84,7 @@ function App() {
   function fetchBannedPlayers() {
     setBannedLoading(true);
     setBannedError(null);
-    fetch("import.meta.env.VITE_API_URL/banned_players", { cache: "no-store" })
+    fetch(`${import.meta.env.VITE_API_URL}/banned_players`, { cache: "no-store" })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
