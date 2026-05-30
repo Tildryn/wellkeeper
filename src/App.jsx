@@ -71,6 +71,8 @@ function App() {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ public_cd_key: cdKey }),
+    }).then((res) => {
+      if (res.ok) setBannedPlayers((prev) => prev.filter((p) => p.public_cd_key !== cdKey));
     });
   }
 
