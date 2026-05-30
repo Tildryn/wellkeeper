@@ -26,6 +26,7 @@ function App() {
   const [bannedPlayers, setBannedPlayers] = useState([]);
   const [bannedLoading, setBannedLoading] = useState(false);
   const [bannedError, setBannedError] = useState(null);
+  const [pendingBanKeys, setPendingBanKeys] = useState(new Set());
 
   const useDummyData = import.meta.env.VITE_USE_DUMMY_DATA === "true";
 
@@ -51,12 +52,27 @@ function App() {
       });
   }
 
+  function fetchPendingBans() {
+    if (useDummyData) return;
+    fetch("http://localhost:8000/pending_bans")
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        setPendingBanKeys(new Set(data.map((b) => b.public_cd_key)));
+      })
+      .catch(() => {});
+  }
+
   function banPlayer(cdKey) {
     if (useDummyData) return;
     fetch("http://localhost:8000/pending_bans", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ public_cd_key: cdKey }),
+    }).then(() => {
+      setPendingBanKeys((prev) => new Set(prev).add(cdKey));
     });
   }
 
@@ -89,6 +105,7 @@ function App() {
 
   useEffect(() => {
     fetchPlayers();
+    fetchPendingBans();
   }, []);
 
   useEffect(() => {
@@ -128,7 +145,7 @@ function App() {
                   <span>IP Address</span><span>Logged On</span><span></span>
                 </div>
                 {onlinePlayers.map((player) => (
-                  <PlayerListItem key={player.public_cd_key} {...player} onBan={() => banPlayer(player.public_cd_key)} />
+                  <PlayerListItem key={player.public_cd_key} {...player} isPending={pendingBanKeys.has(player.public_cd_key)} onBan={() => banPlayer(player.public_cd_key)} />
                 ))}
               </div>
             )}
