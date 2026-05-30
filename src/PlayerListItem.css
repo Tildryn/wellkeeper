@@ -1,0 +1,90 @@
+.player-card {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+  background: var(--social-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.player-card:hover {
+  border-color: var(--accent-border);
+  box-shadow: var(--shadow);
+}
+
+.player-card__username,
+.player-card__character,
+.player-card__ip,
+.player-card__timestamp {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 8px;
+}
+
+.player-card__username {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.player-card__character {
+  color: var(--accent);
+}
+
+.player-card__cdkey {
+  font-size: 12px;
+  font-family: var(--mono);
+  width: 9ch;
+}
+
+.player-card__ip {
+  font-size: 12px;
+  font-family: var(--mono);
+}
+
+.player-card__timestamp {
+  color: var(--text);
+  padding-left: 16px;
+}
+
+.player-card__actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.player-card__action-btn {
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 1px 8px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.player-card__ban-btn {
+  border: 1px solid #c0323a;
+  border-radius: 5px;
+  padding: 1px 8px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  background: transparent;
+  color: #c0323a;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.player-card__ban-btn:hover {
+  background: #c0323a;
+  color: #fff;
+}
+
