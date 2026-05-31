@@ -138,9 +138,7 @@ function App() {
     }
     if (activePage === "Player Search") {
       if (useDummyData) return;
-      fetchPlayerSearch();
-      const id = setInterval(fetchPlayerSearch, 10000);
-      return () => clearInterval(id);
+      if (playerSearchData.length === 0) fetchPlayerSearch();
     }
   }, [activePage]);
 
