@@ -1,5 +1,6 @@
 import "./PlayerSearchItem.css";
 import "./PlayerListItem.css";
+import "./BannedPlayerItem.css";
 
 function TagList({ items }) {
   if (!items || items.length === 0) return <span className="search-card__empty">—</span>;
@@ -30,16 +31,18 @@ function CharacterList({ characters }) {
   );
 }
 
-function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, characters, onBan, isPending }) {
+function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, characters, onBan, onUnban, isPending, isBanned }) {
   return (
     <div className="search-card">
       <div className="search-card__header">
         <span className="search-card__label">CD Key</span>
         <code className="search-card__cdkey">{public_cd_key}</code>
         <div className="search-card__header-actions">
-          {isPending
-            ? <button className="player-card__pending-btn" disabled>Ban Pending</button>
-            : <button className="player-card__ban-btn" onClick={onBan}>Ban</button>
+          {isBanned
+            ? <button className="banned-card__unban-btn" onClick={onUnban}>Unban</button>
+            : isPending
+              ? <button className="player-card__pending-btn" disabled>Ban Pending</button>
+              : <button className="player-card__ban-btn" onClick={onBan}>Ban</button>
           }
         </div>
       </div>

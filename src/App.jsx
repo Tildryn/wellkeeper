@@ -157,6 +157,11 @@ function App() {
     [players, sortKey, sortDir]
   );
 
+  const bannedKeySet = useMemo(
+    () => new Set(bannedPlayers.map((p) => p.public_cd_key)),
+    [bannedPlayers]
+  );
+
   const sortedBannedPlayers = useMemo(
     () => sortPlayers(bannedPlayers, bannedSortKey, bannedSortDir),
     [bannedPlayers, bannedSortKey, bannedSortDir]
@@ -242,7 +247,14 @@ function App() {
                 {playerSearchData.length === 0
                   ? <p>No results.</p>
                   : playerSearchData.map((entry) => (
-                      <PlayerSearchItem key={entry.public_cd_key} {...entry} isPending={pendingBanKeys.has(entry.public_cd_key)} onBan={() => banPlayer(entry.public_cd_key)} />
+                      <PlayerSearchItem
+                        key={entry.public_cd_key}
+                        {...entry}
+                        isBanned={bannedKeySet.has(entry.public_cd_key)}
+                        isPending={pendingBanKeys.has(entry.public_cd_key)}
+                        onBan={() => banPlayer(entry.public_cd_key)}
+                        onUnban={() => unbanPlayer(entry.public_cd_key)}
+                      />
                     ))
                 }
               </div>
