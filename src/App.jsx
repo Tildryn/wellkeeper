@@ -242,7 +242,7 @@ function App() {
                 {playerSearchData.length === 0
                   ? <p>No results.</p>
                   : playerSearchData.map((entry) => (
-                      <PlayerSearchItem key={entry.public_cd_key} {...entry} />
+                      <PlayerSearchItem key={entry.public_cd_key} {...entry} isPending={pendingBanKeys.has(entry.public_cd_key)} onBan={() => banPlayer(entry.public_cd_key)} />
                     ))
                 }
               </div>

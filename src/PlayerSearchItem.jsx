@@ -30,12 +30,18 @@ function CharacterList({ characters }) {
   );
 }
 
-function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, characters }) {
+function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, characters, onBan, isPending }) {
   return (
     <div className="search-card">
       <div className="search-card__header">
         <span className="search-card__label">CD Key</span>
         <code className="search-card__cdkey">{public_cd_key}</code>
+        <div className="search-card__header-actions">
+          {isPending
+            ? <button className="player-card__pending-btn" disabled>Ban Pending</button>
+            : <button className="player-card__ban-btn" onClick={onBan}>Ban</button>
+          }
+        </div>
       </div>
       <div className="search-card__row">
         <span className="search-card__label">Names</span>
