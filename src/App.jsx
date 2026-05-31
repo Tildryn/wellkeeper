@@ -34,6 +34,7 @@ function App() {
   const [playerSearchData, setPlayerSearchData] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const useDummyData = import.meta.env.VITE_USE_DUMMY_DATA === "true";
 
@@ -167,6 +168,20 @@ function App() {
     [bannedPlayers, bannedSortKey, bannedSortDir]
   );
 
+  const filteredPlayerSearch = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return playerSearchData;
+    return playerSearchData.filter((entry) => {
+      if (entry.public_cd_key?.toLowerCase().includes(q)) return true;
+      if (entry.player_names?.some((n) => n.toLowerCase().includes(q))) return true;
+      if (entry.ip_addresses?.some((ip) => ip.toLowerCase().includes(q))) return true;
+      if (entry.characters?.some((c) =>
+        c.pcid?.toLowerCase().includes(q) || c.character_name?.toLowerCase().includes(q)
+      )) return true;
+      return false;
+    });
+  }, [playerSearchData, searchQuery]);
+
   function handleBannedSort(key) {
     if (key === bannedSortKey) {
       setBannedSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -237,16 +252,25 @@ function App() {
         {activePage === "Player Search" && (
           <>
             <div className="list-toolbar">
-              <span className="result-count">{playerSearchData.length} result{playerSearchData.length !== 1 ? "s" : ""}</span>
+              <input
+                className="search-input"
+                type="text"
+                placeholder="Search by name, CD key, IP, character…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
               <button className="refresh-btn" onClick={fetchPlayerSearch}>⟳ Refresh</button>
             </div>
+            <span className="result-count">
+              {filteredPlayerSearch.length} of {playerSearchData.length} result{playerSearchData.length !== 1 ? "s" : ""}
+            </span>
             {searchLoading && <p>Loading...</p>}
             {searchError && <p style={{ color: "#c0323a" }}>Error: {searchError}</p>}
             {!searchLoading && !searchError && (
               <div className="search-list">
-                {playerSearchData.length === 0
+                {filteredPlayerSearch.length === 0
                   ? <p>No results.</p>
-                  : playerSearchData.map((entry) => (
+                  : filteredPlayerSearch.map((entry) => (
                       <PlayerSearchItem
                         key={entry.public_cd_key}
                         {...entry}
