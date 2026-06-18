@@ -2,7 +2,7 @@ import "./Navbar.css";
 
 const NAV_ITEMS = ["Online Players", "Banned Players", "Player Search"];
 
-function Navbar({ activePage, onNavigate }) {
+function Navbar({ activePage, onNavigate, onLogout }) {
   return (
     <nav className="navbar">
       <span className="navbar__title">Wellkeeper</span>
@@ -18,6 +18,7 @@ function Navbar({ activePage, onNavigate }) {
           </li>
         ))}
       </ul>
+      <button className="navbar__logout" onClick={onLogout}>Logout</button>
     </nav>
   );
 }

@@ -197,7 +197,7 @@ function App() {
 
   return (
     <div className="App">
-      <Navbar activePage={activePage} onNavigate={navigateTo} />
+      <Navbar activePage={activePage} onNavigate={navigateTo} onLogout={() => setAuthenticated(false)} />
       <div className="page-content">
         {activePage === "Online Players" && (
           <>
