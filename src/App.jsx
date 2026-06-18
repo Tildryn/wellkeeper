@@ -7,6 +7,7 @@ import "./BannedPlayerItem.css";
 import "./PlayerSearchItem.css";
 import Navbar from "./Navbar";
 import SortBar from "./SortBar";
+import LoginPage from "./LoginPage";
 import "./App.css";
 
 function sortPlayers(players, key, dir) {
@@ -19,6 +20,7 @@ function sortPlayers(players, key, dir) {
 }
 
 function App() {
+  const [authenticated, setAuthenticated] = useState(false);
   const [activePage, setActivePage] = useState("Online Players");
   const [sortKey, setSortKey] = useState("logged_on_at");
   const [sortDir, setSortDir] = useState("desc");
@@ -187,6 +189,10 @@ function App() {
       setBannedSortKey(key);
       setBannedSortDir("asc");
     }
+  }
+
+  if (!authenticated) {
+    return <LoginPage onLogin={() => setAuthenticated(true)} />;
   }
 
   return (
