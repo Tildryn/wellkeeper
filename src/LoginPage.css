@@ -75,6 +75,12 @@
   border-color: var(--accent-border);
 }
 
+.login-form__error {
+  font-size: 13px;
+  color: #e05560;
+  margin: 0;
+}
+
 .login-form__submit {
   margin-top: 6px;
   background: var(--accent-bg);

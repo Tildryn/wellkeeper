@@ -4,10 +4,30 @@ import "./LoginPage.css";
 function LoginPage({ onLogin }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   function handleSubmit(e) {
     e.preventDefault();
-    onLogin();
+    setError(null);
+    setLoading(true);
+    fetch(`${import.meta.env.VITE_API_URL}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(res.status === 401 ? "Invalid email or password." : `Server error (${res.status}).`);
+        return res.json();
+      })
+      .then((data) => {
+        setLoading(false);
+        onLogin(data.token ?? data.access_token ?? null);
+      })
+      .catch((err) => {
+        setLoading(false);
+        setError(err.message);
+      });
   }
 
   return (
@@ -26,6 +46,8 @@ function LoginPage({ onLogin }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
+              disabled={loading}
+              required
             />
           </div>
           <div className="login-form__field">
@@ -38,9 +60,14 @@ function LoginPage({ onLogin }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
+              disabled={loading}
+              required
             />
           </div>
-          <button className="login-form__submit" type="submit">Sign in</button>
+          {error && <p className="login-form__error">{error}</p>}
+          <button className="login-form__submit" type="submit" disabled={loading}>
+            {loading ? "Signing in…" : "Sign in"}
+          </button>
         </form>
       </div>
     </div>

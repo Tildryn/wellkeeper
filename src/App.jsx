@@ -20,7 +20,7 @@ function sortPlayers(players, key, dir) {
 }
 
 function App() {
-  const [authenticated, setAuthenticated] = useState(false);
+  const [authToken, setAuthToken] = useState(null);
   const [activePage, setActivePage] = useState("Online Players");
   const [sortKey, setSortKey] = useState("logged_on_at");
   const [sortDir, setSortDir] = useState("desc");
@@ -40,6 +40,12 @@ function App() {
 
   const useDummyData = import.meta.env.VITE_USE_DUMMY_DATA === "true";
 
+  function authHeaders(extra = {}) {
+    return authToken
+      ? { Authorization: `Bearer ${authToken}`, ...extra }
+      : { ...extra };
+  }
+
   function navigateTo(page) {
     if (page === "Online Players") setLoading(true);
     setActivePage(page);
@@ -52,7 +58,7 @@ function App() {
     }
     if (!silent) { setLoading(true); setError(null); }
     const getJson = (url) =>
-      fetch(url, { cache: "no-store" }).then((res) => {
+      fetch(url, { cache: "no-store", headers: authHeaders() }).then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       });
@@ -73,7 +79,7 @@ function App() {
     setPendingBanKeys((prev) => new Set(prev).add(cdKey));
     fetch(`${import.meta.env.VITE_API_URL}/pending_bans`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ public_cd_key: cdKey }),
     });
   }
@@ -82,7 +88,7 @@ function App() {
     if (useDummyData) return;
     fetch(`${import.meta.env.VITE_API_URL}/unban`, {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ public_cd_key: cdKey }),
     }).then((res) => {
       if (res.ok) setBannedPlayers((prev) => prev.filter((p) => p.public_cd_key !== cdKey));
@@ -92,7 +98,7 @@ function App() {
   function fetchBannedPlayers() {
     setBannedLoading(true);
     setBannedError(null);
-    fetch(`${import.meta.env.VITE_API_URL}/banned_players`, { cache: "no-store" })
+    fetch(`${import.meta.env.VITE_API_URL}/banned_players`, { cache: "no-store", headers: authHeaders() })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -110,7 +116,7 @@ function App() {
   function fetchPlayerSearch() {
     setSearchLoading(true);
     setSearchError(null);
-    fetch(`${import.meta.env.VITE_API_URL}/player_data`, { cache: "no-store" })
+    fetch(`${import.meta.env.VITE_API_URL}/player_data`, { cache: "no-store", headers: authHeaders() })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -191,13 +197,13 @@ function App() {
     }
   }
 
-  if (!authenticated) {
-    return <LoginPage onLogin={() => setAuthenticated(true)} />;
+  if (!authToken) {
+    return <LoginPage onLogin={(token) => setAuthToken(token)} />;
   }
 
   return (
     <div className="App">
-      <Navbar activePage={activePage} onNavigate={navigateTo} onLogout={() => setAuthenticated(false)} />
+      <Navbar activePage={activePage} onNavigate={navigateTo} onLogout={() => setAuthToken(null)} />
       <div className="page-content">
         {activePage === "Online Players" && (
           <>
