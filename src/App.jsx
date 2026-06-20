@@ -135,6 +135,7 @@ function App() {
   }
 
   useEffect(() => {
+    if (!authToken && !useDummyData) return;
     if (activePage === "Online Players") {
       fetchPlayers();
       if (useDummyData) return;
@@ -151,7 +152,7 @@ function App() {
       if (useDummyData) return;
       if (playerSearchData.length === 0) fetchPlayerSearch();
     }
-  }, [activePage]);
+  }, [activePage, authToken]);
 
   function handleSort(key) {
     if (key === sortKey) {
