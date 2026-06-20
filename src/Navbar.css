@@ -64,8 +64,21 @@
   font-weight: 500;
 }
 
-.navbar__logout {
+.navbar__right {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+
+  @media (max-width: 600px) {
+    margin-left: 0;
+    align-self: flex-end;
+    margin-bottom: 4px;
+  }
+}
+
+.navbar__logout {
   background: none;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -76,12 +89,6 @@
   padding: 4px 12px;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
   flex-shrink: 0;
-
-  @media (max-width: 600px) {
-    margin-left: 0;
-    align-self: flex-end;
-    margin-bottom: 4px;
-  }
 }
 
 .navbar__logout:hover {

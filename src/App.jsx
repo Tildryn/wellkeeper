@@ -8,6 +8,7 @@ import "./PlayerSearchItem.css";
 import Navbar from "./Navbar";
 import SortBar from "./SortBar";
 import LoginPage from "./LoginPage";
+import MyCDKeysPage from "./MyCDKeysPage";
 import RegisterPage from "./RegisterPage";
 import "./App.css";
 
@@ -317,6 +318,7 @@ function App() {
             )}
           </>
         )}
+        {activePage === "My CD Keys" && <MyCDKeysPage authToken={authToken} />}
       </div>
     </div>
   );

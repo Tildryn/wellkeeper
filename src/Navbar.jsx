@@ -18,7 +18,15 @@ function Navbar({ activePage, onNavigate, onLogout }) {
           </li>
         ))}
       </ul>
-      <button className="navbar__logout" onClick={onLogout}>Logout</button>
+      <div className="navbar__right">
+        <button
+          className={`navbar__link${activePage === "My CD Keys" ? " navbar__link--active" : ""}`}
+          onClick={() => onNavigate("My CD Keys")}
+        >
+          My CD Keys
+        </button>
+        <button className="navbar__logout" onClick={onLogout}>Logout</button>
+      </div>
     </nav>
   );
 }

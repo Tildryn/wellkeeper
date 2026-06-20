@@ -1,0 +1,133 @@
+.cdkeys-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cdkeys-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.cdkeys-table-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.cdkeys-add-btn {
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  padding: 6px 16px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.cdkeys-add-btn:hover {
+  background: rgba(212, 168, 67, 0.25);
+  border-color: var(--accent);
+}
+
+.cdkeys-otp {
+  background: var(--social-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cdkeys-otp__prompt {
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.cdkeys-otp__code {
+  font-family: var(--mono);
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  color: var(--accent);
+  text-align: center;
+  padding: 12px 0 8px;
+}
+
+.cdkeys-table {
+  background: var(--social-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-height: 80px;
+  display: grid;
+  grid-template-columns: 10ch auto;
+  width: fit-content;
+  align-content: start;
+  overflow: hidden;
+}
+
+.cdkeys-table:has(.cdkeys-empty) {
+  place-items: center;
+  grid-template-columns: 1fr;
+  width: 220px;
+}
+
+.cdkeys-table__header {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  padding: 5px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  opacity: 0.6;
+  border-bottom: 1px solid var(--border);
+}
+
+.cdkeys-table__row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cdkeys-table__row:last-child {
+  border-bottom: none;
+}
+
+.cdkeys-empty {
+  font-size: 14px;
+  color: var(--text);
+  opacity: 0.5;
+  margin: 0;
+}
+
+.cdkeys-list__key {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-h);
+  background: none;
+  padding: 0;
+}
+
+.cdkeys-list__dm {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
+}
