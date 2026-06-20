@@ -103,3 +103,41 @@
 .login-form__submit:active {
   background: rgba(212, 168, 67, 0.35);
 }
+
+.login-form__submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.login-form__footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.login-form__link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: opacity 0.15s;
+}
+
+.login-form__link:hover {
+  opacity: 0.75;
+}
+
+.login-form__success {
+  font-size: 13px;
+  color: #4caf7d;
+  margin: 0;
+}

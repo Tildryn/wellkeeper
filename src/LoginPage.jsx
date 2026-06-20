@@ -1,7 +1,7 @@
 import { useState } from "react";
 import "./LoginPage.css";
 
-function LoginPage({ onLogin }) {
+function LoginPage({ onLogin, onRegister }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
@@ -68,6 +68,10 @@ function LoginPage({ onLogin }) {
           <button className="login-form__submit" type="submit" disabled={loading}>
             {loading ? "Signing in…" : "Sign in"}
           </button>
+          <div className="login-form__footer">
+            <span>Don't have an account?</span>
+            <button type="button" className="login-form__link" onClick={() => onRegister(email, password)}>Register</button>
+          </div>
         </form>
       </div>
     </div>
