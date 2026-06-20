@@ -1,6 +1,6 @@
 import "./Navbar.css";
 
-const NAV_ITEMS = ["Online Players", "Banned Players", "Player Search"];
+const NAV_ITEMS = ["Online Players", "Banned Players", "All Players"];
 
 function Navbar({ activePage, onNavigate, onLogout }) {
   return (

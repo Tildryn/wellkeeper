@@ -148,7 +148,7 @@ function App() {
       const id = setInterval(fetchBannedPlayers, 10000);
       return () => clearInterval(id);
     }
-    if (activePage === "Player Search") {
+    if (activePage === "All Players") {
       if (useDummyData) return;
       if (playerSearchData.length === 0) fetchPlayerSearch();
     }
@@ -281,7 +281,7 @@ function App() {
             )}
           </>
         )}
-        {activePage === "Player Search" && (
+        {activePage === "All Players" && (
           <>
             <div className="list-toolbar">
               <input
