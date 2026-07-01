@@ -41,14 +41,47 @@ function App() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [cdKeys, setCdKeys] = useState([]);
+  const [cdKeysLoading, setCdKeysLoading] = useState(false);
+  const [cdKeysError, setCdKeysError] = useState(null);
 
   const useDummyData = import.meta.env.VITE_USE_DUMMY_DATA === "true";
+
+  const isDM = useMemo(() => cdKeys.some((k) => k.dm), [cdKeys]);
 
   function authHeaders(extra = {}) {
     return authToken
       ? { Authorization: `Bearer ${authToken}`, ...extra }
       : { ...extra };
   }
+
+  useEffect(() => {
+    if (!authToken) {
+      setCdKeys([]);
+      return;
+    }
+    setCdKeysLoading(true);
+    setCdKeysError(null);
+    fetch(`${import.meta.env.VITE_API_URL}/linked_cd_keys`, {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${authToken}` },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Server error (${res.status}).`);
+        return res.json();
+      })
+      .then((data) => {
+        const keys = data.cd_keys ?? [];
+        setCdKeys(keys);
+        setCdKeysLoading(false);
+        if (!keys.some((k) => k.dm)) setActivePage("My CD Keys");
+      })
+      .catch((err) => {
+        setCdKeysError(err.message);
+        setCdKeysLoading(false);
+        setActivePage("My CD Keys");
+      });
+  }, [authToken]);
 
   function navigateTo(page) {
     if (page === "Online Players") setLoading(true);
@@ -137,6 +170,7 @@ function App() {
 
   useEffect(() => {
     if (!authToken && !useDummyData) return;
+    if (!isDM && !useDummyData) return;
     if (activePage === "Online Players") {
       fetchPlayers();
       if (useDummyData) return;
@@ -153,7 +187,7 @@ function App() {
       if (useDummyData) return;
       if (playerSearchData.length === 0) fetchPlayerSearch();
     }
-  }, [activePage, authToken]);
+  }, [activePage, authToken, isDM]);
 
   function handleSort(key) {
     if (key === sortKey) {
@@ -224,11 +258,20 @@ function App() {
     );
   }
 
+  if (cdKeysLoading) {
+    return (
+      <div className="App">
+        <Navbar activePage={activePage} onNavigate={navigateTo} isDM={false} onLogout={() => setAuthToken(null)} />
+        <div className="page-content"><p>Verifying access…</p></div>
+      </div>
+    );
+  }
+
   return (
     <div className="App">
-      <Navbar activePage={activePage} onNavigate={navigateTo} onLogout={() => setAuthToken(null)} />
+      <Navbar activePage={activePage} onNavigate={navigateTo} isDM={isDM} onLogout={() => setAuthToken(null)} />
       <div className="page-content">
-        {activePage === "Online Players" && (
+        {isDM && activePage === "Online Players" && (
           <>
             <div className="list-toolbar">
               <SortBar sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
@@ -249,7 +292,7 @@ function App() {
             )}
           </>
         )}
-        {activePage === "Banned Players" && (
+        {isDM && activePage === "Banned Players" && (
           <>
             <div className="list-toolbar">
               <SortBar
@@ -282,7 +325,7 @@ function App() {
             )}
           </>
         )}
-        {activePage === "All Players" && (
+        {isDM && activePage === "All Players" && (
           <>
             <div className="list-toolbar">
               <input
@@ -318,7 +361,14 @@ function App() {
             )}
           </>
         )}
-        {activePage === "My CD Keys" && <MyCDKeysPage authToken={authToken} />}
+        {activePage === "My CD Keys" && (
+          <MyCDKeysPage
+            authToken={authToken}
+            cdKeys={cdKeys}
+            cdKeysLoading={cdKeysLoading}
+            cdKeysError={cdKeysError}
+          />
+        )}
       </div>
     </div>
   );

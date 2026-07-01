@@ -1,32 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import "./MyCDKeysPage.css";
 
-function MyCDKeysPage({ authToken }) {
-  const [cdKeys, setCdKeys] = useState([]);
-  const [keysLoading, setKeysLoading] = useState(true);
-  const [keysError, setKeysError] = useState(null);
+function MyCDKeysPage({ authToken, cdKeys, cdKeysLoading, cdKeysError }) {
   const [otp, setOtp] = useState(null);
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpError, setOtpError] = useState(null);
-
-  useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/linked_cd_keys`, {
-      cache: "no-store",
-      headers: { Authorization: `Bearer ${authToken}` },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error(`Server error (${res.status}).`);
-        return res.json();
-      })
-      .then((data) => {
-        setCdKeys(data.cd_keys ?? []);
-        setKeysLoading(false);
-      })
-      .catch((err) => {
-        setKeysError(err.message);
-        setKeysLoading(false);
-      });
-  }, []);
 
   function generateOtp() {
     setOtpLoading(true);
@@ -65,12 +43,12 @@ function MyCDKeysPage({ authToken }) {
           {otpLoading ? "Generating…" : "Link CD Key"}
         </button>
         <div className="cdkeys-table">
-          {keysLoading && <p className="cdkeys-empty">Loading…</p>}
-          {keysError && <p className="cdkeys-empty" style={{ color: "#e05560" }}>Error: {keysError}</p>}
-          {!keysLoading && !keysError && cdKeys.length === 0 && (
+          {cdKeysLoading && <p className="cdkeys-empty">Loading…</p>}
+          {cdKeysError && <p className="cdkeys-empty" style={{ color: "#e05560" }}>Error: {cdKeysError}</p>}
+          {!cdKeysLoading && !cdKeysError && cdKeys.length === 0 && (
             <p className="cdkeys-empty">No CD keys linked yet.</p>
           )}
-          {!keysLoading && !keysError && cdKeys.length > 0 && (
+          {!cdKeysLoading && !cdKeysError && cdKeys.length > 0 && (
             <>
               <div className="cdkeys-table__header">
                 <span>CD Key</span>
