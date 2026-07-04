@@ -10,6 +10,7 @@ import SortBar from "./SortBar";
 import LoginPage from "./LoginPage";
 import MyCDKeysPage from "./MyCDKeysPage";
 import RegisterPage from "./RegisterPage";
+import { PAGES } from "./pages";
 import "./App.css";
 
 function sortPlayers(players, key, dir) {
@@ -25,7 +26,7 @@ function App() {
   const [authToken, setAuthToken] = useState(null);
   const [authView, setAuthView] = useState("login");
   const [registerPrefill, setRegisterPrefill] = useState({ email: "", password: "" });
-  const [activePage, setActivePage] = useState("Online Players");
+  const [activePage, setActivePage] = useState(PAGES.ONLINE_PLAYERS);
   const [sortKey, setSortKey] = useState("logged_on_at");
   const [sortDir, setSortDir] = useState("desc");
   const [players, setPlayers] = useState([]);
@@ -74,17 +75,17 @@ function App() {
         const keys = data.cd_keys ?? [];
         setCdKeys(keys);
         setCdKeysLoading(false);
-        if (!keys.some((k) => k.dm)) setActivePage("My CD Keys");
+        if (!keys.some((k) => k.dm)) setActivePage(PAGES.MY_CD_KEYS);
       })
       .catch((err) => {
         setCdKeysError(err.message);
         setCdKeysLoading(false);
-        setActivePage("My CD Keys");
+        setActivePage(PAGES.MY_CD_KEYS);
       });
   }, [authToken]);
 
   function navigateTo(page) {
-    if (page === "Online Players") setLoading(true);
+    if (page === PAGES.ONLINE_PLAYERS) setLoading(true);
     setActivePage(page);
   }
 
@@ -171,19 +172,19 @@ function App() {
   useEffect(() => {
     if (!authToken && !useDummyData) return;
     if (!isDM && !useDummyData) return;
-    if (activePage === "Online Players") {
+    if (activePage === PAGES.ONLINE_PLAYERS) {
       fetchPlayers();
       if (useDummyData) return;
       const id = setInterval(() => fetchPlayers(true), 10000);
       return () => clearInterval(id);
     }
-    if (activePage === "Banned Players") {
+    if (activePage === PAGES.BANNED_PLAYERS) {
       if (useDummyData) return;
       fetchBannedPlayers();
       const id = setInterval(fetchBannedPlayers, 10000);
       return () => clearInterval(id);
     }
-    if (activePage === "All Players") {
+    if (activePage === PAGES.ALL_PLAYERS) {
       if (useDummyData) return;
       if (playerSearchData.length === 0) fetchPlayerSearch();
     }
@@ -271,7 +272,7 @@ function App() {
     <div className="App">
       <Navbar activePage={activePage} onNavigate={navigateTo} isDM={isDM} onLogout={() => setAuthToken(null)} />
       <div className="page-content">
-        {isDM && activePage === "Online Players" && (
+        {isDM && activePage === PAGES.ONLINE_PLAYERS && (
           <>
             <div className="list-toolbar">
               <SortBar sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
@@ -292,7 +293,7 @@ function App() {
             )}
           </>
         )}
-        {isDM && activePage === "Banned Players" && (
+        {isDM && activePage === PAGES.BANNED_PLAYERS && (
           <>
             <div className="list-toolbar">
               <SortBar
@@ -325,7 +326,7 @@ function App() {
             )}
           </>
         )}
-        {isDM && activePage === "All Players" && (
+        {isDM && activePage === PAGES.ALL_PLAYERS && (
           <>
             <div className="list-toolbar">
               <input
@@ -361,7 +362,7 @@ function App() {
             )}
           </>
         )}
-        {activePage === "My CD Keys" && (
+        {activePage === PAGES.MY_CD_KEYS && (
           <MyCDKeysPage
             authToken={authToken}
             cdKeys={cdKeys}
