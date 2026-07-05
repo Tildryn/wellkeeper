@@ -59,3 +59,13 @@
 .privacy-section li {
   margin: 0 0 4px;
 }
+
+.privacy-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.privacy-link:hover {
+  opacity: 0.8;
+}

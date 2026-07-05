@@ -52,7 +52,7 @@ function PrivacyPage({ onBack }) {
 
         <section className="privacy-section">
           <h2 className="privacy-section__heading">Contact</h2>
-          <p>For any questions regarding this policy or the data we hold, please contact the server administration team.</p>
+          <p>For any questions regarding this policy or the data we hold, please contact the server administration team via our <a className="privacy-link" href="https://discord.gg/QUQx763d8q" target="_blank" rel="noopener noreferrer">Discord server</a>.</p>
         </section>
       </div>
     </div>
