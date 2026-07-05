@@ -7,6 +7,27 @@
   text-align: left;
 }
 
+.search-list__divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0;
+  color: var(--text);
+  opacity: 0.5;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.search-list__divider::before,
+.search-list__divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
 .search-card {
   background: var(--social-bg);
   border: 1px solid var(--border);
@@ -105,6 +126,27 @@
 .search-card__pcid {
   font-family: var(--mono);
   font-size: 11px;
+  color: var(--text);
+  opacity: 0.5;
+}
+
+.search-card__session {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-h);
+}
+
+.search-card__session-sep {
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.4;
+}
+
+.search-card__session-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--text);
   opacity: 0.5;
 }

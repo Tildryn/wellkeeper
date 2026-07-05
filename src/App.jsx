@@ -42,6 +42,7 @@ function App() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [playerSessions, setPlayerSessions] = useState([]);
   const [cdKeys, setCdKeys] = useState([]);
   const [cdKeysLoading, setCdKeysLoading] = useState(false);
   const [cdKeysError, setCdKeysError] = useState(null);
@@ -154,19 +155,22 @@ function App() {
   function fetchPlayerSearch() {
     setSearchLoading(true);
     setSearchError(null);
-    fetch(`${import.meta.env.VITE_API_URL}/player_data`, { cache: "no-store", headers: authHeaders() })
-      .then((res) => {
+    const getJson = (url) =>
+      fetch(url, { cache: "no-store", headers: authHeaders() }).then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
-      })
-      .then((data) => {
-        setPlayerSearchData(Array.isArray(data) ? data.filter((e) => e.public_cd_key) : []);
-        setSearchLoading(false);
-      })
-      .catch((err) => {
-        setSearchError(err.message);
-        setSearchLoading(false);
       });
+    Promise.allSettled([
+      getJson(`${import.meta.env.VITE_API_URL}/player_data`),
+      getJson(`${import.meta.env.VITE_API_URL}/player_sessions`),
+    ]).then(([playerResult, sessionResult]) => {
+      if (playerResult.status === "fulfilled")
+        setPlayerSearchData(Array.isArray(playerResult.value) ? playerResult.value.filter((e) => e.public_cd_key) : []);
+      else setSearchError(playerResult.reason.message);
+      if (sessionResult.status === "fulfilled" && Array.isArray(sessionResult.value))
+        setPlayerSessions(sessionResult.value);
+      setSearchLoading(false);
+    });
   }
 
   useEffect(() => {
@@ -186,7 +190,7 @@ function App() {
     }
     if (activePage === PAGES.ALL_PLAYERS) {
       if (useDummyData) return;
-      if (playerSearchData.length === 0) fetchPlayerSearch();
+      if (playerSearchData.length === 0 || playerSessions.length === 0) fetchPlayerSearch();
     }
   }, [activePage, authToken, isDM]);
 
@@ -214,19 +218,31 @@ function App() {
     [bannedPlayers, bannedSortKey, bannedSortDir]
   );
 
+  const sessionMap = useMemo(() => {
+    const map = {};
+    playerSessions.forEach((s) => { map[s.public_cd_key] = s; });
+    return map;
+  }, [playerSessions]);
+
   const filteredPlayerSearch = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return playerSearchData;
-    return playerSearchData.filter((entry) => {
-      if (entry.public_cd_key?.toLowerCase().includes(q)) return true;
-      if (entry.player_names?.some((n) => n.toLowerCase().includes(q))) return true;
-      if (entry.ip_addresses?.some((ip) => ip.toLowerCase().includes(q))) return true;
-      if (entry.characters?.some((c) =>
-        c.pcid?.toLowerCase().includes(q) || c.character_name?.toLowerCase().includes(q)
-      )) return true;
-      return false;
+    const filtered = q
+      ? playerSearchData.filter((entry) => {
+          if (entry.public_cd_key?.toLowerCase().includes(q)) return true;
+          if (entry.player_names?.some((n) => n.toLowerCase().includes(q))) return true;
+          if (entry.ip_addresses?.some((ip) => ip.toLowerCase().includes(q))) return true;
+          if (entry.characters?.some((c) =>
+            c.pcid?.toLowerCase().includes(q) || c.character_name?.toLowerCase().includes(q)
+          )) return true;
+          return false;
+        })
+      : playerSearchData;
+    return [...filtered].sort((a, b) => {
+      const ta = sessionMap[a.public_cd_key]?.logged_off_at ?? "";
+      const tb = sessionMap[b.public_cd_key]?.logged_off_at ?? "";
+      return tb < ta ? -1 : tb > ta ? 1 : 0;
     });
-  }, [playerSearchData, searchQuery]);
+  }, [playerSearchData, searchQuery, sessionMap]);
 
   function handleBannedSort(key) {
     if (key === bannedSortKey) {
@@ -328,7 +344,7 @@ function App() {
         )}
         {isDM && activePage === PAGES.ALL_PLAYERS && (
           <>
-            <div className="list-toolbar">
+<div className="list-toolbar">
               <input
                 className="search-input"
                 type="text"
@@ -339,7 +355,7 @@ function App() {
               <button className="refresh-btn" onClick={fetchPlayerSearch}>⟳ Refresh</button>
             </div>
             <span className="result-count">
-              {filteredPlayerSearch.length} of {playerSearchData.length} result{playerSearchData.length !== 1 ? "s" : ""}
+              {filteredPlayerSearch.length} of {playerSearchData.length} result{playerSearchData.length !== 1 ? "s" : ""} — sorted by last logout
             </span>
             {searchLoading && <p>Loading...</p>}
             {searchError && <p style={{ color: "#c0323a" }}>Error: {searchError}</p>}
@@ -347,16 +363,31 @@ function App() {
               <div className="search-list">
                 {filteredPlayerSearch.length === 0
                   ? <p>No results.</p>
-                  : filteredPlayerSearch.map((entry) => (
-                      <PlayerSearchItem
-                        key={entry.public_cd_key}
-                        {...entry}
-                        isBanned={bannedKeySet.has(entry.public_cd_key)}
-                        isPending={pendingBanKeys.has(entry.public_cd_key)}
-                        onBan={() => banPlayer(entry.public_cd_key)}
-                        onUnban={() => unbanPlayer(entry.public_cd_key)}
-                      />
-                    ))
+                  : (() => {
+                      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000)
+                        .toISOString().slice(0, 19).replace("T", " ");
+                      const dividerIndex = filteredPlayerSearch.findIndex(
+                        (e) => (sessionMap[e.public_cd_key]?.logged_off_at ?? "") < cutoff
+                      );
+                      const insertAt = dividerIndex === -1 ? filteredPlayerSearch.length : dividerIndex;
+                      const divider = (
+                        <div key="__divider" className="search-list__divider">
+                          <span>Older than 24 hours</span>
+                        </div>
+                      );
+                      const cards = filteredPlayerSearch.map((entry) => (
+                        <PlayerSearchItem
+                          key={entry.public_cd_key}
+                          {...entry}
+                          isBanned={bannedKeySet.has(entry.public_cd_key)}
+                          isPending={pendingBanKeys.has(entry.public_cd_key)}
+                          onBan={() => banPlayer(entry.public_cd_key)}
+                          onUnban={() => unbanPlayer(entry.public_cd_key)}
+                          session={sessionMap[entry.public_cd_key] ?? null}
+                        />
+                      ));
+                      return [...cards.slice(0, insertAt), divider, ...cards.slice(insertAt)];
+                    })()
                 }
               </div>
             )}

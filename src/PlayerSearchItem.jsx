@@ -31,7 +31,13 @@ function CharacterList({ characters }) {
   );
 }
 
-function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, characters, onBan, onUnban, isPending, isBanned }) {
+function formatTs(ts) {
+  if (!ts) return "—";
+  const d = new Date(ts.replace(" ", "T"));
+  return isNaN(d) ? ts : d.toLocaleString();
+}
+
+function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, characters, onBan, onUnban, isPending, isBanned, session }) {
   return (
     <div className="search-card">
       <div className="search-card__header">
@@ -57,6 +63,13 @@ function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, character
       <div className="search-card__row">
         <span className="search-card__label">Characters</span>
         <CharacterList characters={characters} />
+      </div>
+      <div className="search-card__row">
+        <span className="search-card__label">Last Login</span>
+        <span className="search-card__session">{formatTs(session?.logged_on_at)}</span>
+        <span className="search-card__session-sep">–</span>
+        <span className="search-card__session-label">Logout</span>
+        <span className="search-card__session">{formatTs(session?.logged_off_at)}</span>
       </div>
     </div>
   );
