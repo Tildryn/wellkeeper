@@ -1,7 +1,7 @@
 import { useState } from "react";
 import "./LoginPage.css";
 
-function RegisterPage({ onBack, onRegistered, initialEmail = "", initialPassword = "" }) {
+function RegisterPage({ onBack, onRegistered, onPrivacy, initialEmail = "", initialPassword = "" }) {
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState(initialPassword);
   const [confirm, setConfirm] = useState("");
@@ -93,6 +93,9 @@ function RegisterPage({ onBack, onRegistered, initialEmail = "", initialPassword
           <div className="login-form__footer">
             <span>Already have an account?</span>
             <button type="button" className="login-form__link" onClick={onBack}>Sign in</button>
+          </div>
+          <div className="login-form__footer">
+            <button type="button" className="login-form__link" onClick={onPrivacy}>Privacy Policy</button>
           </div>
         </form>
       </div>

@@ -10,6 +10,7 @@ import SortBar from "./SortBar";
 import LoginPage from "./LoginPage";
 import MyCDKeysPage from "./MyCDKeysPage";
 import RegisterPage from "./RegisterPage";
+import PrivacyPage from "./PrivacyPage";
 import { PAGES } from "./pages";
 import "./App.css";
 
@@ -254,6 +255,9 @@ function App() {
   }
 
   if (!authToken) {
+    if (authView === "privacy") {
+      return <PrivacyPage onBack={() => setAuthView("login")} />;
+    }
     if (authView === "register") {
       return (
         <RegisterPage
@@ -261,6 +265,7 @@ function App() {
           initialPassword={registerPrefill.password}
           onBack={() => setAuthView("login")}
           onRegistered={() => setAuthView("login")}
+          onPrivacy={() => setAuthView("privacy")}
         />
       );
     }
@@ -271,6 +276,7 @@ function App() {
           setRegisterPrefill({ email, password });
           setAuthView("register");
         }}
+        onPrivacy={() => setAuthView("privacy")}
       />
     );
   }

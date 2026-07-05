@@ -1,7 +1,7 @@
 import { useState } from "react";
 import "./LoginPage.css";
 
-function LoginPage({ onLogin, onRegister }) {
+function LoginPage({ onLogin, onRegister, onPrivacy }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
@@ -71,6 +71,9 @@ function LoginPage({ onLogin, onRegister }) {
           <div className="login-form__footer">
             <span>Don't have an account?</span>
             <button type="button" className="login-form__link" onClick={() => onRegister(email, password)}>Register</button>
+          </div>
+          <div className="login-form__footer">
+            <button type="button" className="login-form__link" onClick={onPrivacy}>Privacy Policy</button>
           </div>
         </form>
       </div>
