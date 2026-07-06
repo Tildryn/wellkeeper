@@ -78,6 +78,30 @@
   }
 }
 
+.navbar__uuid {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  opacity: 0.45;
+  padding: 0 8px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  @media (max-width: 600px) {
+    display: none;
+  }
+}
+
+.navbar__uuid-label {
+  font-family: var(--sans);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+}
+
 .navbar__logout {
   background: none;
   border: 1px solid var(--border);

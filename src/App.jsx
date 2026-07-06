@@ -47,6 +47,7 @@ function App() {
   const [cdKeys, setCdKeys] = useState([]);
   const [cdKeysLoading, setCdKeysLoading] = useState(false);
   const [cdKeysError, setCdKeysError] = useState(null);
+  const [accountUuid, setAccountUuid] = useState(null);
 
   const useDummyData = import.meta.env.VITE_USE_DUMMY_DATA === "true";
 
@@ -61,29 +62,28 @@ function App() {
   useEffect(() => {
     if (!authToken) {
       setCdKeys([]);
+      setAccountUuid(null);
       return;
     }
     setCdKeysLoading(true);
     setCdKeysError(null);
-    fetch(`${import.meta.env.VITE_API_URL}/linked_cd_keys`, {
-      cache: "no-store",
-      headers: { Authorization: `Bearer ${authToken}` },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error(`Server error (${res.status}).`);
-        return res.json();
-      })
-      .then((data) => {
-        const keys = data.cd_keys ?? [];
-        setCdKeys(keys);
-        setCdKeysLoading(false);
-        if (!keys.some((k) => k.dm)) setActivePage(PAGES.MY_CD_KEYS);
-      })
-      .catch((err) => {
-        setCdKeysError(err.message);
-        setCdKeysLoading(false);
-        setActivePage(PAGES.MY_CD_KEYS);
-      });
+    const getJson = (url) =>
+      fetch(url, { cache: "no-store", headers: { Authorization: `Bearer ${authToken}` } })
+        .then((res) => {
+          if (!res.ok) throw new Error(`Server error (${res.status}).`);
+          return res.json();
+        });
+    Promise.allSettled([
+      getJson(`${import.meta.env.VITE_API_URL}/linked_cd_keys`),
+      getJson(`${import.meta.env.VITE_API_URL}/account_uuid`),
+    ]).then(([keysResult, uuidResult]) => {
+      const keys = keysResult.status === "fulfilled" ? (keysResult.value.cd_keys ?? []) : [];
+      setCdKeys(keys);
+      setCdKeysError(keysResult.status === "rejected" ? keysResult.reason.message : null);
+      if (uuidResult.status === "fulfilled") setAccountUuid(uuidResult.value.uuid ?? uuidResult.value ?? null);
+      setCdKeysLoading(false);
+      if (!keys.some((k) => k.dm)) setActivePage(PAGES.MY_CD_KEYS);
+    });
   }, [authToken]);
 
   function navigateTo(page) {
@@ -114,13 +114,18 @@ function App() {
     });
   }
 
-  function banPlayer(cdKey) {
+  function banPlayer(cdKey, playerName, ipAddress) {
     if (useDummyData) return;
     setPendingBanKeys((prev) => new Set(prev).add(cdKey));
     fetch(`${import.meta.env.VITE_API_URL}/pending_bans`, {
       method: "POST",
       headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ public_cd_key: cdKey }),
+      body: JSON.stringify({
+        public_cd_key: cdKey,
+        player_name:   playerName ?? "",
+        ip_address:    ipAddress ?? "",
+        banned_by:     accountUuid ?? "",
+      }),
     });
   }
 
@@ -284,7 +289,7 @@ function App() {
   if (cdKeysLoading) {
     return (
       <div className="App">
-        <Navbar activePage={activePage} onNavigate={navigateTo} isDM={false} onLogout={() => setAuthToken(null)} />
+        <Navbar activePage={activePage} onNavigate={navigateTo} isDM={false} accountUuid={accountUuid} onLogout={() => setAuthToken(null)} />
         <div className="page-content"><p>Verifying access…</p></div>
       </div>
     );
@@ -292,7 +297,7 @@ function App() {
 
   return (
     <div className="App">
-      <Navbar activePage={activePage} onNavigate={navigateTo} isDM={isDM} onLogout={() => setAuthToken(null)} />
+      <Navbar activePage={activePage} onNavigate={navigateTo} isDM={isDM} accountUuid={accountUuid} onLogout={() => setAuthToken(null)} />
       <div className="page-content">
         {isDM && activePage === PAGES.ONLINE_PLAYERS && (
           <>
@@ -309,7 +314,7 @@ function App() {
                   <span>IP Address</span><span>Logged On</span><span></span>
                 </div>
                 {onlinePlayers.map((player) => (
-                  <PlayerListItem key={player.public_cd_key} {...player} isPending={pendingBanKeys.has(player.public_cd_key)} onBan={() => banPlayer(player.public_cd_key)} />
+                  <PlayerListItem key={player.public_cd_key} {...player} isPending={pendingBanKeys.has(player.public_cd_key)} onBan={() => banPlayer(player.public_cd_key, player.online_player_name, player.ip_address)} />
                 ))}
               </div>
             )}
@@ -387,7 +392,7 @@ function App() {
                           {...entry}
                           isBanned={bannedKeySet.has(entry.public_cd_key)}
                           isPending={pendingBanKeys.has(entry.public_cd_key)}
-                          onBan={() => banPlayer(entry.public_cd_key)}
+                          onBan={() => banPlayer(entry.public_cd_key, entry.player_names?.[0], entry.ip_addresses?.[0])}
                           onUnban={() => unbanPlayer(entry.public_cd_key)}
                           session={sessionMap[entry.public_cd_key] ?? null}
                         />
