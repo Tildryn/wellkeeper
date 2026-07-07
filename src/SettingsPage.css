@@ -46,6 +46,19 @@
   font-weight: 500;
 }
 
+.settings-section__divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 4px 0;
+}
+
+.settings-form__subheading {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0;
+}
+
 .settings-form {
   display: flex;
   flex-direction: column;
