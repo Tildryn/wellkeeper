@@ -153,6 +153,10 @@
   justify-content: center;
 }
 
+.player-card__action-btn--with-text {
+  gap: 5px;
+}
+
 .player-card__action-btn:hover {
   background: var(--accent-bg);
   border-color: var(--accent-border);

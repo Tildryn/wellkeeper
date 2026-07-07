@@ -1,6 +1,7 @@
 import "./PlayerSearchItem.css";
 import "./PlayerListItem.css";
 import "./BannedPlayerItem.css";
+import { IconScroll, IconGlobe } from "./Icons";
 
 function TagList({ items }) {
   if (!items || items.length === 0) return <span className="search-card__empty">—</span>;
@@ -22,8 +23,8 @@ function CharacterList({ characters }) {
           <span className="search-card__char-name">{character_name || "Unknown"}</span>
           <code className="search-card__pcid">{pcid}</code>
           <div className="search-card__char-actions">
-            <button className="player-card__action-btn" disabled>Description</button>
-            <button className="player-card__action-btn" disabled>Inner World</button>
+            <button className="player-card__action-btn player-card__action-btn--with-text" disabled><IconScroll /> Description</button>
+            <button className="player-card__action-btn player-card__action-btn--with-text" disabled><IconGlobe /> Inner World</button>
           </div>
         </div>
       ))}
