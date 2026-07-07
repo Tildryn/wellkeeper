@@ -33,11 +33,11 @@ function CharacterList({ characters }) {
 
 function formatTs(ts) {
   if (!ts) return "—";
-  const d = new Date(ts.replace(" ", "T"));
+  const d = new Date(ts);
   return isNaN(d) ? ts : d.toLocaleString();
 }
 
-function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, characters, onBan, onUnban, isPending, isBanned, session }) {
+function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, characters, onBan, onUnban, isBanned, session }) {
   return (
     <div className="search-card">
       <div className="search-card__header">
@@ -46,9 +46,7 @@ function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, character
         <div className="search-card__header-actions">
           {isBanned
             ? <button className="banned-card__unban-btn" onClick={onUnban}>Unban</button>
-            : isPending
-              ? <button className="player-card__pending-btn" disabled>Ban Pending</button>
-              : <button className="player-card__ban-btn" onClick={onBan}>Ban</button>
+            : <button className="player-card__ban-btn" onClick={onBan}>Ban</button>
           }
         </div>
       </div>

@@ -1,90 +1,3 @@
-.banned-list {
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) 9ch minmax(0, 2fr) minmax(0, 2fr) minmax(0, 3fr) auto;
-  gap: 5px 0;
-  width: 100%;
-  box-sizing: border-box;
-  text-align: left;
-}
-
-.banned-list__header {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: subgrid;
-  padding: 4px 12px 6px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text);
-  opacity: 0.6;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 2px;
-}
-
-.banned-card {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: subgrid;
-  align-items: center;
-  background: var(--social-bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 6px 12px;
-  transition: box-shadow 0.2s, border-color 0.2s;
-}
-
-.banned-card:hover {
-  border-color: var(--accent-border);
-  box-shadow: var(--shadow);
-}
-
-.banned-card__name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-h);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding-right: 8px;
-}
-
-.banned-card__cdkey {
-  font-size: 12px;
-  font-family: var(--mono);
-  width: 9ch;
-}
-
-.banned-card__ip,
-.banned-card__by,
-.banned-card__at {
-  font-size: 13px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding-right: 8px;
-}
-
-.banned-card__ip {
-  font-family: var(--mono);
-  font-size: 12px;
-}
-
-.banned-card__by {
-  color: var(--accent);
-}
-
-.banned-card__at {
-  color: var(--text);
-  padding-left: 16px;
-}
-
-.banned-card__actions {
-  display: flex;
-  gap: 4px;
-  justify-content: flex-end;
-}
-
 .banned-card__unban-btn {
   border: 1px solid var(--accent-border);
   border-radius: 5px;
@@ -100,4 +13,13 @@
 
 .banned-card__unban-btn:hover {
   background: var(--accent-bg);
+}
+
+.banned-card__perm {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  opacity: 0.8;
 }

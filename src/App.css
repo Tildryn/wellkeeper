@@ -65,7 +65,7 @@
 
 .player-list {
   display: grid;
-  grid-template-columns: 20ch 25ch 9ch 14ch 1fr auto;
+  grid-template-columns: 20ch minmax(0, 1fr) 9ch 14ch auto auto auto;
   text-align: left;
   gap: 5px 0;
   width: 100%;

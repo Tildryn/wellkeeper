@@ -9,6 +9,7 @@ import Navbar from "./Navbar";
 import SortBar from "./SortBar";
 import LoginPage from "./LoginPage";
 import MyCDKeysPage from "./MyCDKeysPage";
+import BanModal from "./BanModal";
 import RegisterPage from "./RegisterPage";
 import PrivacyPage from "./PrivacyPage";
 import { PAGES } from "./pages";
@@ -36,18 +37,19 @@ function App() {
   const [bannedPlayers, setBannedPlayers] = useState([]);
   const [bannedLoading, setBannedLoading] = useState(false);
   const [bannedError, setBannedError] = useState(null);
-  const [bannedSortKey, setBannedSortKey] = useState("banned_at");
+  const [bannedSortKey, setBannedSortKey] = useState("ban_start");
   const [bannedSortDir, setBannedSortDir] = useState("desc");
-  const [pendingBanKeys, setPendingBanKeys] = useState(new Set());
   const [playerSearchData, setPlayerSearchData] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [bannedSearchQuery, setBannedSearchQuery] = useState("");
   const [playerSessions, setPlayerSessions] = useState([]);
   const [cdKeys, setCdKeys] = useState([]);
   const [cdKeysLoading, setCdKeysLoading] = useState(false);
   const [cdKeysError, setCdKeysError] = useState(null);
   const [accountUuid, setAccountUuid] = useState(null);
+  const [banTarget, setBanTarget] = useState(null);
 
   const useDummyData = import.meta.env.VITE_USE_DUMMY_DATA === "true";
 
@@ -102,52 +104,83 @@ function App() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       });
-    Promise.allSettled([
-      getJson(`${import.meta.env.VITE_API_URL}/online_players`),
-      getJson(`${import.meta.env.VITE_API_URL}/pending_bans`),
-    ]).then(([playersResult, pendingResult]) => {
-      if (playersResult.status === "fulfilled") setPlayers(playersResult.value);
-      else if (!silent) setError(playersResult.reason.message);
-      if (pendingResult.status === "fulfilled" && Array.isArray(pendingResult.value))
-        setPendingBanKeys(new Set(pendingResult.value.map((b) => b.public_cd_key)));
-      if (!silent) setLoading(false);
-    });
+    getJson(`${import.meta.env.VITE_API_URL}/online_players`)
+      .then((data) => {
+        setPlayers(data);
+        if (!silent) setLoading(false);
+      })
+      .catch((err) => {
+        if (!silent) { setError(err.message); setLoading(false); }
+      });
   }
 
-  function banPlayer(cdKey, playerName, ipAddress) {
+  function openBanModal(cdKeys, playerNames, ipAddresses) {
+    setBanTarget({ cdKeys, playerNames, ipAddresses });
+  }
+
+  function banPlayer({ ban_reason, ban_temporary, ban_end }) {
+    if (!banTarget) return;
+    const { cdKeys, playerNames, ipAddresses } = banTarget;
+    setBanTarget(null);
     if (useDummyData) return;
-    setPendingBanKeys((prev) => new Set(prev).add(cdKey));
-    fetch(`${import.meta.env.VITE_API_URL}/pending_bans`, {
+    fetch(`${import.meta.env.VITE_API_URL}/bans`, {
       method: "POST",
       headers: authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({
-        public_cd_key: cdKey,
-        player_name:   playerName ?? "",
-        ip_address:    ipAddress ?? "",
-        banned_by:     accountUuid ?? "",
+        public_cd_keys: cdKeys,
+        player_names:   playerNames,
+        ip_addresses:   ipAddresses,
+        ban_reason,
+        ban_temporary,
+        ban_end,
       }),
+    }).then((res) => {
+      if (res.ok) fetchBannedPlayers();
     });
   }
 
-  function unbanPlayer(cdKey) {
+  function unbanPlayer(banId) {
     if (useDummyData) return;
+    const ban = bannedPlayers.find((p) => p.ban_id === banId);
     fetch(`${import.meta.env.VITE_API_URL}/unban`, {
       method: "DELETE",
       headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ public_cd_key: cdKey }),
-    }).then((res) => {
-      if (res.ok) setBannedPlayers((prev) => prev.filter((p) => p.public_cd_key !== cdKey));
+      body: JSON.stringify({ ban_id: banId }),
+    }).then(async (res) => {
+      if (res.ok) {
+        setBannedPlayers((prev) => prev.filter((p) => p.ban_id !== banId));
+      } else {
+        const text = await res.text().catch(() => "");
+        console.error(`Unban failed (${res.status}):`, text);
+        alert(`Unban failed (${res.status})${text ? ": " + text : ""}`);
+      }
+    }).catch((err) => {
+      console.error("Unban request error:", err);
+      alert("Unban request failed: " + err.message);
     });
   }
 
   function fetchBannedPlayers() {
     setBannedLoading(true);
     setBannedError(null);
-    fetch(`${import.meta.env.VITE_API_URL}/banned_players`, { cache: "no-store", headers: authHeaders() })
+    fetch(`${import.meta.env.VITE_API_URL}/bans`, { cache: "no-store", headers: authHeaders() })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
+      .then((bans) =>
+        Promise.allSettled(
+          bans.map((b) =>
+            fetch(`${import.meta.env.VITE_API_URL}/bans/${b.ban_id}`, { cache: "no-store", headers: authHeaders() })
+              .then((r) => r.ok ? r.json() : { ban_id: b.ban_id, cd_keys: [], player_names: [], ip_addresses: [] })
+              .catch(() => ({ ban_id: b.ban_id, cd_keys: [], player_names: [], ip_addresses: [] }))
+          )
+        ).then((results) => {
+          const detailMap = {};
+          results.forEach((r) => { if (r.status === "fulfilled") detailMap[r.value.ban_id] = r.value; });
+          return bans.map((b) => ({ ...b, ...(detailMap[b.ban_id] ?? { cd_keys: [], player_names: [], ip_addresses: [] }) }));
+        })
+      )
       .then((data) => {
         setBannedPlayers(data);
         setBannedLoading(false);
@@ -197,6 +230,7 @@ function App() {
     if (activePage === PAGES.ALL_PLAYERS) {
       if (useDummyData) return;
       if (playerSearchData.length === 0 || playerSessions.length === 0) fetchPlayerSearch();
+      fetchBannedPlayers();
     }
   }, [activePage, authToken, isDM]);
 
@@ -214,15 +248,32 @@ function App() {
     [players, sortKey, sortDir]
   );
 
-  const bannedKeySet = useMemo(
-    () => new Set(bannedPlayers.map((p) => p.public_cd_key)),
-    [bannedPlayers]
-  );
+  const bannedKeySet = useMemo(() => new Set(bannedPlayers.flatMap((b) => b.cd_keys ?? [])), [bannedPlayers]);
+
+  const dmKeySet = useMemo(() => new Set(cdKeys.filter((k) => k.dm).map((k) => k.public_cd_key)), [cdKeys]);
+
+  const cdKeyToBanId = useMemo(() => {
+    const map = {};
+    bannedPlayers.forEach((b) => { (b.cd_keys ?? []).forEach((k) => { map[k] = b.ban_id; }); });
+    return map;
+  }, [bannedPlayers]);
 
   const sortedBannedPlayers = useMemo(
     () => sortPlayers(bannedPlayers, bannedSortKey, bannedSortDir),
     [bannedPlayers, bannedSortKey, bannedSortDir]
   );
+
+  const filteredBannedPlayers = useMemo(() => {
+    const q = bannedSearchQuery.trim().toLowerCase();
+    if (!q) return sortedBannedPlayers;
+    return sortedBannedPlayers.filter((b) => {
+      if (b.cd_keys?.some((k) => k.toLowerCase().includes(q))) return true;
+      if (b.player_names?.some((n) => n.toLowerCase().includes(q))) return true;
+      if (b.ip_addresses?.some((ip) => ip.toLowerCase().includes(q))) return true;
+      if (b.ban_reason?.toLowerCase().includes(q)) return true;
+      return false;
+    });
+  }, [sortedBannedPlayers, bannedSearchQuery]);
 
   const sessionMap = useMemo(() => {
     const map = {};
@@ -311,10 +362,10 @@ function App() {
               <div className="player-list">
                 <div className="player-list__header">
                   <span>Player</span><span>Character</span><span>CD Key</span>
-                  <span>IP Address</span><span>Logged On</span><span></span>
+                  <span>IP Address</span><span>Logged On</span><span></span><span></span>
                 </div>
                 {onlinePlayers.map((player) => (
-                  <PlayerListItem key={player.public_cd_key} {...player} isPending={pendingBanKeys.has(player.public_cd_key)} onBan={() => banPlayer(player.public_cd_key, player.online_player_name, player.ip_address)} />
+                  <PlayerListItem key={player.public_cd_key} {...player} isBanned={bannedKeySet.has(player.public_cd_key)} isDM={dmKeySet.has(player.public_cd_key)} onBan={() => openBanModal([player.public_cd_key], player.online_player_name ? [player.online_player_name] : [], player.ip_address ? [player.ip_address] : [])} onUnban={() => unbanPlayer(cdKeyToBanId[player.public_cd_key])} />
                 ))}
               </div>
             )}
@@ -323,16 +374,20 @@ function App() {
         {isDM && activePage === PAGES.BANNED_PLAYERS && (
           <>
             <div className="list-toolbar">
+              <input
+                className="search-input"
+                type="text"
+                placeholder="Search by name, CD key, IP, reason…"
+                value={bannedSearchQuery}
+                onChange={(e) => setBannedSearchQuery(e.target.value)}
+              />
               <SortBar
                 sortKey={bannedSortKey}
                 sortDir={bannedSortDir}
                 onSort={handleBannedSort}
                 fields={[
-                  { key: "player_name", label: "Name" },
-                  { key: "public_cd_key", label: "CD Key" },
-                  { key: "ip_address", label: "IP Address" },
-                  { key: "banned_by", label: "Banned By" },
-                  { key: "banned_at", label: "Banned At" },
+                  { key: "ban_start", label: "Banned At" },
+                  { key: "ban_end",   label: "Expires" },
                 ]}
               />
               <button className="refresh-btn" onClick={fetchBannedPlayers}>⟳ Refresh</button>
@@ -340,14 +395,10 @@ function App() {
             {bannedLoading && <p>Loading...</p>}
             {bannedError && <p style={{ color: "#c0323a" }}>Error: {bannedError}</p>}
             {!bannedLoading && !bannedError && (
-              <div className="banned-list">
-                <div className="banned-list__header">
-                  <span>Player</span><span>CD Key</span><span>IP Address</span>
-                  <span>Banned By</span><span>Banned At</span><span></span>
-                </div>
-                {sortedBannedPlayers.length === 0
-                  ? <p style={{ gridColumn: "1 / -1", padding: "12px 0" }}>No banned players.</p>
-                  : sortedBannedPlayers.map((p) => <BannedPlayerItem key={p.public_cd_key} {...p} onUnban={() => unbanPlayer(p.public_cd_key)} />)
+              <div className="search-list">
+                {filteredBannedPlayers.length === 0
+                  ? <p style={{ padding: "12px 0" }}>{bannedPlayers.length === 0 ? "No banned players." : "No results."}</p>
+                  : filteredBannedPlayers.map((p) => <BannedPlayerItem key={p.ban_id} {...p} onUnban={() => unbanPlayer(p.ban_id)} />)
                 }
               </div>
             )}
@@ -391,9 +442,8 @@ function App() {
                           key={entry.public_cd_key}
                           {...entry}
                           isBanned={bannedKeySet.has(entry.public_cd_key)}
-                          isPending={pendingBanKeys.has(entry.public_cd_key)}
-                          onBan={() => banPlayer(entry.public_cd_key, entry.player_names?.[0], entry.ip_addresses?.[0])}
-                          onUnban={() => unbanPlayer(entry.public_cd_key)}
+                          onBan={() => openBanModal([entry.public_cd_key], entry.player_names ?? [], entry.ip_addresses ?? [])}
+                          onUnban={() => unbanPlayer(cdKeyToBanId[entry.public_cd_key])}
                           session={sessionMap[entry.public_cd_key] ?? null}
                         />
                       ));
@@ -413,6 +463,13 @@ function App() {
           />
         )}
       </div>
+      {banTarget && (
+        <BanModal
+          target={banTarget}
+          onConfirm={banPlayer}
+          onCancel={() => setBanTarget(null)}
+        />
+      )}
     </div>
   );
 }

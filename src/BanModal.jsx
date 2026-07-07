@@ -1,0 +1,82 @@
+import { useState } from "react";
+import "./BanModal.css";
+
+function BanModal({ target, onConfirm, onCancel }) {
+  const [reason, setReason] = useState("");
+  const [temporary, setTemporary] = useState(false);
+  const [banDate, setBanDate] = useState("");
+  const [banTime, setBanTime] = useState("00:00");
+
+  function handleConfirm() {
+    onConfirm({
+      ban_reason:    reason.trim() || undefined,
+      ban_temporary: temporary,
+      ban_end:       temporary && banDate ? `${banDate} ${banTime}:00` : undefined,
+    });
+  }
+
+  const confirmDisabled = temporary && !banDate;
+
+  return (
+    <div className="ban-modal__overlay" onClick={onCancel}>
+      <div className="ban-modal" onClick={(e) => e.stopPropagation()}>
+        <h2 className="ban-modal__title">Ban Player</h2>
+        <p className="ban-modal__target">{target.playerNames?.[0] || target.cdKeys?.[0]}</p>
+
+        <div className="ban-modal__field">
+          <label className="ban-modal__label" htmlFor="ban-reason">Reason <span className="ban-modal__optional">(optional)</span></label>
+          <input
+            id="ban-reason"
+            className="ban-modal__input"
+            type="text"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. Griefing, harassment…"
+          />
+        </div>
+
+        <div className="ban-modal__field ban-modal__field--row">
+          <input
+            id="ban-temporary"
+            type="checkbox"
+            className="ban-modal__checkbox"
+            checked={temporary}
+            onChange={(e) => { setTemporary(e.target.checked); if (!e.target.checked) setBanEnd(""); }}
+          />
+          <label className="ban-modal__label" htmlFor="ban-temporary">Temporary ban</label>
+        </div>
+
+        {temporary && (
+          <div className="ban-modal__field">
+            <label className="ban-modal__label">Ban ends</label>
+            <div className="ban-modal__datetime">
+              <input
+                id="ban-end-date"
+                className="ban-modal__input ban-modal__input--date"
+                type="date"
+                value={banDate}
+                onChange={(e) => setBanDate(e.target.value)}
+              />
+              <input
+                id="ban-end-time"
+                className="ban-modal__input ban-modal__input--time"
+                type="time"
+                value={banTime}
+                onChange={(e) => setBanTime(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="ban-modal__actions">
+          <button className="ban-modal__cancel" onClick={onCancel}>Cancel</button>
+          <button className="ban-modal__confirm" onClick={handleConfirm} disabled={confirmDisabled}>
+            Confirm Ban
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default BanModal;
