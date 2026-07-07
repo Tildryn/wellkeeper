@@ -12,6 +12,7 @@ import MyCDKeysPage from "./MyCDKeysPage";
 import BanModal from "./BanModal";
 import RegisterPage from "./RegisterPage";
 import PrivacyPage from "./PrivacyPage";
+import SettingsPage from "./SettingsPage";
 import { PAGES } from "./pages";
 import "./App.css";
 
@@ -460,6 +461,12 @@ function App() {
             cdKeys={cdKeys}
             cdKeysLoading={cdKeysLoading}
             cdKeysError={cdKeysError}
+          />
+        )}
+        {activePage === PAGES.SETTINGS && (
+          <SettingsPage
+            authToken={authToken}
+            onEmailChanged={(token) => setAuthToken(token)}
           />
         )}
       </div>

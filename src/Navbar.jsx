@@ -29,6 +29,12 @@ function Navbar({ activePage, onNavigate, onLogout, isDM, accountUuid }) {
         >
           {PAGE_TITLES[PAGES.MY_CD_KEYS]}
         </button>
+        <button
+          className={`navbar__link${activePage === PAGES.SETTINGS ? " navbar__link--active" : ""}`}
+          onClick={() => onNavigate(PAGES.SETTINGS)}
+        >
+          {PAGE_TITLES[PAGES.SETTINGS]}
+        </button>
         <button className="navbar__logout" onClick={onLogout}>Logout</button>
       </div>
     </nav>

@@ -1,0 +1,126 @@
+.settings-page {
+  max-width: 480px;
+}
+
+.settings-card {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.settings-card__title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 8px;
+  letter-spacing: -0.3px;
+}
+
+.settings-section {
+  background: var(--social-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-section__heading {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  margin: 0;
+}
+
+.settings-section__current {
+  font-size: 13px;
+  color: var(--text);
+  margin: 0;
+}
+
+.settings-section__email {
+  color: var(--text-h);
+  font-weight: 500;
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-form__label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+
+.settings-form__input {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-h);
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.settings-form__input::placeholder {
+  color: var(--text);
+  opacity: 0.4;
+}
+
+.settings-form__input:focus {
+  border-color: var(--accent-border);
+}
+
+.settings-form__error {
+  font-size: 13px;
+  color: #e05560;
+  margin: 0;
+}
+
+.settings-form__success {
+  font-size: 13px;
+  color: #4caf7d;
+  margin: 0;
+}
+
+.settings-form__submit {
+  align-self: flex-start;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  padding: 7px 18px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.settings-form__submit:hover {
+  background: rgba(212, 168, 67, 0.25);
+  border-color: var(--accent);
+}
+
+.settings-form__submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
