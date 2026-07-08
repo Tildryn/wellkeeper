@@ -67,8 +67,10 @@
   border-radius: 8px;
   min-height: 80px;
   display: grid;
-  grid-template-columns: 10ch auto;
+  grid-template-columns: repeat(3, max-content);
+  column-gap: 20px;
   width: fit-content;
+  --col-min: 130px;
   align-content: start;
   overflow: hidden;
 }
@@ -83,6 +85,7 @@
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
+  justify-items: center;
   padding: 5px 14px;
   font-size: 11px;
   font-weight: 600;
@@ -97,9 +100,13 @@
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
+  justify-items: center;
   align-items: center;
   padding: 6px 14px;
+  height: 38px;
+  box-sizing: border-box;
   border-bottom: 1px solid var(--border);
+  overflow: hidden;
 }
 
 .cdkeys-table__row:last-child {
@@ -119,6 +126,108 @@
   color: var(--text-h);
   background: none;
   padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  justify-self: stretch;
+}
+
+.cdkeys-col-dm {
+  text-align: center;
+}
+
+.cdkeys-table__row > :first-child,
+.cdkeys-table__header > :first-child {
+  min-width: var(--col-min);
+}
+
+.cdkeys-col-actions {
+  display: grid;
+  align-items: center;
+}
+
+.cdkeys-col-actions > * {
+  grid-area: 1 / 1;
+}
+
+.cdkeys--hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.cdkeys-delete-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  color: var(--text);
+  opacity: 0.5;
+  cursor: pointer;
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.cdkeys-delete-btn svg {
+  display: block;
+}
+
+.cdkeys-delete-btn:hover:not(:disabled) {
+  opacity: 1;
+  color: #e05560;
+  border-color: color-mix(in srgb, #e05560 60%, transparent);
+  background: color-mix(in srgb, #e05560 8%, transparent);
+}
+
+.cdkeys-delete-btn:disabled {
+  cursor: not-allowed;
+}
+
+.cdkeys-confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cdkeys-confirm__label {
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.6;
+}
+
+.cdkeys-confirm__yes,
+.cdkeys-confirm__no {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 8px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.cdkeys-confirm__yes {
+  color: #e05560;
+  border-color: color-mix(in srgb, #e05560 50%, transparent);
+}
+
+.cdkeys-confirm__yes:hover:not(:disabled) {
+  background: color-mix(in srgb, #e05560 12%, transparent);
+  border-color: #e05560;
+}
+
+.cdkeys-confirm__no {
+  color: var(--text);
+}
+
+.cdkeys-confirm__no:hover {
+  background: var(--code-bg);
+  border-color: var(--text);
 }
 
 .cdkeys-list__dm {

@@ -608,6 +608,7 @@ function App() {
             cdKeys={cdKeys}
             cdKeysLoading={cdKeysLoading}
             cdKeysError={cdKeysError}
+            onDeleted={(key) => setCdKeys((prev) => prev.filter((k) => k.public_cd_key !== key))}
           />
         )}
         {activePage === PAGES.SETTINGS && (
