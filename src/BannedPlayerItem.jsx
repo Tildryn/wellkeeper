@@ -1,13 +1,50 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import EditLockContext from "./EditLockContext";
+import { IconCopy, IconCheck } from "./Icons";
 import "./BannedPlayerItem.css";
 import "./PlayerSearchItem.css";
 
+function UUIDReveal({ displayName, uuid }) {
+  const [showUuid, setShowUuid] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const timeoutRef = useRef(null);
+
+  function handleCopy() {
+    navigator.clipboard.writeText(uuid).then(() => {
+      setCopied(true);
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  useEffect(() => () => clearTimeout(timeoutRef.current), []);
+
+  return (
+    <>
+      <span
+        className={`search-card__session banned-card__name-reveal${showUuid ? " banned-card__name-reveal--active" : ""}`}
+        onClick={() => setShowUuid((v) => !v)}
+      >
+        {displayName}
+      </span>
+      {showUuid && uuid && (
+        <button className="banned-card__uuid-copy" onClick={handleCopy} title="Copy UUID">
+          <code className="banned-card__uuid-text">{uuid}</code>
+          <span className={`banned-card__copy-icon${copied ? " banned-card__copy-icon--done" : ""}`}>
+            {copied ? <IconCheck /> : <IconCopy />}
+          </span>
+        </button>
+      )}
+    </>
+  );
+}
+
 function TagList({ items, onRemove, removingItems }) {
   if (!items || items.length === 0) return <span className="search-card__empty">—</span>;
+  const sorted = [...items].sort((a, b) => a.length - b.length);
   return (
     <div className="search-card__tags">
-      {items.map((item) => (
+      {sorted.map((item) => (
         onRemove ? (
           <span key={item} className="search-card__tag-wrap">
             <code className="search-card__tag">{item}</code>
@@ -101,9 +138,12 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
     return (
       <div className="search-card__row">
         <span className="search-card__label">{label}</span>
+        {addingField !== fieldKey && (
+          <button className="banned-card__add-btn" onClick={() => startAdd(fieldKey)} title={`Add ${label.toLowerCase()}`}>+</button>
+        )}
         <TagList items={items} onRemove={(item) => handleRemove(removeBodyKey, item)} removingItems={removingItems} />
-        {addingField === fieldKey ? (
-          <>
+        {addingField === fieldKey && (
+          <div className="banned-card__add-row">
             <input
               className="banned-card__reason-input"
               value={addDraft}
@@ -120,9 +160,7 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
               Cancel
             </button>
             {addError && <span className="banned-card__reason-error">{addError}</span>}
-          </>
-        ) : (
-          <button className="banned-card__add-btn" onClick={() => startAdd(fieldKey)} title={`Add ${label.toLowerCase()}`}>+</button>
+          </div>
         )}
       </div>
     );
@@ -153,20 +191,20 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
       {renderTagRow("IP Addresses", ip_addresses, "ip_addresses", "add_ip_addresses", "remove_ip_addresses", "IP address")}
       <div className="search-card__row">
         <span className="search-card__label">Banned By</span>
-        {creator_display_name
-          ? <span className="search-card__session">{creator_display_name}</span>
-          : <em className="search-card__empty">Unknown</em>
+        {creator_display_name && ban_creator
+          ? <UUIDReveal displayName={creator_display_name} uuid={ban_creator} />
+          : creator_display_name
+            ? <span className="search-card__session">{creator_display_name}</span>
+            : <em className="search-card__empty">Unknown</em>
         }
-        {ban_creator && <code className="search-card__pcid">{ban_creator}</code>}
       </div>
       {ban_lifter && (
         <div className="search-card__row">
           <span className="search-card__label">Lifted By</span>
           {lifter_display_name
-            ? <span className="search-card__session">{lifter_display_name}</span>
+            ? <UUIDReveal displayName={lifter_display_name} uuid={ban_lifter} />
             : <em className="search-card__empty">Unknown</em>
           }
-          <code className="search-card__pcid">{ban_lifter}</code>
         </div>
       )}
       <div className="search-card__row">
@@ -200,18 +238,20 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
           </>
         )}
       </div>
-      <div className="search-card__row">
+      <div className="search-card__row search-card__row--session">
         <span className="search-card__label">Ban Start</span>
         <span className="search-card__session">{formatTs(ban_start)}</span>
         <span className="search-card__session-sep">–</span>
-        <span className="search-card__session-label">Ban End</span>
-        <span className="search-card__session">
-          {ban_end
-            ? formatTs(ban_end)
-            : ban_temporary
-              ? "—"
-              : <span className="banned-card__perm">Permanent</span>
-          }
+        <span className="search-card__session-group">
+          <span className="search-card__session-label">Ban End</span>
+          <span className="search-card__session">
+            {ban_end
+              ? formatTs(ban_end)
+              : ban_temporary
+                ? "—"
+                : <span className="banned-card__perm">Permanent</span>
+            }
+          </span>
         </span>
       </div>
     </div>

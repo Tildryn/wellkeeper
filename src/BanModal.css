@@ -19,6 +19,13 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+
+  @media (max-width: 600px) {
+    padding: 20px 16px;
+    margin: 12px;
+    max-width: calc(100% - 24px);
+    border-radius: 10px;
+  }
 }
 
 .ban-modal__title {
@@ -78,6 +85,10 @@
 .ban-modal__datetime {
   display: flex;
   gap: 8px;
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+  }
 }
 
 .ban-modal__input--date {
@@ -87,6 +98,10 @@
 .ban-modal__input--time {
   width: 9ch;
   flex-shrink: 0;
+
+  @media (max-width: 600px) {
+    width: auto;
+  }
 }
 
 .ban-modal__input:focus {

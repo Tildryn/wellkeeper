@@ -48,6 +48,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .search-card__header-actions {
@@ -70,6 +71,11 @@
   opacity: 0.7;
   white-space: nowrap;
   min-width: 80px;
+
+  @media (max-width: 600px) {
+    width: 80px;
+    flex-shrink: 0;
+  }
 }
 
 .search-card__cdkey {
@@ -83,6 +89,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .search-card__tag {
@@ -103,22 +111,31 @@
 
 .search-card__tag-remove {
   background: none;
-  border: none;
-  padding: 0 2px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 0;
+  width: 20px;
+  height: 20px;
   font-size: 13px;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   color: var(--text-muted);
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.15s, color 0.15s;
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .search-card__tag-wrap:hover .search-card__tag-remove {
   opacity: 1;
+  border-color: var(--border);
 }
 
 .search-card__tag-remove:hover {
   color: var(--danger, #c0323a);
+  border-color: color-mix(in srgb, #c0323a 60%, transparent);
 }
 
 .search-card__tag-remove:disabled {
@@ -129,6 +146,7 @@
 @media (hover: none) {
   .search-card__tag-remove {
     opacity: 1;
+    border-color: var(--border);
   }
 }
 
@@ -138,11 +156,44 @@
   opacity: 0.5;
 }
 
+.search-card__collapsible-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  flex-shrink: 0;
+}
+
+.search-card__collapsible-count,
+.search-card__collapsible-chevron {
+  font-size: 10px;
+  opacity: 0.5;
+}
+
+.search-card__row--characters:not(.search-card__row--chars-open) .search-card__character-list,
+.search-card__row--characters:not(.search-card__row--chars-open) > .search-card__empty,
+.search-card__row--bans:not(.search-card__row--bans-open) .search-card__ban-list {
+  display: none;
+}
+
 .search-card__character-list {
   display: grid;
   grid-template-columns: max-content max-content auto;
   gap: 2px 20px;
   align-items: center;
+
+  @media (max-width: 600px) {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+  }
 }
 
 .search-card__char-actions {
@@ -152,6 +203,15 @@
 
 .search-card__character {
   display: contents;
+
+  @media (max-width: 600px) {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 8px;
+  }
 }
 
 .search-card__char-name {
@@ -165,6 +225,10 @@
   font-size: 11px;
   color: var(--text);
   opacity: 0.5;
+
+  @media (max-width: 600px) {
+    display: none;
+  }
 }
 
 .search-card__session {
@@ -188,12 +252,52 @@
   opacity: 0.5;
 }
 
+.search-card__session-group {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+@media (max-width: 600px) {
+  .search-card__row--session {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 8px;
+    row-gap: 2px;
+    align-items: baseline;
+  }
+
+  .search-card__row--session .search-card__session-sep {
+    display: none;
+  }
+
+  .search-card__row--session .search-card__session-group {
+    display: contents;
+  }
+}
+
+@media (max-width: 600px) {
+  .search-card__row--characters,
+  .search-card__row--bans {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+}
+
 .search-card__ban-list {
   display: grid;
   grid-template-columns: max-content max-content max-content 1fr;
   row-gap: 2px;
   column-gap: 10px;
   flex: 1;
+  min-width: 0;
+
+  @media (max-width: 600px) {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
 }
 
 .search-card__ban-row {
@@ -211,6 +315,17 @@
   text-align: left;
   color: inherit;
   transition: background 0.12s, border-color 0.12s;
+
+  @media (max-width: 600px) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    padding: 4px 8px;
+    margin: 0;
+    border-color: var(--border);
+    border-radius: 6px;
+  }
 }
 
 .search-card__ban-row:hover {
@@ -238,6 +353,14 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+
+  @media (max-width: 600px) {
+    padding: 14px;
+    margin: 12px;
+    max-width: calc(100% - 24px);
+    max-height: 85vh;
+    border-radius: 10px;
+  }
 }
 
 .ban-detail-modal__close {

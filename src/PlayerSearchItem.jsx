@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./PlayerSearchItem.css";
 import "./PlayerListItem.css";
 import "./BannedPlayerItem.css";
@@ -7,9 +7,10 @@ import BannedPlayerItem from "./BannedPlayerItem";
 
 function TagList({ items }) {
   if (!items || items.length === 0) return <span className="search-card__empty">—</span>;
+  const sorted = [...items].sort((a, b) => a.length - b.length);
   return (
     <div className="search-card__tags">
-      {items.map((item) => (
+      {sorted.map((item) => (
         <code key={item} className="search-card__tag">{item}</code>
       ))}
     </div>
@@ -57,8 +58,22 @@ function BanSummaryRow({ ban, onClick }) {
   );
 }
 
-function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, characters, onBan, onUnban, isBanned, session, playerBans, onUnbanById, onExpungeById, onEditBanById }) {
+function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, characters, onBan, onUnban, isBanned, session, playerBans, onUnbanById, onExpungeById, onEditBanById, expandGen }) {
   const [selectedBan, setSelectedBan] = useState(null);
+  const [confirming, setConfirming] = useState(false);
+  const [charsExpanded, setCharsExpanded] = useState(() => window.innerWidth > 600);
+  const [bansExpanded, setBansExpanded] = useState(() => window.innerWidth > 600);
+
+  useEffect(() => {
+    if (!expandGen || expandGen.expanded === null) return;
+    setCharsExpanded(expandGen.expanded);
+    setBansExpanded(expandGen.expanded);
+  }, [expandGen]);
+
+  function handleConfirm() {
+    setConfirming(false);
+    if (isBanned) onUnban(); else onBan();
+  }
 
   return (
     <div className="search-card">
@@ -66,9 +81,15 @@ function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, character
         <span className="search-card__label">CD Key</span>
         <code className="search-card__cdkey">{public_cd_key}</code>
         <div className="search-card__header-actions">
-          {isBanned
-            ? <button className="banned-card__unban-btn" onClick={onUnban}>Unban</button>
-            : <button className="player-card__ban-btn" onClick={onBan}>Ban</button>
+          {confirming ? (
+            <div className="cdkeys-confirm">
+              <span className="cdkeys-confirm__label">{isBanned ? "Unban?" : "Ban?"}</span>
+              <button className="cdkeys-confirm__yes" onClick={handleConfirm}>Yes</button>
+              <button className="cdkeys-confirm__no" onClick={() => setConfirming(false)}>No</button>
+            </div>
+          ) : isBanned
+            ? <button className="banned-card__unban-btn" onClick={() => setConfirming(true)}>Unban</button>
+            : <button className="player-card__ban-btn" onClick={() => setConfirming(true)}>Ban</button>
           }
         </div>
       </div>
@@ -80,20 +101,34 @@ function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, character
         <span className="search-card__label">IP Addresses</span>
         <TagList items={ip_addresses} />
       </div>
-      <div className="search-card__row">
-        <span className="search-card__label">Characters</span>
+      <div className={`search-card__row search-card__row--characters${charsExpanded ? " search-card__row--chars-open" : ""}`}>
+        <button className="search-card__collapsible-toggle" onClick={() => setCharsExpanded(v => !v)}>
+          <span className="search-card__label">Characters</span>
+          {!charsExpanded && characters && characters.length > 0 && (
+            <span className="search-card__collapsible-count">({characters.length})</span>
+          )}
+          <span className="search-card__collapsible-chevron">{charsExpanded ? "▴" : "▾"}</span>
+        </button>
         <CharacterList characters={characters} />
       </div>
-      <div className="search-card__row">
+      <div className="search-card__row search-card__row--session">
         <span className="search-card__label">Last Login</span>
         <span className="search-card__session">{formatTs(session?.logged_on_at)}</span>
         <span className="search-card__session-sep">–</span>
-        <span className="search-card__session-label">Logout</span>
-        <span className="search-card__session">{formatTs(session?.logged_off_at)}</span>
+        <span className="search-card__session-group">
+          <span className="search-card__session-label">Logout</span>
+          <span className="search-card__session">{formatTs(session?.logged_off_at)}</span>
+        </span>
       </div>
       {playerBans && playerBans.length > 0 && (
-        <div className="search-card__row">
-          <span className="search-card__label">Bans</span>
+        <div className={`search-card__row search-card__row--bans${bansExpanded ? " search-card__row--bans-open" : ""}`}>
+          <button className="search-card__collapsible-toggle" onClick={() => setBansExpanded(v => !v)}>
+            <span className="search-card__label">Bans</span>
+            {!bansExpanded && (
+              <span className="search-card__collapsible-count">({playerBans.length})</span>
+            )}
+            <span className="search-card__collapsible-chevron">{bansExpanded ? "▴" : "▾"}</span>
+          </button>
           <div className="search-card__ban-list">
             {playerBans.map((ban) => (
               <BanSummaryRow key={ban.ban_id} ban={ban} onClick={() => setSelectedBan(ban)} />

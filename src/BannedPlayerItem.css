@@ -78,7 +78,7 @@
 }
 
 .banned-card__add-btn {
-  margin-left: 4px;
+  margin-left: 0;
   background: none;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -92,6 +92,7 @@
   opacity: 0;
   transition: opacity 0.15s, color 0.15s, border-color 0.15s;
   flex-shrink: 0;
+  align-self: center;
 }
 
 .search-card__row:hover .banned-card__add-btn {
@@ -118,6 +119,17 @@
 
 .search-card__row:hover .banned-card__reason-edit {
   opacity: 1;
+}
+
+.banned-card__add-row {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
+
+  @media (max-width: 600px) {
+    flex-basis: 100%;
+  }
 }
 
 .banned-card__reason-input {
@@ -189,6 +201,59 @@
   .banned-card__reason-edit {
     opacity: 1;
   }
+
+  .banned-card__reason-edit {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+}
+
+.banned-card__name-reveal {
+  cursor: default;
+
+  @media (hover: none) {
+    cursor: pointer;
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+  }
+}
+
+.banned-card__uuid-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.banned-card__uuid-text {
+  display: inline;
+  font-family: var(--mono);
+  font-size: 11px;
+  opacity: 0.5;
+}
+
+.banned-card__copy-icon {
+  color: var(--text);
+  opacity: 0.4;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: color 0.15s, opacity 0.15s;
+}
+
+.banned-card__uuid-copy:hover .banned-card__copy-icon {
+  opacity: 1;
+}
+
+.banned-card__copy-icon--done {
+  color: #4caf7d;
+  opacity: 1;
 }
 
 .banned-card__perm {

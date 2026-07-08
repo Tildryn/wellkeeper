@@ -2,11 +2,14 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  align-items: center;
 }
 
 .cdkeys-toolbar {
   display: flex;
   justify-content: flex-end;
+  width: 100%;
+  max-width: 600px;
 }
 
 .cdkeys-table-group {
@@ -14,6 +17,12 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+
+  @media (max-width: 600px) {
+    align-items: stretch;
+  }
 }
 
 .cdkeys-add-btn {
@@ -96,12 +105,19 @@
   --col-min: 130px;
   align-content: start;
   overflow: hidden;
+
+  @media (max-width: 600px) {
+    width: 100%;
+    grid-template-columns: 1fr max-content max-content;
+    column-gap: 12px;
+  }
 }
 
 .cdkeys-table:has(.cdkeys-empty) {
   place-items: center;
   grid-template-columns: 1fr;
   width: 220px;
+  min-height: unset;
 }
 
 .cdkeys-table__header {
@@ -141,6 +157,7 @@
   color: var(--text);
   opacity: 0.5;
   margin: 0;
+  padding: 10px 16px;
 }
 
 .cdkeys-list__key {

@@ -10,7 +10,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 12px;
+
+  @media (max-width: 600px) {
+    justify-content: flex-start;
+  }
+}
+
+.list-toolbar .search-input {
+  @media (max-width: 600px) {
+    flex-basis: 100%;
+    order: -1;
+  }
 }
 
 .search-input {
@@ -70,6 +83,12 @@
   gap: 5px 0;
   width: 100%;
   box-sizing: border-box;
+
+  @media (max-width: 600px) {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
 }
 
 .player-list__header {
@@ -85,6 +104,10 @@
   opacity: 0.6;
   border-bottom: 1px solid var(--border);
   margin-bottom: 2px;
+
+  @media (max-width: 600px) {
+    display: none;
+  }
 }
 
 .player-list__header span:nth-child(5) {

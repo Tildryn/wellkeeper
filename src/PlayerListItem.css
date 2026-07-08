@@ -8,6 +8,15 @@
   border-radius: 8px;
   padding: 2px 12px;
   transition: box-shadow 0.2s, border-color 0.2s;
+
+  @media (max-width: 600px) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 2px;
+    padding: 8px 12px;
+  }
 }
 
 .player-card:hover {
@@ -38,10 +47,24 @@
 .player-card__username {
   font-weight: 600;
   color: var(--text-h);
+
+  @media (max-width: 600px) {
+    flex: 1;
+    min-width: 0;
+    order: 1;
+  }
 }
 
 .player-card__character {
   color: var(--accent);
+
+  @media (max-width: 600px) {
+    order: 3;
+    width: 100%;
+    padding-right: 0;
+    font-size: 12px;
+    opacity: 0.85;
+  }
 }
 
 .player-card__cdkey {
@@ -91,6 +114,20 @@
   align-items: center;
   gap: 6px;
   justify-content: flex-end;
+
+  @media (max-width: 600px) {
+    order: 2;
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .player-card__cdkey,
+  .player-card__ip,
+  .player-card__timestamp,
+  .player-card__status {
+    display: none;
+  }
 }
 
 .player-card__action-group {

@@ -60,6 +60,7 @@ function App() {
   const [accountUuid, setAccountUuid] = useState(null);
   const [displayName, setDisplayName] = useState(null);
   const [banTarget, setBanTarget] = useState(null);
+  const [expandGen, setExpandGen] = useState({ v: 0, expanded: null });
 
   const useDummyData = import.meta.env.VITE_USE_DUMMY_DATA === "true";
   const editLockRef = useRef(false);
@@ -318,6 +319,7 @@ function App() {
     if (activePage === PAGES.ONLINE_PLAYERS) {
       fetchPlayers();
       if (useDummyData) return;
+      fetchActiveBans();
       const id = setInterval(() => fetchPlayers(true), 10000);
       return () => clearInterval(id);
     }
@@ -590,6 +592,8 @@ function App() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
+              <button className="refresh-btn" onClick={() => setExpandGen(g => ({ v: g.v + 1, expanded: true }))}>Expand All</button>
+              <button className="refresh-btn" onClick={() => setExpandGen(g => ({ v: g.v + 1, expanded: false }))}>Collapse All</button>
               <button className="refresh-btn" onClick={fetchPlayerSearch}>⟳ Refresh</button>
             </div>
             <span className="result-count">
@@ -625,6 +629,7 @@ function App() {
                           onUnbanById={(banId) => unbanPlayer(banId)}
                           onExpungeById={(banId) => expungeBan(banId)}
                           onEditBanById={(banId, fields) => editBan(banId, fields)}
+                          expandGen={expandGen}
                         />
                       ));
                       return [...cards.slice(0, insertAt), divider, ...cards.slice(insertAt)];

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import "./PlayerListItem.css";
 import "./BannedPlayerItem.css";
 import { IconScroll, IconGlobe } from "./Icons";
@@ -15,6 +16,13 @@ const BootSpinner = ({ visible }) => (
 );
 
 function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_address, logged_on_at, onBan, onUnban, isBanned, isDM }) {
+  const [confirming, setConfirming] = useState(false);
+
+  function handleConfirm() {
+    setConfirming(false);
+    if (isBanned) onUnban(); else onBan();
+  }
+
   return (
     <div className={`player-card${isBanned ? " player-card--kick-pending" : ""}`}>
       <span className="player-card__username">{online_player_name}</span>
@@ -31,9 +39,15 @@ function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_
           <button className="player-card__action-btn" title="Inner World"><IconGlobe /></button>
         </div>
         <BootSpinner visible={isBanned} />
-        {isBanned
-          ? <button className="player-card__unban-btn" onClick={onUnban}>Unban</button>
-          : <button className="player-card__ban-btn" onClick={onBan}>Ban</button>
+        {confirming ? (
+          <div className="cdkeys-confirm">
+            <span className="cdkeys-confirm__label">{isBanned ? "Unban?" : "Ban?"}</span>
+            <button className="cdkeys-confirm__yes" onClick={handleConfirm}>Yes</button>
+            <button className="cdkeys-confirm__no" onClick={() => setConfirming(false)}>No</button>
+          </div>
+        ) : isBanned
+          ? <button className="player-card__unban-btn" onClick={() => setConfirming(true)}>Unban</button>
+          : <button className="player-card__ban-btn" onClick={() => setConfirming(true)}>Ban</button>
         }
       </div>
     </div>

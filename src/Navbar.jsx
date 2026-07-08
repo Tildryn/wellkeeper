@@ -1,12 +1,13 @@
 import "./Navbar.css";
 import { PAGES, PAGE_TITLES } from "./pages";
+import { IconWell } from "./Icons";
 
 const DM_NAV_ITEMS = [PAGES.ONLINE_PLAYERS, PAGES.ALL_PLAYERS, PAGES.BANNED_PLAYERS, PAGES.ALL_BANS];
 
 function Navbar({ activePage, onNavigate, onLogout, isDM, displayName }) {
   return (
     <nav className="navbar">
-      <span className="navbar__title">Wellkeeper</span>
+      <span className="navbar__title"><IconWell /> Wellkeeper</span>
       {isDM && (
         <ul className="navbar__links">
           {DM_NAV_ITEMS.map((page) => (
