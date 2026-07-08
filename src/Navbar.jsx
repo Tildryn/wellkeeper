@@ -1,7 +1,7 @@
 import "./Navbar.css";
 import { PAGES, PAGE_TITLES } from "./pages";
 
-const DM_NAV_ITEMS = [PAGES.ONLINE_PLAYERS, PAGES.BANNED_PLAYERS, PAGES.ALL_PLAYERS];
+const DM_NAV_ITEMS = [PAGES.ONLINE_PLAYERS, PAGES.ALL_PLAYERS, PAGES.BANNED_PLAYERS, PAGES.ALL_BANS];
 
 function Navbar({ activePage, onNavigate, onLogout, isDM, displayName }) {
   return (

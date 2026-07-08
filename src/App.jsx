@@ -35,6 +35,9 @@ function App() {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeBansData, setActiveBansData] = useState([]);
+  const [activeBansLoading, setActiveBansLoading] = useState(false);
+  const [activeBansError, setActiveBansError] = useState(null);
   const [bannedPlayers, setBannedPlayers] = useState([]);
   const [bannedLoading, setBannedLoading] = useState(false);
   const [bannedError, setBannedError] = useState(null);
@@ -45,6 +48,7 @@ function App() {
   const [searchError, setSearchError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [bannedSearchQuery, setBannedSearchQuery] = useState("");
+  const [allBansSearchQuery, setAllBansSearchQuery] = useState("");
   const [playerSessions, setPlayerSessions] = useState([]);
   const [cdKeys, setCdKeys] = useState([]);
   const [cdKeysLoading, setCdKeysLoading] = useState(false);
@@ -70,10 +74,6 @@ function App() {
       setDisplayName(null);
       return;
     }
-    try {
-      const payload = JSON.parse(atob(authToken.split(".")[1]));
-      if (payload.display_name) setDisplayName(payload.display_name);
-    } catch {}
     setCdKeysLoading(true);
     setCdKeysError(null);
     const getJson = (url) =>
@@ -144,20 +144,19 @@ function App() {
         ban_end,
       }),
     }).then((res) => {
-      if (res.ok) fetchBannedPlayers();
+      if (res.ok) fetchActiveBans();
     });
   }
 
   function unbanPlayer(banId) {
     if (useDummyData) return;
-    const ban = bannedPlayers.find((p) => p.ban_id === banId);
     fetch(`${import.meta.env.VITE_API_URL}/unban`, {
-      method: "DELETE",
+      method: "PATCH",
       headers: authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ ban_id: banId }),
     }).then(async (res) => {
       if (res.ok) {
-        setBannedPlayers((prev) => prev.filter((p) => p.ban_id !== banId));
+        fetchActiveBans();
       } else {
         const text = await res.text().catch(() => "");
         console.error(`Unban failed (${res.status}):`, text);
@@ -166,6 +165,27 @@ function App() {
     }).catch((err) => {
       console.error("Unban request error:", err);
       alert("Unban request failed: " + err.message);
+    });
+  }
+
+  function expungeBan(banId) {
+    if (useDummyData) return;
+    fetch(`${import.meta.env.VITE_API_URL}/expunge`, {
+      method: "DELETE",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ ban_id: banId }),
+    }).then(async (res) => {
+      if (res.ok) {
+        fetchActiveBans();
+        fetchBannedPlayers();
+      } else {
+        const text = await res.text().catch(() => "");
+        console.error(`Expunge failed (${res.status}):`, text);
+        alert(`Expunge failed (${res.status})${text ? ": " + text : ""}`);
+      }
+    }).catch((err) => {
+      console.error("Expunge request error:", err);
+      alert("Expunge request failed: " + err.message);
     });
   }
 
@@ -187,7 +207,10 @@ function App() {
         ).then((results) => {
           const detailMap = {};
           results.forEach((r) => { if (r.status === "fulfilled") detailMap[r.value.ban_id] = r.value; });
-          return bans.map((b) => ({ ...b, ...(detailMap[b.ban_id] ?? { cd_keys: [], player_names: [], ip_addresses: [] }) }));
+          return bans.map((b) => {
+            const d = detailMap[b.ban_id] ?? {};
+            return { ...b, cd_keys: d.cd_keys ?? [], player_names: d.player_names ?? [], ip_addresses: d.ip_addresses ?? [] };
+          });
         })
       )
       .then((data) => {
@@ -197,6 +220,40 @@ function App() {
       .catch((err) => {
         setBannedError(err.message);
         setBannedLoading(false);
+      });
+  }
+
+  function fetchActiveBans() {
+    setActiveBansLoading(true);
+    setActiveBansError(null);
+    fetch(`${import.meta.env.VITE_API_URL}/active_bans`, { cache: "no-store", headers: authHeaders() })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((bans) =>
+        Promise.allSettled(
+          bans.map((b) =>
+            fetch(`${import.meta.env.VITE_API_URL}/bans/${b.ban_id}`, { cache: "no-store", headers: authHeaders() })
+              .then((r) => r.ok ? r.json() : { ban_id: b.ban_id, cd_keys: [], player_names: [], ip_addresses: [] })
+              .catch(() => ({ ban_id: b.ban_id, cd_keys: [], player_names: [], ip_addresses: [] }))
+          )
+        ).then((results) => {
+          const detailMap = {};
+          results.forEach((r) => { if (r.status === "fulfilled") detailMap[r.value.ban_id] = r.value; });
+          return bans.map((b) => {
+            const d = detailMap[b.ban_id] ?? {};
+            return { ...b, cd_keys: d.cd_keys ?? [], player_names: d.player_names ?? [], ip_addresses: d.ip_addresses ?? [] };
+          });
+        })
+      )
+      .then((data) => {
+        setActiveBansData(data);
+        setActiveBansLoading(false);
+      })
+      .catch((err) => {
+        setActiveBansError(err.message);
+        setActiveBansLoading(false);
       });
   }
 
@@ -232,14 +289,20 @@ function App() {
     }
     if (activePage === PAGES.BANNED_PLAYERS) {
       if (useDummyData) return;
-      fetchBannedPlayers();
-      const id = setInterval(fetchBannedPlayers, 10000);
+      fetchActiveBans();
+      const id = setInterval(fetchActiveBans, 10000);
       return () => clearInterval(id);
     }
     if (activePage === PAGES.ALL_PLAYERS) {
       if (useDummyData) return;
       if (playerSearchData.length === 0 || playerSessions.length === 0) fetchPlayerSearch();
+      fetchActiveBans();
+    }
+    if (activePage === PAGES.ALL_BANS) {
+      if (useDummyData) return;
       fetchBannedPlayers();
+      const id = setInterval(fetchBannedPlayers, 10000);
+      return () => clearInterval(id);
     }
   }, [activePage, authToken, isDM]);
 
@@ -257,19 +320,22 @@ function App() {
     [players, sortKey, sortDir]
   );
 
-  const bannedKeySet = useMemo(() => new Set(bannedPlayers.flatMap((b) => b.cd_keys ?? [])), [bannedPlayers]);
+  const bannedKeySet = useMemo(
+    () => new Set(activeBansData.flatMap((b) => b.cd_keys ?? [])),
+    [activeBansData]
+  );
 
   const dmKeySet = useMemo(() => new Set(cdKeys.filter((k) => k.dm).map((k) => k.public_cd_key)), [cdKeys]);
 
   const cdKeyToBanId = useMemo(() => {
     const map = {};
-    bannedPlayers.forEach((b) => { (b.cd_keys ?? []).forEach((k) => { map[k] = b.ban_id; }); });
+    activeBansData.forEach((b) => { (b.cd_keys ?? []).forEach((k) => { map[k] = b.ban_id; }); });
     return map;
-  }, [bannedPlayers]);
+  }, [activeBansData]);
 
   const sortedBannedPlayers = useMemo(
-    () => sortPlayers(bannedPlayers, bannedSortKey, bannedSortDir),
-    [bannedPlayers, bannedSortKey, bannedSortDir]
+    () => sortPlayers(activeBansData, bannedSortKey, bannedSortDir),
+    [activeBansData, bannedSortKey, bannedSortDir]
   );
 
   const filteredBannedPlayers = useMemo(() => {
@@ -283,6 +349,20 @@ function App() {
       return false;
     });
   }, [sortedBannedPlayers, bannedSearchQuery]);
+
+  const filteredAllBans = useMemo(() => {
+    const inactive = bannedPlayers.filter((b) => b.ban_end && new Date(b.ban_end) <= new Date());
+    const sorted = sortPlayers(inactive, bannedSortKey, bannedSortDir);
+    const q = allBansSearchQuery.trim().toLowerCase();
+    if (!q) return sorted;
+    return sorted.filter((b) => {
+      if (b.cd_keys?.some((k) => k.toLowerCase().includes(q))) return true;
+      if (b.player_names?.some((n) => n.toLowerCase().includes(q))) return true;
+      if (b.ip_addresses?.some((ip) => ip.toLowerCase().includes(q))) return true;
+      if (b.ban_reason?.toLowerCase().includes(q)) return true;
+      return false;
+    });
+  }, [bannedPlayers, bannedSortKey, bannedSortDir, allBansSearchQuery]);
 
   const sessionMap = useMemo(() => {
     const map = {};
@@ -395,8 +475,41 @@ function App() {
                 sortDir={bannedSortDir}
                 onSort={handleBannedSort}
                 fields={[
-                  { key: "ban_start", label: "Banned At" },
-                  { key: "ban_end",   label: "Expires" },
+                  { key: "ban_start", label: "Ban Start" },
+                  { key: "ban_end",   label: "Ban End" },
+                ]}
+              />
+              <button className="refresh-btn" onClick={fetchActiveBans}>⟳ Refresh</button>
+            </div>
+            {activeBansLoading && <p>Loading...</p>}
+            {activeBansError && <p style={{ color: "#c0323a" }}>Error: {activeBansError}</p>}
+            {!activeBansLoading && !activeBansError && (
+              <div className="search-list">
+                {filteredBannedPlayers.length === 0
+                  ? <p style={{ padding: "12px 0" }}>{activeBansData.length === 0 ? "No banned players." : "No results."}</p>
+                  : filteredBannedPlayers.map((p) => <BannedPlayerItem key={p.ban_id} {...p} onUnban={() => unbanPlayer(p.ban_id)} onExpunge={() => expungeBan(p.ban_id)} />)
+                }
+              </div>
+            )}
+          </>
+        )}
+        {isDM && activePage === PAGES.ALL_BANS && (
+          <>
+            <div className="list-toolbar">
+              <input
+                className="search-input"
+                type="text"
+                placeholder="Search by name, CD key, IP, reason…"
+                value={allBansSearchQuery}
+                onChange={(e) => setAllBansSearchQuery(e.target.value)}
+              />
+              <SortBar
+                sortKey={bannedSortKey}
+                sortDir={bannedSortDir}
+                onSort={handleBannedSort}
+                fields={[
+                  { key: "ban_start", label: "Ban Start" },
+                  { key: "ban_end",   label: "Ban End" },
                 ]}
               />
               <button className="refresh-btn" onClick={fetchBannedPlayers}>⟳ Refresh</button>
@@ -405,9 +518,9 @@ function App() {
             {bannedError && <p style={{ color: "#c0323a" }}>Error: {bannedError}</p>}
             {!bannedLoading && !bannedError && (
               <div className="search-list">
-                {filteredBannedPlayers.length === 0
-                  ? <p style={{ padding: "12px 0" }}>{bannedPlayers.length === 0 ? "No banned players." : "No results."}</p>
-                  : filteredBannedPlayers.map((p) => <BannedPlayerItem key={p.ban_id} {...p} onUnban={() => unbanPlayer(p.ban_id)} />)
+                {filteredAllBans.length === 0
+                  ? <p style={{ padding: "12px 0" }}>{filteredAllBans.length === 0 && !allBansSearchQuery ? "No old bans." : "No results."}</p>
+                  : filteredAllBans.map((p) => <BannedPlayerItem key={p.ban_id} {...p} onUnban={() => unbanPlayer(p.ban_id)} onExpunge={() => expungeBan(p.ban_id)} />)
                 }
               </div>
             )}
@@ -476,7 +589,6 @@ function App() {
             authToken={authToken}
             accountUuid={accountUuid}
             displayName={displayName}
-            onEmailChanged={(token) => setAuthToken(token)}
             onDisplayNameChanged={(name) => setDisplayName(name)}
           />
         )}

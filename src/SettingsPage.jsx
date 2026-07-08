@@ -1,14 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { IconEye, IconEyeOff } from "./Icons";
 import "./SettingsPage.css";
-
-function decodeTokenEmail(token) {
-  try {
-    return JSON.parse(atob(token.split(".")[1])).email ?? "";
-  } catch {
-    return "";
-  }
-}
 
 function PasswordInput({ id, value, onChange, disabled, readOnly, onFocus, autoComplete, placeholder }) {
   const [visible, setVisible] = useState(false);
@@ -39,8 +31,18 @@ function PasswordInput({ id, value, onChange, disabled, readOnly, onFocus, autoC
   );
 }
 
-function SettingsPage({ authToken, accountUuid, displayName, onEmailChanged, onDisplayNameChanged }) {
-  const currentEmail = decodeTokenEmail(authToken);
+function SettingsPage({ authToken, accountUuid, displayName, onDisplayNameChanged }) {
+  const [currentEmail, setCurrentEmail] = useState("");
+
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_API_URL}/email`, {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${authToken}` },
+    })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => { if (data?.email) setCurrentEmail(data.email); })
+      .catch(() => {});
+  }, [authToken]);
 
   const [newDisplayName, setNewDisplayName] = useState("");
   const [displayNameLoading, setDisplayNameLoading] = useState(false);
@@ -99,10 +101,10 @@ function SettingsPage({ authToken, accountUuid, displayName, onEmailChanged, onD
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? `Server error (${res.status}).`);
+      setCurrentEmail(newEmail);
       setNewEmail("");
       setCurrentPassword(""); setPwReady(false);
       setEmailSuccess(true);
-      onEmailChanged(body.access_token);
     } catch (err) {
       setEmailError(err.message);
     } finally {
@@ -146,8 +148,12 @@ function SettingsPage({ authToken, accountUuid, displayName, onEmailChanged, onD
           <h3 className="settings-section__heading">Account</h3>
           <div className="settings-section__meta">
             <div className="settings-section__meta-grid">
-              <span className="settings-section__meta-label">Email</span>
-              <span className="settings-section__meta-value">{currentEmail || "—"}</span>
+              {currentEmail && (
+                <>
+                  <span className="settings-section__meta-label">Email</span>
+                  <span className="settings-section__meta-value">{currentEmail}</span>
+                </>
+              )}
               {accountUuid && (
                 <>
                   <span className="settings-section__meta-label">UUID</span>

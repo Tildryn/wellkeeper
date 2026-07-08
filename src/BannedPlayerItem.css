@@ -15,6 +15,63 @@
   background: var(--accent-bg);
 }
 
+.banned-card__type {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 6px;
+}
+
+.banned-card__type--permanent {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+.banned-card__type--temporary {
+  background: color-mix(in srgb, var(--text-muted) 12%, transparent);
+  color: var(--text-muted);
+}
+
+.banned-card__status {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 6px;
+}
+
+.banned-card__status--expired {
+  background: color-mix(in srgb, var(--text-muted) 15%, transparent);
+  color: var(--text-muted);
+}
+
+.banned-card__status--lifted {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+}
+
+.banned-card__expunge-btn {
+  border: 1px solid color-mix(in srgb, var(--danger, #c0323a) 60%, transparent);
+  border-radius: 5px;
+  padding: 1px 8px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  background: transparent;
+  color: var(--danger, #c0323a);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.banned-card__expunge-btn:hover {
+  background: color-mix(in srgb, var(--danger, #c0323a) 12%, transparent);
+}
+
 .banned-card__perm {
   font-size: 11px;
   font-weight: 600;
