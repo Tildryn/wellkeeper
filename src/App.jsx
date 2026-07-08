@@ -50,6 +50,7 @@ function App() {
   const [cdKeysLoading, setCdKeysLoading] = useState(false);
   const [cdKeysError, setCdKeysError] = useState(null);
   const [accountUuid, setAccountUuid] = useState(null);
+  const [displayName, setDisplayName] = useState(null);
   const [banTarget, setBanTarget] = useState(null);
 
   const useDummyData = import.meta.env.VITE_USE_DUMMY_DATA === "true";
@@ -66,8 +67,13 @@ function App() {
     if (!authToken) {
       setCdKeys([]);
       setAccountUuid(null);
+      setDisplayName(null);
       return;
     }
+    try {
+      const payload = JSON.parse(atob(authToken.split(".")[1]));
+      if (payload.display_name) setDisplayName(payload.display_name);
+    } catch {}
     setCdKeysLoading(true);
     setCdKeysError(null);
     const getJson = (url) =>
@@ -79,11 +85,13 @@ function App() {
     Promise.allSettled([
       getJson(`${import.meta.env.VITE_API_URL}/linked_cd_keys`),
       getJson(`${import.meta.env.VITE_API_URL}/account_uuid`),
-    ]).then(([keysResult, uuidResult]) => {
+      getJson(`${import.meta.env.VITE_API_URL}/display_name`),
+    ]).then(([keysResult, uuidResult, displayNameResult]) => {
       const keys = keysResult.status === "fulfilled" ? (keysResult.value.cd_keys ?? []) : [];
       setCdKeys(keys);
       setCdKeysError(keysResult.status === "rejected" ? keysResult.reason.message : null);
       if (uuidResult.status === "fulfilled") setAccountUuid(uuidResult.value.uuid ?? uuidResult.value ?? null);
+      if (displayNameResult.status === "fulfilled") setDisplayName(displayNameResult.value.display_name || null);
       setCdKeysLoading(false);
       if (!keys.some((k) => k.dm)) setActivePage(PAGES.MY_CD_KEYS);
     });
@@ -341,7 +349,7 @@ function App() {
   if (cdKeysLoading) {
     return (
       <div className="App">
-        <Navbar activePage={activePage} onNavigate={navigateTo} isDM={false} accountUuid={accountUuid} onLogout={() => setAuthToken(null)} />
+        <Navbar activePage={activePage} onNavigate={navigateTo} isDM={false} displayName={displayName} onLogout={() => setAuthToken(null)} />
         <div className="page-content"><p>Verifying access…</p></div>
       </div>
     );
@@ -349,7 +357,7 @@ function App() {
 
   return (
     <div className="App">
-      <Navbar activePage={activePage} onNavigate={navigateTo} isDM={isDM} accountUuid={accountUuid} onLogout={() => setAuthToken(null)} />
+      <Navbar activePage={activePage} onNavigate={navigateTo} isDM={isDM} displayName={displayName} onLogout={() => setAuthToken(null)} />
       <div className="page-content">
         {isDM && activePage === PAGES.ONLINE_PLAYERS && (
           <>
@@ -466,7 +474,10 @@ function App() {
         {activePage === PAGES.SETTINGS && (
           <SettingsPage
             authToken={authToken}
+            accountUuid={accountUuid}
+            displayName={displayName}
             onEmailChanged={(token) => setAuthToken(token)}
+            onDisplayNameChanged={(name) => setDisplayName(name)}
           />
         )}
       </div>

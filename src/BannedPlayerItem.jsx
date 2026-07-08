@@ -18,7 +18,7 @@ function formatTs(ts) {
   return isNaN(d.getTime()) ? "—" : d.toLocaleString();
 }
 
-function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_reason, ban_start, ban_end, ban_temporary, onUnban }) {
+function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_reason, ban_start, ban_end, ban_temporary, creator_display_name, creator_uuid, onUnban }) {
   return (
     <div className="search-card">
       <div className="search-card__header">
@@ -39,6 +39,14 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
       <div className="search-card__row">
         <span className="search-card__label">IP Addresses</span>
         <TagList items={ip_addresses} />
+      </div>
+      <div className="search-card__row">
+        <span className="search-card__label">Banned By</span>
+        {creator_display_name
+          ? <span className="search-card__session">{creator_display_name}</span>
+          : <em className="search-card__empty">Unknown</em>
+        }
+        {creator_uuid && <code className="search-card__pcid">{creator_uuid}</code>}
       </div>
       <div className="search-card__row">
         <span className="search-card__label">Reason</span>

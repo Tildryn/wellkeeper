@@ -3,7 +3,7 @@ import { PAGES, PAGE_TITLES } from "./pages";
 
 const DM_NAV_ITEMS = [PAGES.ONLINE_PLAYERS, PAGES.BANNED_PLAYERS, PAGES.ALL_PLAYERS];
 
-function Navbar({ activePage, onNavigate, onLogout, isDM, accountUuid }) {
+function Navbar({ activePage, onNavigate, onLogout, isDM, displayName }) {
   return (
     <nav className="navbar">
       <span className="navbar__title">Wellkeeper</span>
@@ -22,7 +22,9 @@ function Navbar({ activePage, onNavigate, onLogout, isDM, accountUuid }) {
         </ul>
       )}
       <div className="navbar__right">
-        {accountUuid && <span className="navbar__uuid"><span className="navbar__uuid-label">UUID:</span>{accountUuid}</span>}
+        <span className={`navbar__display-name${displayName ? "" : " navbar__display-name--placeholder"}`}>
+          {displayName || "No display name set"}
+        </span>
         <button
           className={`navbar__link${activePage === PAGES.MY_CD_KEYS ? " navbar__link--active" : ""}`}
           onClick={() => onNavigate(PAGES.MY_CD_KEYS)}

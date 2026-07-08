@@ -1,10 +1,14 @@
 import { useState } from "react";
+import { IconEye, IconEyeOff } from "./Icons";
 import "./LoginPage.css";
 
 function RegisterPage({ onBack, onRegistered, onPrivacy, initialEmail = "", initialPassword = "" }) {
   const [email, setEmail] = useState(initialEmail);
+  const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState(initialPassword);
   const [confirm, setConfirm] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -20,7 +24,7 @@ function RegisterPage({ onBack, onRegistered, onPrivacy, initialEmail = "", init
     fetch(`${import.meta.env.VITE_API_URL}/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, display_name: displayName }),
     })
       .then((res) => {
         if (!res.ok) throw new Error(res.status === 409 ? "An account with that email already exists." : `Server error (${res.status}).`);
@@ -58,32 +62,56 @@ function RegisterPage({ onBack, onRegistered, onPrivacy, initialEmail = "", init
             />
           </div>
           <div className="login-form__field">
-            <label className="login-form__label" htmlFor="reg-password">Password</label>
+            <label className="login-form__label" htmlFor="reg-display-name">Display name</label>
             <input
-              id="reg-password"
+              id="reg-display-name"
               className="login-form__input"
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              type="text"
+              autoComplete="nickname"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Your name"
               disabled={loading || success}
               required
             />
           </div>
           <div className="login-form__field">
+            <label className="login-form__label" htmlFor="reg-password">Password</label>
+            <div className="login-form__pw-wrapper">
+              <input
+                id="reg-password"
+                className="login-form__input"
+                type={showPw ? "text" : "password"}
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                disabled={loading || success}
+                required
+              />
+              <button type="button" className="login-form__eye-btn" onClick={() => setShowPw((v) => !v)} tabIndex={-1} aria-label={showPw ? "Hide password" : "Show password"}>
+                {showPw ? <IconEyeOff /> : <IconEye />}
+              </button>
+            </div>
+          </div>
+          <div className="login-form__field">
             <label className="login-form__label" htmlFor="reg-confirm">Confirm Password</label>
-            <input
-              id="reg-confirm"
-              className="login-form__input"
-              type="password"
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              placeholder="••••••••"
-              disabled={loading || success}
-              required
-            />
+            <div className="login-form__pw-wrapper">
+              <input
+                id="reg-confirm"
+                className="login-form__input"
+                type={showConfirm ? "text" : "password"}
+                autoComplete="new-password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="••••••••"
+                disabled={loading || success}
+                required
+              />
+              <button type="button" className="login-form__eye-btn" onClick={() => setShowConfirm((v) => !v)} tabIndex={-1} aria-label={showConfirm ? "Hide password" : "Show password"}>
+                {showConfirm ? <IconEyeOff /> : <IconEye />}
+              </button>
+            </div>
           </div>
           {error && <p className="login-form__error">{error}</p>}
           {success && <p className="login-form__success">Account created. Redirecting to sign in…</p>}

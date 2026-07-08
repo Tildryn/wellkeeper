@@ -1,5 +1,6 @@
 .settings-page {
   max-width: 480px;
+  margin: 0 auto;
 }
 
 .settings-card {
@@ -35,15 +36,41 @@
   margin: 0;
 }
 
-.settings-section__current {
-  font-size: 13px;
-  color: var(--text);
-  margin: 0;
+.settings-section__meta {
+  display: flex;
+  justify-content: center;
 }
 
-.settings-section__email {
+.settings-section__meta-grid {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 5px 12px;
+  align-items: baseline;
+}
+
+.settings-section__meta-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  opacity: 0.55;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.settings-section__meta-value {
+  font-size: 13px;
   color: var(--text-h);
   font-weight: 500;
+}
+
+.settings-section__meta-uuid {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  opacity: 0.5;
+  word-break: break-all;
 }
 
 .settings-section__divider {
@@ -77,6 +104,34 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text);
+}
+
+.settings-form__pw-wrapper {
+  position: relative;
+}
+
+.settings-form__pw-wrapper .settings-form__input {
+  padding-right: 36px;
+}
+
+.settings-form__eye-btn {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: var(--text);
+  opacity: 0.4;
+  display: flex;
+  align-items: center;
+  transition: opacity 0.15s;
+}
+
+.settings-form__eye-btn:hover {
+  opacity: 0.85;
 }
 
 .settings-form__input {

@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { IconEye, IconEyeOff } from "./Icons";
 import "./LoginPage.css";
 
 function LoginPage({ onLogin, onRegister, onPrivacy }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -52,17 +54,22 @@ function LoginPage({ onLogin, onRegister, onPrivacy }) {
           </div>
           <div className="login-form__field">
             <label className="login-form__label" htmlFor="password">Password</label>
-            <input
-              id="password"
-              className="login-form__input"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              disabled={loading}
-              required
-            />
+            <div className="login-form__pw-wrapper">
+              <input
+                id="password"
+                className="login-form__input"
+                type={showPw ? "text" : "password"}
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                disabled={loading}
+                required
+              />
+              <button type="button" className="login-form__eye-btn" onClick={() => setShowPw((v) => !v)} tabIndex={-1} aria-label={showPw ? "Hide password" : "Show password"}>
+                {showPw ? <IconEyeOff /> : <IconEye />}
+              </button>
+            </div>
           </div>
           {error && <p className="login-form__error">{error}</p>}
           <button className="login-form__submit" type="submit" disabled={loading}>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { IconEye, IconEyeOff } from "./Icons";
 import "./SettingsPage.css";
 
 function decodeTokenEmail(token) {
@@ -9,10 +10,45 @@ function decodeTokenEmail(token) {
   }
 }
 
-function SettingsPage({ authToken, onEmailChanged }) {
+function PasswordInput({ id, value, onChange, disabled, readOnly, onFocus, autoComplete, placeholder }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="settings-form__pw-wrapper">
+      <input
+        id={id}
+        className="settings-form__input"
+        type={visible ? "text" : "password"}
+        autoComplete={autoComplete}
+        readOnly={readOnly}
+        onFocus={onFocus}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+      />
+      <button
+        type="button"
+        className="settings-form__eye-btn"
+        onClick={() => setVisible((v) => !v)}
+        tabIndex={-1}
+        aria-label={visible ? "Hide password" : "Show password"}
+      >
+        {visible ? <IconEyeOff /> : <IconEye />}
+      </button>
+    </div>
+  );
+}
+
+function SettingsPage({ authToken, accountUuid, displayName, onEmailChanged, onDisplayNameChanged }) {
   const currentEmail = decodeTokenEmail(authToken);
 
+  const [newDisplayName, setNewDisplayName] = useState("");
+  const [displayNameLoading, setDisplayNameLoading] = useState(false);
+  const [displayNameError, setDisplayNameError] = useState(null);
+  const [displayNameSuccess, setDisplayNameSuccess] = useState(false);
+
   const [currentPassword, setCurrentPassword] = useState("");
+  const [pwReady, setPwReady] = useState(false);
 
   const [newEmail, setNewEmail] = useState("");
   const [emailLoading, setEmailLoading] = useState(false);
@@ -25,39 +61,56 @@ function SettingsPage({ authToken, onEmailChanged }) {
   const [passwordError, setPasswordError] = useState(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
-  const busy = emailLoading || passwordLoading;
+  const busy = displayNameLoading || emailLoading || passwordLoading;
 
-  function handleEmailSubmit(e) {
+  async function handleDisplayNameSubmit(e) {
+    e.preventDefault();
+    setDisplayNameError(null);
+    setDisplayNameSuccess(false);
+    setDisplayNameLoading(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/display_name`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ display_name: newDisplayName }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? `Server error (${res.status}).`);
+      setNewDisplayName("");
+      setDisplayNameSuccess(true);
+      onDisplayNameChanged(body.display_name);
+    } catch (err) {
+      setDisplayNameError(err.message);
+    } finally {
+      setDisplayNameLoading(false);
+    }
+  }
+
+  async function handleEmailSubmit(e) {
     e.preventDefault();
     setEmailError(null);
     setEmailSuccess(false);
     setEmailLoading(true);
-    fetch(`${import.meta.env.VITE_API_URL}/email`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${authToken}`,
-      },
-      body: JSON.stringify({ email: newEmail }),
-    })
-      .then((res) => {
-        if (!res.ok) return res.json().then((b) => { throw new Error(b.error ?? `Server error (${res.status}).`); });
-        return res.json();
-      })
-      .then((data) => {
-        setEmailLoading(false);
-        setNewEmail("");
-        setCurrentPassword("");
-        setEmailSuccess(true);
-        onEmailChanged(data.access_token);
-      })
-      .catch((err) => {
-        setEmailLoading(false);
-        setEmailError(err.message);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/email`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ email: newEmail }),
       });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? `Server error (${res.status}).`);
+      setNewEmail("");
+      setCurrentPassword(""); setPwReady(false);
+      setEmailSuccess(true);
+      onEmailChanged(body.access_token);
+    } catch (err) {
+      setEmailError(err.message);
+    } finally {
+      setEmailLoading(false);
+    }
   }
 
-  function handlePasswordSubmit(e) {
+  async function handlePasswordSubmit(e) {
     e.preventDefault();
     setPasswordError(null);
     setPasswordSuccess(false);
@@ -66,29 +119,23 @@ function SettingsPage({ authToken, onEmailChanged }) {
       return;
     }
     setPasswordLoading(true);
-    fetch(`${import.meta.env.VITE_API_URL}/password`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${authToken}`,
-      },
-      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
-    })
-      .then((res) => {
-        if (!res.ok) return res.json().then((b) => { throw new Error(b.error ?? `Server error (${res.status}).`); });
-        return res.json();
-      })
-      .then(() => {
-        setPasswordLoading(false);
-        setNewPassword("");
-        setConfirmPassword("");
-        setCurrentPassword("");
-        setPasswordSuccess(true);
-      })
-      .catch((err) => {
-        setPasswordLoading(false);
-        setPasswordError(err.message);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/password`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
       });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? `Server error (${res.status}).`);
+      setNewPassword("");
+      setConfirmPassword("");
+      setCurrentPassword(""); setPwReady(false);
+      setPasswordSuccess(true);
+    } catch (err) {
+      setPasswordError(err.message);
+    } finally {
+      setPasswordLoading(false);
+    }
   }
 
   return (
@@ -97,17 +144,55 @@ function SettingsPage({ authToken, onEmailChanged }) {
         <h2 className="settings-card__title">Settings</h2>
         <section className="settings-section">
           <h3 className="settings-section__heading">Account</h3>
-          <p className="settings-section__current">
-            Current email: <span className="settings-section__email">{currentEmail || "—"}</span>
-          </p>
+          <div className="settings-section__meta">
+            <div className="settings-section__meta-grid">
+              <span className="settings-section__meta-label">Email</span>
+              <span className="settings-section__meta-value">{currentEmail || "—"}</span>
+              {accountUuid && (
+                <>
+                  <span className="settings-section__meta-label">UUID</span>
+                  <code className="settings-section__meta-uuid">{accountUuid}</code>
+                </>
+              )}
+            </div>
+          </div>
+
+          <form className="settings-form" onSubmit={handleDisplayNameSubmit}>
+            <h4 className="settings-form__subheading">Display name</h4>
+            <div className="settings-form__field">
+              <label className="settings-form__label" htmlFor="new-display-name">New display name</label>
+              <input
+                id="new-display-name"
+                className="settings-form__input"
+                type="text"
+                autoComplete="nickname"
+                placeholder={displayName || "Your name"}
+                value={newDisplayName}
+                onChange={(e) => { setNewDisplayName(e.target.value); setDisplayNameSuccess(false); }}
+                disabled={displayNameLoading}
+                required
+              />
+            </div>
+            {displayNameError && <p className="settings-form__error">{displayNameError}</p>}
+            {displayNameSuccess && <p className="settings-form__success">Display name updated successfully.</p>}
+            <button
+              className="settings-form__submit"
+              type="submit"
+              disabled={displayNameLoading || !newDisplayName}
+            >
+              {displayNameLoading ? "Saving…" : "Update display name"}
+            </button>
+          </form>
+
+          <div className="settings-section__divider" />
 
           <div className="settings-form__field">
             <label className="settings-form__label" htmlFor="current-password">Current password</label>
-            <input
+            <PasswordInput
               id="current-password"
-              className="settings-form__input"
-              type="password"
-              autoComplete="current-password"
+              autoComplete="off"
+              readOnly={!pwReady}
+              onFocus={() => setPwReady(true)}
               placeholder="••••••••"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
@@ -150,30 +235,24 @@ function SettingsPage({ authToken, onEmailChanged }) {
             <h4 className="settings-form__subheading">Change password</h4>
             <div className="settings-form__field">
               <label className="settings-form__label" htmlFor="new-password">New password</label>
-              <input
+              <PasswordInput
                 id="new-password"
-                className="settings-form__input"
-                type="password"
                 autoComplete="new-password"
                 placeholder="••••••••"
                 value={newPassword}
                 onChange={(e) => { setNewPassword(e.target.value); setPasswordSuccess(false); }}
                 disabled={passwordLoading}
-                required
               />
             </div>
             <div className="settings-form__field">
               <label className="settings-form__label" htmlFor="confirm-password">Confirm new password</label>
-              <input
+              <PasswordInput
                 id="confirm-password"
-                className="settings-form__input"
-                type="password"
                 autoComplete="new-password"
                 placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => { setConfirmPassword(e.target.value); setPasswordSuccess(false); }}
                 disabled={passwordLoading}
-                required
               />
             </div>
             {passwordError && <p className="settings-form__error">{passwordError}</p>}

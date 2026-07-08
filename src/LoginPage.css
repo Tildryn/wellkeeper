@@ -66,6 +66,34 @@
   width: 100%;
 }
 
+.login-form__pw-wrapper {
+  position: relative;
+}
+
+.login-form__pw-wrapper .login-form__input {
+  padding-right: 36px;
+}
+
+.login-form__eye-btn {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: var(--text);
+  opacity: 0.4;
+  display: flex;
+  align-items: center;
+  transition: opacity 0.15s;
+}
+
+.login-form__eye-btn:hover {
+  opacity: 0.85;
+}
+
 .login-form__input::placeholder {
   color: var(--text);
   opacity: 0.4;

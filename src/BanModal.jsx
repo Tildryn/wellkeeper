@@ -31,7 +31,7 @@ function BanModal({ target, onConfirm, onCancel }) {
             type="text"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="e.g. Griefing, harassment…"
+            placeholder="e.g. Griefing, harassment, bad vibes…"
           />
         </div>
 
