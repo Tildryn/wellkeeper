@@ -147,7 +147,7 @@ function App() {
         ban_end,
       }),
     }).then((res) => {
-      if (res.ok) fetchActiveBans();
+      if (res.ok) { fetchActiveBans(); fetchBannedPlayers(); }
     });
   }
 
@@ -160,6 +160,7 @@ function App() {
     }).then(async (res) => {
       if (res.ok) {
         fetchActiveBans();
+        fetchBannedPlayers();
       } else {
         const text = await res.text().catch(() => "");
         console.error(`Unban failed (${res.status}):`, text);
@@ -300,6 +301,7 @@ function App() {
       if (useDummyData) return;
       if (playerSearchData.length === 0 || playerSessions.length === 0) fetchPlayerSearch();
       fetchActiveBans();
+      fetchBannedPlayers();
     }
     if (activePage === PAGES.ALL_BANS) {
       if (useDummyData) return;
@@ -366,6 +368,17 @@ function App() {
       return false;
     });
   }, [bannedPlayers, bannedSortKey, bannedSortDir, allBansSearchQuery]);
+
+  const cdKeyToBans = useMemo(() => {
+    const map = {};
+    bannedPlayers.forEach((b) => {
+      (b.cd_keys ?? []).forEach((k) => {
+        if (!map[k]) map[k] = [];
+        map[k].push(b);
+      });
+    });
+    return map;
+  }, [bannedPlayers]);
 
   const sessionMap = useMemo(() => {
     const map = {};
@@ -577,6 +590,9 @@ function App() {
                           onBan={() => openBanModal([entry.public_cd_key], entry.player_names ?? [], entry.ip_addresses ?? [])}
                           onUnban={() => unbanPlayer(cdKeyToBanId[entry.public_cd_key])}
                           session={sessionMap[entry.public_cd_key] ?? null}
+                          playerBans={cdKeyToBans[entry.public_cd_key] ?? []}
+                          onUnbanById={(banId) => unbanPlayer(banId)}
+                          onExpungeById={(banId) => expungeBan(banId)}
                         />
                       ));
                       return [...cards.slice(0, insertAt), divider, ...cards.slice(insertAt)];

@@ -41,7 +41,19 @@ function BanModal({ target, onConfirm, onCancel }) {
             type="checkbox"
             className="ban-modal__checkbox"
             checked={temporary}
-            onChange={(e) => { setTemporary(e.target.checked); if (!e.target.checked) setBanEnd(""); }}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              setTemporary(checked);
+              if (checked) {
+                const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+                const pad = (n) => String(n).padStart(2, "0");
+                setBanDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+                setBanTime(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
+              } else {
+                setBanDate("");
+                setBanTime("00:00");
+              }
+            }}
           />
           <label className="ban-modal__label" htmlFor="ban-temporary">Temporary ban</label>
         </div>

@@ -55,6 +55,11 @@
   color: var(--accent);
 }
 
+.banned-card__status--active {
+  background: color-mix(in srgb, #4caf7d 15%, transparent);
+  color: #4caf7d;
+}
+
 .banned-card__expunge-btn {
   border: 1px solid color-mix(in srgb, var(--danger, #c0323a) 60%, transparent);
   border-radius: 5px;
