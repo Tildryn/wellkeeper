@@ -2,7 +2,7 @@ import { useState } from "react";
 import { IconEye, IconEyeOff } from "./Icons";
 import "./LoginPage.css";
 
-function LoginPage({ onLogin, onRegister, onPrivacy }) {
+function LoginPage({ onLogin, onRegister, onPrivacy, onForgotPassword }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -78,6 +78,9 @@ function LoginPage({ onLogin, onRegister, onPrivacy }) {
           <div className="login-form__footer">
             <span>Don't have an account?</span>
             <button type="button" className="login-form__link" onClick={() => onRegister(email, password)}>Register</button>
+          </div>
+          <div className="login-form__footer">
+            <button type="button" className="login-form__link" onClick={onForgotPassword}>Forgot password?</button>
           </div>
           <div className="login-form__footer">
             <button type="button" className="login-form__link" onClick={onPrivacy}>Privacy Policy</button>

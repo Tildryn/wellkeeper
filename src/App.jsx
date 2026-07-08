@@ -12,6 +12,8 @@ import MyCDKeysPage from "./MyCDKeysPage";
 import BanModal from "./BanModal";
 import RegisterPage from "./RegisterPage";
 import PrivacyPage from "./PrivacyPage";
+import ForgotPasswordPage from "./ForgotPasswordPage";
+import ResetPasswordPage from "./ResetPasswordPage";
 import SettingsPage from "./SettingsPage";
 import { PAGES } from "./pages";
 import "./App.css";
@@ -27,7 +29,8 @@ function sortPlayers(players, key, dir) {
 
 function App() {
   const [authToken, setAuthToken] = useState(null);
-  const [authView, setAuthView] = useState("login");
+  const [resetToken] = useState(() => new URLSearchParams(window.location.search).get("token") ?? "");
+  const [authView, setAuthView] = useState(() => new URLSearchParams(window.location.search).get("token") ? "reset_password" : "login");
   const [registerPrefill, setRegisterPrefill] = useState({ email: "", password: "" });
   const [activePage, setActivePage] = useState(PAGES.ONLINE_PLAYERS);
   const [sortKey, setSortKey] = useState("logged_on_at");
@@ -403,6 +406,12 @@ function App() {
     if (authView === "privacy") {
       return <PrivacyPage onBack={() => setAuthView("login")} />;
     }
+    if (authView === "forgot_password") {
+      return <ForgotPasswordPage onBack={() => setAuthView("login")} />;
+    }
+    if (authView === "reset_password") {
+      return <ResetPasswordPage token={resetToken} onSuccess={() => setAuthView("login")} />;
+    }
     if (authView === "register") {
       return (
         <RegisterPage
@@ -421,6 +430,7 @@ function App() {
           setRegisterPrefill({ email, password });
           setAuthView("register");
         }}
+        onForgotPassword={() => setAuthView("forgot_password")}
         onPrivacy={() => setAuthView("privacy")}
       />
     );
