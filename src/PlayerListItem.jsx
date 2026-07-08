@@ -23,7 +23,7 @@ function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_
       <code className="player-card__ip">{ip_address}</code>
       <span className="player-card__timestamp">{new Date(logged_on_at).toLocaleString()}</span>
       <div className="player-card__status">
-        {isDM && <span className="player-card__badge player-card__badge--dm">DM</span>}
+        {/* DM badge hidden for now */}
       </div>
       <div className="player-card__actions">
         <div className="player-card__action-group">
