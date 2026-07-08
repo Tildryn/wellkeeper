@@ -1,14 +1,41 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { IconX } from "./Icons";
 import "./MyCDKeysPage.css";
 
-function MyCDKeysPage({ authToken, cdKeys, cdKeysLoading, cdKeysError, onDeleted }) {
+function MyCDKeysPage({ authToken, cdKeys, cdKeysLoading, cdKeysError, onDeleted, onRefreshCdKeys }) {
   const [otp, setOtp] = useState(null);
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpError, setOtpError] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
   const [confirmKey, setConfirmKey] = useState(null);
+  const [checking, setChecking] = useState(false);
+  const pollRef = useRef(null);
+  const baseCountRef = useRef(0);
+  const checkTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    if (!otp) {
+      clearInterval(pollRef.current);
+      clearTimeout(checkTimeoutRef.current);
+      pollRef.current = null;
+      return;
+    }
+    pollRef.current = setInterval(onRefreshCdKeys, 5000);
+    return () => clearInterval(pollRef.current);
+  }, [otp]);
+
+  function checkNow() {
+    setChecking(true);
+    onRefreshCdKeys();
+    checkTimeoutRef.current = setTimeout(() => setChecking(false), 3000);
+  }
+
+  useEffect(() => {
+    if (otp && cdKeys.length > baseCountRef.current) {
+      setOtp(null);
+    }
+  }, [cdKeys.length]);
 
   function handleDelete(public_cd_key) {
     setDeleting(public_cd_key);
@@ -30,6 +57,7 @@ function MyCDKeysPage({ authToken, cdKeys, cdKeysLoading, cdKeysError, onDeleted
   }
 
   function generateOtp() {
+    baseCountRef.current = cdKeys.length;
     setOtpLoading(true);
     setOtpError(null);
     fetch(`${import.meta.env.VITE_API_URL}/otp`, {
@@ -60,6 +88,9 @@ function MyCDKeysPage({ authToken, cdKeys, cdKeysLoading, cdKeysError, onDeleted
             Use the <code>/wellkeeper</code> command ingame to enter this code. This will link the CD Key to this account.
           </p>
           <div className="cdkeys-otp__code">{otp}</div>
+          <button className="cdkeys-otp__done-btn" onClick={checkNow} disabled={checking}>
+            {checking ? "Checking…" : "I've linked it"}
+          </button>
         </div>
       )}
       <div className="cdkeys-table-group">
@@ -87,7 +118,7 @@ function MyCDKeysPage({ authToken, cdKeys, cdKeysLoading, cdKeysError, onDeleted
                     <button
                       className={`cdkeys-delete-btn${confirmKey === public_cd_key ? " cdkeys--hidden" : ""}`}
                       onClick={() => setConfirmKey(public_cd_key)}
-                      disabled={deleting !== null}
+                      disabled={deleting !== null || otp !== null}
                       title="Unlink CD key"
                     >
                       {deleting === public_cd_key ? "…" : <IconX />}

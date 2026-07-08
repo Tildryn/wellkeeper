@@ -51,6 +51,29 @@
   line-height: 1.5;
 }
 
+.cdkeys-otp__done-btn {
+  align-self: flex-end;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 14px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.cdkeys-otp__done-btn:hover:not(:disabled) {
+  background: var(--code-bg);
+  border-color: var(--accent-border);
+}
+
+.cdkeys-otp__done-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .cdkeys-otp__code {
   font-family: var(--mono);
   font-size: 36px;

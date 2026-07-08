@@ -100,6 +100,19 @@ function App() {
     });
   }, [authToken]);
 
+  function fetchCdKeys() {
+    fetch(`${import.meta.env.VITE_API_URL}/linked_cd_keys`, {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${authToken}` },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then((data) => setCdKeys(data.cd_keys ?? []))
+      .catch(() => {});
+  }
+
   function navigateTo(page) {
     if (page === PAGES.ONLINE_PLAYERS) setLoading(true);
     setActivePage(page);
@@ -609,6 +622,7 @@ function App() {
             cdKeysLoading={cdKeysLoading}
             cdKeysError={cdKeysError}
             onDeleted={(key) => setCdKeys((prev) => prev.filter((k) => k.public_cd_key !== key))}
+            onRefreshCdKeys={fetchCdKeys}
           />
         )}
         {activePage === PAGES.SETTINGS && (
