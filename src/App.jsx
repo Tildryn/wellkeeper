@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import EditLockContext from "./EditLockContext";
 import dummy_data from "./players.json";
 import PlayerListItem from "./PlayerListItem";
 import BannedPlayerItem from "./BannedPlayerItem";
@@ -61,6 +62,8 @@ function App() {
   const [banTarget, setBanTarget] = useState(null);
 
   const useDummyData = import.meta.env.VITE_USE_DUMMY_DATA === "true";
+  const editLockRef = useRef(false);
+  function setEditActive(active) { editLockRef.current = active; }
 
   const isDM = useMemo(() => cdKeys.some((k) => k.dm), [cdKeys]);
 
@@ -206,6 +209,20 @@ function App() {
     });
   }
 
+  async function editBan(banId, fields) {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/bans/${banId}`, {
+      method: "PATCH",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(fields),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? `Server error (${res.status}).`);
+    }
+    fetchActiveBans();
+    fetchBannedPlayers();
+  }
+
   function fetchBannedPlayers() {
     setBannedLoading(true);
     setBannedError(null);
@@ -307,7 +324,7 @@ function App() {
     if (activePage === PAGES.BANNED_PLAYERS) {
       if (useDummyData) return;
       fetchActiveBans();
-      const id = setInterval(fetchActiveBans, 10000);
+      const id = setInterval(() => { if (!editLockRef.current) fetchActiveBans(); }, 10000);
       return () => clearInterval(id);
     }
     if (activePage === PAGES.ALL_PLAYERS) {
@@ -319,7 +336,7 @@ function App() {
     if (activePage === PAGES.ALL_BANS) {
       if (useDummyData) return;
       fetchBannedPlayers();
-      const id = setInterval(fetchBannedPlayers, 10000);
+      const id = setInterval(() => { if (!editLockRef.current) fetchBannedPlayers(); }, 10000);
       return () => clearInterval(id);
     }
   }, [activePage, authToken, isDM]);
@@ -472,6 +489,7 @@ function App() {
   }
 
   return (
+    <EditLockContext.Provider value={setEditActive}>
     <div className="App">
       <Navbar activePage={activePage} onNavigate={navigateTo} isDM={isDM} displayName={displayName} onLogout={() => setAuthToken(null)} />
       <div className="page-content">
@@ -523,7 +541,7 @@ function App() {
               <div className="search-list">
                 {filteredBannedPlayers.length === 0
                   ? <p style={{ padding: "12px 0" }}>{activeBansData.length === 0 ? "No banned players." : "No results."}</p>
-                  : filteredBannedPlayers.map((p) => <BannedPlayerItem key={p.ban_id} {...p} onUnban={() => unbanPlayer(p.ban_id)} onExpunge={() => expungeBan(p.ban_id)} />)
+                  : filteredBannedPlayers.map((p) => <BannedPlayerItem key={p.ban_id} {...p} onUnban={() => unbanPlayer(p.ban_id)} onExpunge={() => expungeBan(p.ban_id)} onEditBan={(fields) => editBan(p.ban_id, fields)} />)
                 }
               </div>
             )}
@@ -556,7 +574,7 @@ function App() {
               <div className="search-list">
                 {filteredAllBans.length === 0
                   ? <p style={{ padding: "12px 0" }}>{filteredAllBans.length === 0 && !allBansSearchQuery ? "No old bans." : "No results."}</p>
-                  : filteredAllBans.map((p) => <BannedPlayerItem key={p.ban_id} {...p} onUnban={() => unbanPlayer(p.ban_id)} onExpunge={() => expungeBan(p.ban_id)} />)
+                  : filteredAllBans.map((p) => <BannedPlayerItem key={p.ban_id} {...p} onUnban={() => unbanPlayer(p.ban_id)} onExpunge={() => expungeBan(p.ban_id)} onEditBan={(fields) => editBan(p.ban_id, fields)} />)
                 }
               </div>
             )}
@@ -606,6 +624,7 @@ function App() {
                           playerBans={cdKeyToBans[entry.public_cd_key] ?? []}
                           onUnbanById={(banId) => unbanPlayer(banId)}
                           onExpungeById={(banId) => expungeBan(banId)}
+                          onEditBanById={(banId, fields) => editBan(banId, fields)}
                         />
                       ));
                       return [...cards.slice(0, insertAt), divider, ...cards.slice(insertAt)];
@@ -642,6 +661,7 @@ function App() {
         />
       )}
     </div>
+    </EditLockContext.Provider>
   );
 }
 

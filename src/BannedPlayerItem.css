@@ -77,6 +77,120 @@
   background: color-mix(in srgb, var(--danger, #c0323a) 12%, transparent);
 }
 
+.banned-card__add-btn {
+  margin-left: 4px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.search-card__row:hover .banned-card__add-btn {
+  opacity: 1;
+}
+
+.banned-card__add-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+.banned-card__reason-edit {
+  margin-left: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.search-card__row:hover .banned-card__reason-edit {
+  opacity: 1;
+}
+
+.banned-card__reason-input {
+  flex: 1;
+  background: var(--input-bg, var(--code-bg));
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  min-width: 0;
+}
+
+.banned-card__reason-input:focus {
+  border-color: var(--accent-border);
+}
+
+.banned-card__reason-save,
+.banned-card__reason-cancel {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 8px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  white-space: nowrap;
+}
+
+.banned-card__reason-save {
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+.banned-card__reason-save:hover:not(:disabled) {
+  background: var(--accent-bg);
+}
+
+.banned-card__reason-cancel {
+  color: var(--text);
+}
+
+.banned-card__reason-cancel:hover:not(:disabled) {
+  background: var(--code-bg);
+}
+
+.banned-card__reason-save:disabled,
+.banned-card__reason-cancel:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.banned-card__reason-error {
+  font-size: 12px;
+  color: var(--danger, #c0323a);
+}
+
+.banned-card__reason-text {
+  font-size: 12px;
+  color: var(--text-muted, var(--text));
+  line-height: 1.4;
+}
+
+@media (hover: none) {
+  .banned-card__add-btn,
+  .banned-card__reason-edit {
+    opacity: 1;
+  }
+}
+
 .banned-card__perm {
   font-size: 11px;
   font-weight: 600;

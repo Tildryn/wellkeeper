@@ -57,7 +57,7 @@ function BanSummaryRow({ ban, onClick }) {
   );
 }
 
-function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, characters, onBan, onUnban, isBanned, session, playerBans, onUnbanById, onExpungeById }) {
+function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, characters, onBan, onUnban, isBanned, session, playerBans, onUnbanById, onExpungeById, onEditBanById }) {
   const [selectedBan, setSelectedBan] = useState(null);
 
   return (
@@ -108,6 +108,7 @@ function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, character
               {...selectedBan}
               onUnban={() => { onUnbanById(selectedBan.ban_id); setSelectedBan(null); }}
               onExpunge={() => { onExpungeById(selectedBan.ban_id); setSelectedBan(null); }}
+              onEditBan={(fields) => onEditBanById(selectedBan.ban_id, fields)}
             />
             <button className="ban-modal__cancel ban-detail-modal__close" onClick={() => setSelectedBan(null)}>
               Close
