@@ -1,13 +1,16 @@
 import "./Navbar.css";
 import { PAGES, PAGE_TITLES } from "./pages";
-import { IconWell } from "./Icons";
+import { IconWell, IconCog } from "./Icons";
 
-const DM_NAV_ITEMS = [PAGES.ONLINE_PLAYERS, PAGES.ALL_PLAYERS, PAGES.BANNED_PLAYERS, PAGES.ALL_BANS];
+const DM_NAV_ITEMS = [PAGES.ONLINE_PLAYERS, PAGES.ALL_PLAYERS, PAGES.BANS];
 
 function Navbar({ activePage, onNavigate, onLogout, isDM, displayName }) {
   return (
     <nav className="navbar">
-      <span className="navbar__title"><IconWell /> Wellkeeper</span>
+      <span className="navbar__title">
+        <IconWell /> Wellkeeper
+        {displayName && <span className="navbar__display-name">{displayName}</span>}
+      </span>
       {isDM && (
         <ul className="navbar__links">
           {DM_NAV_ITEMS.map((page) => (
@@ -22,21 +25,21 @@ function Navbar({ activePage, onNavigate, onLogout, isDM, displayName }) {
           ))}
         </ul>
       )}
-      <div className="navbar__right">
-        <span className={`navbar__display-name${displayName ? "" : " navbar__display-name--placeholder"}`}>
-          {displayName || "No display name set"}
-        </span>
+      <div className="navbar__user-row">
         <button
           className={`navbar__link${activePage === PAGES.MY_CD_KEYS ? " navbar__link--active" : ""}`}
           onClick={() => onNavigate(PAGES.MY_CD_KEYS)}
         >
           {PAGE_TITLES[PAGES.MY_CD_KEYS]}
         </button>
+      </div>
+      <div className="navbar__controls">
         <button
-          className={`navbar__link${activePage === PAGES.SETTINGS ? " navbar__link--active" : ""}`}
+          className={`navbar__link navbar__link--icon${activePage === PAGES.SETTINGS ? " navbar__link--active" : ""}`}
           onClick={() => onNavigate(PAGES.SETTINGS)}
+          title={PAGE_TITLES[PAGES.SETTINGS]}
         >
-          {PAGE_TITLES[PAGES.SETTINGS]}
+          <IconCog />
         </button>
         <button className="navbar__logout" onClick={onLogout}>Logout</button>
       </div>

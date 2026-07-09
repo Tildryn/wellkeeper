@@ -80,7 +80,7 @@ function SettingsPage({ authToken, accountUuid, displayName, onDisplayNameChange
       if (!res.ok) throw new Error(body.error ?? `Server error (${res.status}).`);
       setNewDisplayName("");
       setDisplayNameSuccess(true);
-      onDisplayNameChanged(body.display_name);
+      onDisplayNameChanged(body.display_name ?? newDisplayName);
     } catch (err) {
       setDisplayNameError(err.message);
     } finally {

@@ -71,6 +71,8 @@
   color: var(--text);
   opacity: 0.5;
   word-break: break-all;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 
 .settings-section__divider {

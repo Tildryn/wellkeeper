@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./PlayerListItem.css";
 import "./BannedPlayerItem.css";
 import { IconScroll, IconGlobe } from "./Icons";
@@ -15,8 +15,14 @@ const BootSpinner = ({ visible }) => (
   </span>
 );
 
-function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_address, logged_on_at, onBan, onUnban, isBanned, isDM }) {
+function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_address, logged_on_at, onBan, onUnban, isBanned, expandGen }) {
   const [confirming, setConfirming] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!expandGen || expandGen.expanded === null) return;
+    setExpanded(expandGen.expanded);
+  }, [expandGen]);
 
   function handleConfirm() {
     setConfirming(false);
@@ -24,31 +30,40 @@ function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_
   }
 
   return (
-    <div className={`player-card${isBanned ? " player-card--kick-pending" : ""}`}>
-      <span className="player-card__username">{online_player_name}</span>
-      <span className="player-card__character">{character_name}</span>
-      <code className="player-card__cdkey">{public_cd_key}</code>
-      <code className="player-card__ip">{ip_address}</code>
-      <span className="player-card__timestamp">{new Date(logged_on_at).toLocaleString()}</span>
-      <div className="player-card__status">
-        {/* DM badge hidden for now */}
+    <div className={`player-card${isBanned ? " player-card--kick-pending" : ""}`} onClick={e => { if (!e.target.closest('button')) setExpanded(x => !x); }}>
+      <div className="player-card__primary">
+        <span className="player-card__username">{online_player_name}</span>
+        <span className="player-card__character">{character_name}</span>
+        <button
+          className="player-card__expand-toggle"
+          onClick={e => { e.stopPropagation(); setExpanded(x => !x); }}
+          aria-label={expanded ? "Hide details" : "Show details"}
+        >
+          {expanded ? "▴" : "▾"}
+        </button>
       </div>
-      <div className="player-card__actions">
+      <div className={`player-card__secondary${expanded ? " player-card__secondary--open" : ""}`}>
+        <code className="player-card__cdkey">{public_cd_key}</code>
+        <code className="player-card__ip">{ip_address}</code>
+        <span className="player-card__timestamp">{new Date(logged_on_at).toLocaleString()}</span>
         <div className="player-card__action-group">
           <button className="player-card__action-btn" title="Description"><IconScroll /></button>
           <button className="player-card__action-btn" title="Inner World"><IconGlobe /></button>
         </div>
-        <BootSpinner visible={isBanned} />
-        {confirming ? (
-          <div className="cdkeys-confirm">
-            <span className="cdkeys-confirm__label">{isBanned ? "Unban?" : "Ban?"}</span>
-            <button className="cdkeys-confirm__yes" onClick={handleConfirm}>Yes</button>
-            <button className="cdkeys-confirm__no" onClick={() => setConfirming(false)}>No</button>
-          </div>
-        ) : isBanned
-          ? <button className="player-card__unban-btn" onClick={() => setConfirming(true)}>Unban</button>
-          : <button className="player-card__ban-btn" onClick={() => setConfirming(true)}>Ban</button>
-        }
+        <div className="player-card__ban-area">
+          <BootSpinner visible={isBanned} />
+          {isBanned
+            ? <button className="player-card__unban-btn" onClick={() => setConfirming(true)} disabled={confirming}>Unban</button>
+            : <button className="player-card__ban-btn" onClick={() => setConfirming(true)} disabled={confirming}>Ban</button>
+          }
+          {confirming && (
+            <div className="cdkeys-confirm">
+              <span className="cdkeys-confirm__label">{isBanned ? "Unban?" : "Ban?"}</span>
+              <button className="cdkeys-confirm__yes" onClick={handleConfirm}>Yes</button>
+              <button className="cdkeys-confirm__no" onClick={() => setConfirming(false)}>No</button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

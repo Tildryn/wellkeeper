@@ -3,6 +3,11 @@
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+
+  @media (max-width: 600px) {
+    justify-content: center;
+    flex-basis: 100%;
+  }
 }
 
 .sort-bar__label {
@@ -13,6 +18,12 @@
   color: var(--text);
   opacity: 0.6;
   margin-right: 4px;
+
+  @media (max-width: 600px) {
+    flex-basis: 100%;
+    margin-right: 0;
+    text-align: center;
+  }
 }
 
 .sort-bar__btn {

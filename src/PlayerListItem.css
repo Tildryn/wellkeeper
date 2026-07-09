@@ -1,3 +1,5 @@
+/* ── Card container ─────────────────────────────────────────────────────── */
+
 .player-card {
   grid-column: 1 / -1;
   display: grid;
@@ -11,11 +13,9 @@
 
   @media (max-width: 600px) {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    column-gap: 8px;
-    row-gap: 2px;
-    padding: 8px 12px;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0;
   }
 }
 
@@ -33,109 +33,196 @@
   border-color: rgba(184, 134, 11, 0.75);
 }
 
-.player-card__username,
-.player-card__character,
-.player-card__ip,
-.player-card__timestamp {
+/* ── Row wrappers ────────────────────────────────────────────────────────── */
+
+/* Desktop: transparent to the subgrid */
+.player-card__primary,
+.player-card__secondary {
+  display: contents;
+}
+
+/* Mobile row 1 — always visible */
+@media (max-width: 600px) {
+  .player-card__primary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+  }
+}
+
+/* Mobile row 2 — collapsed by default */
+@media (max-width: 600px) {
+  .player-card__secondary {
+    display: none;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px 7px;
+  }
+
+  .player-card__secondary--open {
+    display: flex;
+  }
+}
+
+/* ── Player name ─────────────────────────────────────────────────────────── */
+
+.player-card__username {
+  grid-column: 1;
   font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   padding-right: 8px;
+
+  @media (max-width: 600px) {
+    width: 20ch;
+    flex-shrink: 0;
+    padding-right: 0;
+  }
 }
 
-.player-card__username {
-  font-weight: 600;
-  color: var(--text-h);
+/* ── Character name ──────────────────────────────────────────────────────── */
+
+.player-card__character {
+  grid-column: 2;
+  font-size: 13px;
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 8px;
 
   @media (max-width: 600px) {
     flex: 1;
     min-width: 0;
-    order: 1;
-  }
-}
-
-.player-card__character {
-  color: var(--accent);
-
-  @media (max-width: 600px) {
-    order: 3;
-    width: 100%;
     padding-right: 0;
     font-size: 12px;
     opacity: 0.85;
   }
 }
 
+/* ── CD Key ──────────────────────────────────────────────────────────────── */
+
 .player-card__cdkey {
+  grid-column: 3;
   font-size: 12px;
   font-family: var(--mono);
   width: 9ch;
-}
-
-.player-card__ip {
-  font-size: 12px;
-  font-family: var(--mono);
-}
-
-.player-card__timestamp {
-  color: var(--text);
-  padding-left: 16px;
-}
-
-.player-card__status {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-  padding: 0 16px;
-}
-
-.player-card__badge {
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  border-radius: 4px;
-  padding: 4px 7px;
-  white-space: nowrap;
-  border: 1px solid;
-}
-
-.player-card__badge--dm {
-  color: var(--accent);
-  border-color: var(--accent-border);
-  background: transparent;
-}
-
-.player-card__actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  justify-content: flex-end;
+  justify-content: center;
 
   @media (max-width: 600px) {
-    order: 2;
-    flex-shrink: 0;
+    width: 8ch;
+    font-size: 11px;
+    padding: 2px 4px;
+    opacity: 0.65;
   }
 }
 
-@media (max-width: 600px) {
-  .player-card__cdkey,
-  .player-card__ip,
-  .player-card__timestamp,
-  .player-card__status {
+/* ── IP address ──────────────────────────────────────────────────────────── */
+
+.player-card__ip {
+  grid-column: 4;
+  font-size: 12px;
+  font-family: var(--mono);
+  justify-content: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 8px;
+
+  @media (max-width: 600px) {
+    width: 15ch;
+    font-size: 11px;
+    padding: 2px 4px;
+    opacity: 0.65;
+  }
+}
+
+/* ── Timestamp ───────────────────────────────────────────────────────────── */
+
+.player-card__timestamp {
+  grid-column: 5;
+  font-size: 13px;
+  color: var(--text);
+  padding-left: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  @media (max-width: 600px) {
     display: none;
   }
 }
 
+/* ── Description / Inner World buttons ──────────────────────────────────── */
+
 .player-card__action-group {
+  grid-column: 6;
   display: flex;
   flex-direction: row;
   gap: 4px;
   align-items: center;
+
+  @media (max-width: 600px) {
+    flex: 1;
+    justify-content: center;
+  }
 }
+
+/* ── Expand toggle (mobile only) ─────────────────────────────────────────── */
+
+.player-card__expand-toggle {
+  display: none;
+
+  @media (max-width: 600px) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    padding: 0 2px;
+    cursor: pointer;
+    color: var(--text);
+    opacity: 0.4;
+    font-size: 10px;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+}
+
+/* ── Ban area (spinner + ban/unban button) ───────────────────────────────── */
+
+.player-card__ban-area {
+  grid-column: 7;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+
+  @media (max-width: 600px) {
+    margin-left: auto;
+    gap: 4px;
+  }
+}
+
+.player-card__ban-area .cdkeys-confirm {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 10;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  white-space: nowrap;
+  box-shadow: var(--shadow);
+}
+
+/* ── Kick-pending spinner ────────────────────────────────────────────────── */
 
 .player-card__boot-spinner {
   position: relative;
@@ -172,6 +259,8 @@
   to   { transform: rotate(360deg); }
 }
 
+/* ── Action buttons ──────────────────────────────────────────────────────── */
+
 .player-card__action-btn {
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -198,6 +287,8 @@
   background: var(--accent-bg);
   border-color: var(--accent-border);
 }
+
+/* ── Ban / unban buttons ─────────────────────────────────────────────────── */
 
 .player-card__ban-btn,
 .player-card__unban-btn {

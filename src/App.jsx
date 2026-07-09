@@ -16,6 +16,7 @@ import PrivacyPage from "./PrivacyPage";
 import ForgotPasswordPage from "./ForgotPasswordPage";
 import ResetPasswordPage from "./ResetPasswordPage";
 import SettingsPage from "./SettingsPage";
+import { IconRefresh } from "./Icons";
 import { PAGES } from "./pages";
 import "./App.css";
 
@@ -45,14 +46,12 @@ function App() {
   const [bannedPlayers, setBannedPlayers] = useState([]);
   const [bannedLoading, setBannedLoading] = useState(false);
   const [bannedError, setBannedError] = useState(null);
-  const [bannedSortKey, setBannedSortKey] = useState("ban_start");
-  const [bannedSortDir, setBannedSortDir] = useState("desc");
   const [playerSearchData, setPlayerSearchData] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [bannedSearchQuery, setBannedSearchQuery] = useState("");
-  const [allBansSearchQuery, setAllBansSearchQuery] = useState("");
+  const [bansFilter, setBansFilter] = useState("active");
   const [playerSessions, setPlayerSessions] = useState([]);
   const [cdKeys, setCdKeys] = useState([]);
   const [cdKeysLoading, setCdKeysLoading] = useState(false);
@@ -61,6 +60,7 @@ function App() {
   const [displayName, setDisplayName] = useState(null);
   const [banTarget, setBanTarget] = useState(null);
   const [expandGen, setExpandGen] = useState({ v: 0, expanded: null });
+  const [onlineExpandGen, setOnlineExpandGen] = useState({ v: 0, expanded: null });
 
   const useDummyData = import.meta.env.VITE_USE_DUMMY_DATA === "true";
   const editLockRef = useRef(false);
@@ -323,9 +323,10 @@ function App() {
       const id = setInterval(() => fetchPlayers(true), 10000);
       return () => clearInterval(id);
     }
-    if (activePage === PAGES.BANNED_PLAYERS) {
+    if (activePage === PAGES.BANS) {
       if (useDummyData) return;
       fetchActiveBans();
+      fetchBannedPlayers();
       const id = setInterval(() => { if (!editLockRef.current) fetchActiveBans(); }, 10000);
       return () => clearInterval(id);
     }
@@ -334,12 +335,6 @@ function App() {
       if (playerSearchData.length === 0 || playerSessions.length === 0) fetchPlayerSearch();
       fetchActiveBans();
       fetchBannedPlayers();
-    }
-    if (activePage === PAGES.ALL_BANS) {
-      if (useDummyData) return;
-      fetchBannedPlayers();
-      const id = setInterval(() => { if (!editLockRef.current) fetchBannedPlayers(); }, 10000);
-      return () => clearInterval(id);
     }
   }, [activePage, authToken, isDM]);
 
@@ -362,44 +357,36 @@ function App() {
     [activeBansData]
   );
 
-  const dmKeySet = useMemo(() => new Set(cdKeys.filter((k) => k.dm).map((k) => k.public_cd_key)), [cdKeys]);
-
-  const cdKeyToBanId = useMemo(() => {
+const cdKeyToBanId = useMemo(() => {
     const map = {};
     activeBansData.forEach((b) => { (b.cd_keys ?? []).forEach((k) => { map[k] = b.ban_id; }); });
     return map;
   }, [activeBansData]);
 
-  const sortedBannedPlayers = useMemo(
-    () => sortPlayers(activeBansData, bannedSortKey, bannedSortDir),
-    [activeBansData, bannedSortKey, bannedSortDir]
-  );
-
   const filteredBannedPlayers = useMemo(() => {
     const q = bannedSearchQuery.trim().toLowerCase();
-    if (!q) return sortedBannedPlayers;
-    return sortedBannedPlayers.filter((b) => {
+    if (!q) return activeBansData;
+    return activeBansData.filter((b) => {
       if (b.cd_keys?.some((k) => k.toLowerCase().includes(q))) return true;
       if (b.player_names?.some((n) => n.toLowerCase().includes(q))) return true;
       if (b.ip_addresses?.some((ip) => ip.toLowerCase().includes(q))) return true;
       if (b.ban_reason?.toLowerCase().includes(q)) return true;
       return false;
     });
-  }, [sortedBannedPlayers, bannedSearchQuery]);
+  }, [activeBansData, bannedSearchQuery]);
 
   const filteredAllBans = useMemo(() => {
     const inactive = bannedPlayers.filter((b) => b.ban_end && new Date(b.ban_end) <= new Date());
-    const sorted = sortPlayers(inactive, bannedSortKey, bannedSortDir);
-    const q = allBansSearchQuery.trim().toLowerCase();
-    if (!q) return sorted;
-    return sorted.filter((b) => {
+    const q = bannedSearchQuery.trim().toLowerCase();
+    if (!q) return inactive;
+    return inactive.filter((b) => {
       if (b.cd_keys?.some((k) => k.toLowerCase().includes(q))) return true;
       if (b.player_names?.some((n) => n.toLowerCase().includes(q))) return true;
       if (b.ip_addresses?.some((ip) => ip.toLowerCase().includes(q))) return true;
       if (b.ban_reason?.toLowerCase().includes(q)) return true;
       return false;
     });
-  }, [bannedPlayers, bannedSortKey, bannedSortDir, allBansSearchQuery]);
+  }, [bannedPlayers, bannedSearchQuery]);
 
   const cdKeyToBans = useMemo(() => {
     const map = {};
@@ -438,14 +425,6 @@ function App() {
     });
   }, [playerSearchData, searchQuery, sessionMap]);
 
-  function handleBannedSort(key) {
-    if (key === bannedSortKey) {
-      setBannedSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setBannedSortKey(key);
-      setBannedSortDir("asc");
-    }
-  }
 
   if (!authToken) {
     if (authView === "privacy") {
@@ -498,27 +477,48 @@ function App() {
         {isDM && activePage === PAGES.ONLINE_PLAYERS && (
           <>
             <div className="list-toolbar">
-              <SortBar sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-              <button className="refresh-btn" onClick={fetchPlayers}>⟳ Refresh</button>
+              <SortBar sortKey={sortKey} sortDir={sortDir} onSort={handleSort} fields={[
+                { key: "online_player_name", label: "Name" },
+                { key: "character_name",     label: "Character" },
+                { key: "logged_on_at",       label: "Logged On" },
+              ]} />
+              <div className="expand-controls">
+                <button className="refresh-btn" onClick={() => setOnlineExpandGen(g => ({ v: g.v + 1, expanded: true }))}>Expand All</button>
+                <button className="refresh-btn" onClick={() => setOnlineExpandGen(g => ({ v: g.v + 1, expanded: false }))}>Collapse All</button>
+              </div>
+              <button className="refresh-btn refresh-btn--refresh" onClick={fetchPlayers}><IconRefresh /><span className="refresh-btn__label"> Refresh</span></button>
             </div>
             {loading && <p>Loading...</p>}
             {error && <p style={{ color: "#c0323a" }}>Error: {error}</p>}
-            {!loading && !error && (
+            {!loading && !error && onlinePlayers.length === 0 && (
+              <p className="result-count">No players are currently online.</p>
+            )}
+            {!loading && !error && onlinePlayers.length > 0 && (
               <div className="player-list">
                 <div className="player-list__header">
                   <span>Player</span><span>Character</span><span>CD Key</span>
                   <span>IP Address</span><span>Logged On</span><span></span><span></span>
                 </div>
                 {onlinePlayers.map((player) => (
-                  <PlayerListItem key={player.public_cd_key} {...player} isBanned={bannedKeySet.has(player.public_cd_key)} isDM={dmKeySet.has(player.public_cd_key)} onBan={() => openBanModal([player.public_cd_key], player.online_player_name ? [player.online_player_name] : [], player.ip_address ? [player.ip_address] : [])} onUnban={() => unbanPlayer(cdKeyToBanId[player.public_cd_key])} />
+                  <PlayerListItem key={player.public_cd_key} {...player} isBanned={bannedKeySet.has(player.public_cd_key)} onBan={() => openBanModal([player.public_cd_key], player.online_player_name ? [player.online_player_name] : [], player.ip_address ? [player.ip_address] : [])} onUnban={() => unbanPlayer(cdKeyToBanId[player.public_cd_key])} expandGen={onlineExpandGen} />
                 ))}
               </div>
             )}
           </>
         )}
-        {isDM && activePage === PAGES.BANNED_PLAYERS && (
+        {isDM && activePage === PAGES.BANS && (
           <>
             <div className="list-toolbar">
+              <div className="bans-filter">
+                <button
+                  className={`bans-filter__btn${bansFilter === "active" ? " bans-filter__btn--active" : ""}`}
+                  onClick={() => { setBansFilter("active"); setBannedSearchQuery(""); }}
+                >Active</button>
+                <button
+                  className={`bans-filter__btn${bansFilter === "old" ? " bans-filter__btn--active" : ""}`}
+                  onClick={() => { setBansFilter("old"); setBannedSearchQuery(""); }}
+                >Old</button>
+              </div>
               <input
                 className="search-input"
                 type="text"
@@ -526,59 +526,35 @@ function App() {
                 value={bannedSearchQuery}
                 onChange={(e) => setBannedSearchQuery(e.target.value)}
               />
-              <SortBar
-                sortKey={bannedSortKey}
-                sortDir={bannedSortDir}
-                onSort={handleBannedSort}
-                fields={[
-                  { key: "ban_start", label: "Ban Start" },
-                  { key: "ban_end",   label: "Ban End" },
-                ]}
-              />
-              <button className="refresh-btn" onClick={fetchActiveBans}>⟳ Refresh</button>
+              <button className="refresh-btn refresh-btn--refresh" onClick={bansFilter === "active" ? fetchActiveBans : fetchBannedPlayers}><IconRefresh /><span className="refresh-btn__label"> Refresh</span></button>
             </div>
-            {activeBansLoading && <p>Loading...</p>}
-            {activeBansError && <p style={{ color: "#c0323a" }}>Error: {activeBansError}</p>}
-            {!activeBansLoading && !activeBansError && (
-              <div className="search-list">
-                {filteredBannedPlayers.length === 0
-                  ? <p style={{ padding: "12px 0" }}>{activeBansData.length === 0 ? "No banned players." : "No results."}</p>
-                  : filteredBannedPlayers.map((p) => <BannedPlayerItem key={p.ban_id} {...p} onUnban={() => unbanPlayer(p.ban_id)} onExpunge={() => expungeBan(p.ban_id)} onEditBan={(fields) => editBan(p.ban_id, fields)} />)
-                }
-              </div>
+            {bansFilter === "active" && (
+              <>
+                {activeBansLoading && <p>Loading...</p>}
+                {activeBansError && <p style={{ color: "#c0323a" }}>Error: {activeBansError}</p>}
+                {!activeBansLoading && !activeBansError && (
+                  <div className="search-list">
+                    {filteredBannedPlayers.length === 0
+                      ? <p style={{ padding: "12px 0" }}>{activeBansData.length === 0 ? "No active bans." : "No results."}</p>
+                      : filteredBannedPlayers.map((p) => <BannedPlayerItem key={p.ban_id} {...p} onUnban={() => unbanPlayer(p.ban_id)} onExpunge={() => expungeBan(p.ban_id)} onEditBan={(fields) => editBan(p.ban_id, fields)} />)
+                    }
+                  </div>
+                )}
+              </>
             )}
-          </>
-        )}
-        {isDM && activePage === PAGES.ALL_BANS && (
-          <>
-            <div className="list-toolbar">
-              <input
-                className="search-input"
-                type="text"
-                placeholder="Search by name, CD key, IP, reason…"
-                value={allBansSearchQuery}
-                onChange={(e) => setAllBansSearchQuery(e.target.value)}
-              />
-              <SortBar
-                sortKey={bannedSortKey}
-                sortDir={bannedSortDir}
-                onSort={handleBannedSort}
-                fields={[
-                  { key: "ban_start", label: "Ban Start" },
-                  { key: "ban_end",   label: "Ban End" },
-                ]}
-              />
-              <button className="refresh-btn" onClick={fetchBannedPlayers}>⟳ Refresh</button>
-            </div>
-            {bannedLoading && <p>Loading...</p>}
-            {bannedError && <p style={{ color: "#c0323a" }}>Error: {bannedError}</p>}
-            {!bannedLoading && !bannedError && (
-              <div className="search-list">
-                {filteredAllBans.length === 0
-                  ? <p style={{ padding: "12px 0" }}>{filteredAllBans.length === 0 && !allBansSearchQuery ? "No old bans." : "No results."}</p>
-                  : filteredAllBans.map((p) => <BannedPlayerItem key={p.ban_id} {...p} onUnban={() => unbanPlayer(p.ban_id)} onExpunge={() => expungeBan(p.ban_id)} onEditBan={(fields) => editBan(p.ban_id, fields)} />)
-                }
-              </div>
+            {bansFilter === "old" && (
+              <>
+                {bannedLoading && <p>Loading...</p>}
+                {bannedError && <p style={{ color: "#c0323a" }}>Error: {bannedError}</p>}
+                {!bannedLoading && !bannedError && (
+                  <div className="search-list">
+                    {filteredAllBans.length === 0
+                      ? <p style={{ padding: "12px 0" }}>{bannedSearchQuery ? "No results." : "No old bans."}</p>
+                      : filteredAllBans.map((p) => <BannedPlayerItem key={p.ban_id} {...p} onUnban={() => unbanPlayer(p.ban_id)} onExpunge={() => expungeBan(p.ban_id)} onEditBan={(fields) => editBan(p.ban_id, fields)} />)
+                    }
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
@@ -594,7 +570,7 @@ function App() {
               />
               <button className="refresh-btn" onClick={() => setExpandGen(g => ({ v: g.v + 1, expanded: true }))}>Expand All</button>
               <button className="refresh-btn" onClick={() => setExpandGen(g => ({ v: g.v + 1, expanded: false }))}>Collapse All</button>
-              <button className="refresh-btn" onClick={fetchPlayerSearch}>⟳ Refresh</button>
+              <button className="refresh-btn refresh-btn--refresh" onClick={fetchPlayerSearch}><IconRefresh /><span className="refresh-btn__label"> Refresh</span></button>
             </div>
             <span className="result-count">
               {filteredPlayerSearch.length} of {playerSearchData.length} result{playerSearchData.length !== 1 ? "s" : ""} — sorted by last logout

@@ -81,16 +81,17 @@ function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, character
         <span className="search-card__label">CD Key</span>
         <code className="search-card__cdkey">{public_cd_key}</code>
         <div className="search-card__header-actions">
-          {confirming ? (
+          {isBanned
+            ? <button className="banned-card__unban-btn" onClick={() => setConfirming(true)} disabled={confirming}>Unban</button>
+            : <button className="player-card__ban-btn" onClick={() => setConfirming(true)} disabled={confirming}>Ban</button>
+          }
+          {confirming && (
             <div className="cdkeys-confirm">
               <span className="cdkeys-confirm__label">{isBanned ? "Unban?" : "Ban?"}</span>
               <button className="cdkeys-confirm__yes" onClick={handleConfirm}>Yes</button>
               <button className="cdkeys-confirm__no" onClick={() => setConfirming(false)}>No</button>
             </div>
-          ) : isBanned
-            ? <button className="banned-card__unban-btn" onClick={() => setConfirming(true)}>Unban</button>
-            : <button className="player-card__ban-btn" onClick={() => setConfirming(true)}>Ban</button>
-          }
+          )}
         </div>
       </div>
       <div className="search-card__row">
