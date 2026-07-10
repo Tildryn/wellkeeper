@@ -14,15 +14,18 @@ function SortBar({ sortKey, sortDir, onSort, fields = DEFAULT_FIELDS }) {
       <span className="sort-bar__label">Sort by</span>
       {fields.map(({ key, label }) => {
         const active = sortKey === key;
+        const dirLabel = active ? (sortDir === "asc" ? ", ascending" : ", descending") : "";
         return (
           <button
             key={key}
             className={`sort-bar__btn${active ? " sort-bar__btn--active" : ""}`}
             onClick={() => onSort(key)}
+            aria-pressed={active}
+            aria-label={`Sort by ${label}${dirLabel}`}
           >
             {label}
             {active && (
-              <span className="sort-bar__arrow">{sortDir === "asc" ? "↑" : "↓"}</span>
+              <span className="sort-bar__arrow" aria-hidden="true">{sortDir === "asc" ? "↑" : "↓"}</span>
             )}
           </button>
         );

@@ -6,10 +6,10 @@ const DM_NAV_ITEMS = [PAGES.ONLINE_PLAYERS, PAGES.ALL_PLAYERS, PAGES.BANS];
 
 function Navbar({ activePage, onNavigate, onLogout, isDM, displayName }) {
   return (
-    <nav className="navbar">
+    <nav className="navbar" aria-label="Main navigation">
       <span className="navbar__title">
         <IconWell /> Wellkeeper
-        {displayName && <span className="navbar__display-name">{displayName}</span>}
+        {displayName && <span className="navbar__display-name"><span className="navbar__display-name-prefix">as </span>{displayName}</span>}
       </span>
       {isDM && (
         <ul className="navbar__links">
@@ -18,6 +18,7 @@ function Navbar({ activePage, onNavigate, onLogout, isDM, displayName }) {
               <button
                 className={`navbar__link${activePage === page ? " navbar__link--active" : ""}`}
                 onClick={() => onNavigate(page)}
+                aria-current={activePage === page ? "page" : undefined}
               >
                 {PAGE_TITLES[page]}
               </button>
@@ -29,6 +30,7 @@ function Navbar({ activePage, onNavigate, onLogout, isDM, displayName }) {
         <button
           className={`navbar__link${activePage === PAGES.MY_CD_KEYS ? " navbar__link--active" : ""}`}
           onClick={() => onNavigate(PAGES.MY_CD_KEYS)}
+          aria-current={activePage === PAGES.MY_CD_KEYS ? "page" : undefined}
         >
           {PAGE_TITLES[PAGES.MY_CD_KEYS]}
         </button>
@@ -37,7 +39,8 @@ function Navbar({ activePage, onNavigate, onLogout, isDM, displayName }) {
         <button
           className={`navbar__link navbar__link--icon${activePage === PAGES.SETTINGS ? " navbar__link--active" : ""}`}
           onClick={() => onNavigate(PAGES.SETTINGS)}
-          title={PAGE_TITLES[PAGES.SETTINGS]}
+          aria-label={PAGE_TITLES[PAGES.SETTINGS]}
+          aria-current={activePage === PAGES.SETTINGS ? "page" : undefined}
         >
           <IconCog />
         </button>

@@ -29,7 +29,7 @@ function ForgotPasswordPage({ onBack }) {
   }
 
   return (
-    <div className="login-page">
+    <main id="main-content" className="login-page">
       <div className="login-card">
         <h1 className="login-card__title">Wellkeeper</h1>
         <p className="login-card__subtitle">Reset your password</p>
@@ -48,8 +48,8 @@ function ForgotPasswordPage({ onBack }) {
               required
             />
           </div>
-          {error && <p className="login-form__error">{error}</p>}
-          {message && <p className="login-form__success">{message}</p>}
+          {error && <p role="alert" className="login-form__error">{error}</p>}
+          {message && <p role="status" className="login-form__success">{message}</p>}
           {!message && (
             <button className="login-form__submit" type="submit" disabled={loading || !email}>
               {loading ? "Sending…" : "Send reset link"}
@@ -60,7 +60,7 @@ function ForgotPasswordPage({ onBack }) {
           </div>
         </form>
       </div>
-    </div>
+    </main>
   );
 }
 

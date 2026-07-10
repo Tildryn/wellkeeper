@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./PlayerListItem.css";
 import "./BannedPlayerItem.css";
 import { IconScroll, IconGlobe } from "./Icons";
 
 const BootSpinner = ({ visible }) => (
-  <span className={`player-card__boot-spinner${visible ? "" : " player-card__boot-spinner--hidden"}`} title="Kick Pending">
+  <span className={`player-card__boot-spinner${visible ? "" : " player-card__boot-spinner--hidden"}`}>
+    <span className="sr-only">Kick pending</span>
     <svg className="player-card__spinner-ring" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeOpacity="0.2"/>
       <path d="M12 2 A10 10 0 0 1 22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -18,6 +19,9 @@ const BootSpinner = ({ visible }) => (
 function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_address, logged_on_at, onBan, onUnban, isBanned, expandGen }) {
   const [confirming, setConfirming] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const confirmYesRef = useRef(null);
+
+  useEffect(() => { if (confirming) confirmYesRef.current?.focus(); }, [confirming]);
 
   useEffect(() => {
     if (!expandGen || expandGen.expanded === null) return;
@@ -38,17 +42,19 @@ function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_
           className="player-card__expand-toggle"
           onClick={e => { e.stopPropagation(); setExpanded(x => !x); }}
           aria-label={expanded ? "Hide details" : "Show details"}
+          aria-expanded={expanded}
+          aria-controls={`player-secondary-${public_cd_key}`}
         >
           {expanded ? "▴" : "▾"}
         </button>
       </div>
-      <div className={`player-card__secondary${expanded ? " player-card__secondary--open" : ""}`}>
+      <div id={`player-secondary-${public_cd_key}`} className={`player-card__secondary${expanded ? " player-card__secondary--open" : ""}`}>
         <code className="player-card__cdkey">{public_cd_key}</code>
         <code className="player-card__ip">{ip_address}</code>
         <span className="player-card__timestamp">{new Date(logged_on_at).toLocaleString()}</span>
         <div className="player-card__action-group">
-          <button className="player-card__action-btn" title="Description"><IconScroll /></button>
-          <button className="player-card__action-btn" title="Inner World"><IconGlobe /></button>
+          <button className="player-card__action-btn" aria-label="Description" aria-disabled="true" onClick={e => e.preventDefault()}><IconScroll /></button>
+          <button className="player-card__action-btn" aria-label="Inner World" aria-disabled="true" onClick={e => e.preventDefault()}><IconGlobe /></button>
         </div>
         <div className="player-card__ban-area">
           <BootSpinner visible={isBanned} />
@@ -59,8 +65,8 @@ function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_
           {confirming && (
             <div className="cdkeys-confirm">
               <span className="cdkeys-confirm__label">{isBanned ? "Unban?" : "Ban?"}</span>
-              <button className="cdkeys-confirm__yes" onClick={handleConfirm}>Yes</button>
-              <button className="cdkeys-confirm__no" onClick={() => setConfirming(false)}>No</button>
+              <button ref={confirmYesRef} className="cdkeys-confirm__yes" aria-label={isBanned ? "Confirm unban" : "Confirm ban"} onClick={handleConfirm}>Yes</button>
+              <button className="cdkeys-confirm__no" aria-label={isBanned ? "Cancel unban" : "Cancel ban"} onClick={() => setConfirming(false)}>No</button>
             </div>
           )}
         </div>

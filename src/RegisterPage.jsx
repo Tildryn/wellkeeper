@@ -42,7 +42,7 @@ function RegisterPage({ onBack, onRegistered, onPrivacy, initialEmail = "", init
   }
 
   return (
-    <div className="login-page">
+    <main id="main-content" className="login-page">
       <div className="login-card">
         <h1 className="login-card__title">Wellkeeper</h1>
         <p className="login-card__subtitle">Create an account</p>
@@ -89,7 +89,7 @@ function RegisterPage({ onBack, onRegistered, onPrivacy, initialEmail = "", init
                 disabled={loading || success}
                 required
               />
-              <button type="button" className="login-form__eye-btn" onClick={() => setShowPw((v) => !v)} tabIndex={-1} aria-label={showPw ? "Hide password" : "Show password"}>
+              <button type="button" className="login-form__eye-btn" onClick={() => setShowPw((v) => !v)} aria-label={showPw ? "Hide password" : "Show password"}>
                 {showPw ? <IconEyeOff /> : <IconEye />}
               </button>
             </div>
@@ -108,13 +108,13 @@ function RegisterPage({ onBack, onRegistered, onPrivacy, initialEmail = "", init
                 disabled={loading || success}
                 required
               />
-              <button type="button" className="login-form__eye-btn" onClick={() => setShowConfirm((v) => !v)} tabIndex={-1} aria-label={showConfirm ? "Hide password" : "Show password"}>
+              <button type="button" className="login-form__eye-btn" onClick={() => setShowConfirm((v) => !v)} aria-label={showConfirm ? "Hide confirm password" : "Show confirm password"}>
                 {showConfirm ? <IconEyeOff /> : <IconEye />}
               </button>
             </div>
           </div>
-          {error && <p className="login-form__error">{error}</p>}
-          {success && <p className="login-form__success">Account created. Redirecting to sign in…</p>}
+          {error && <p role="alert" className="login-form__error">{error}</p>}
+          {success && <p role="status" className="login-form__success">Account created. Redirecting to sign in…</p>}
           <button className="login-form__submit" type="submit" disabled={loading || success}>
             {loading ? "Creating account…" : "Create account"}
           </button>
@@ -127,7 +127,7 @@ function RegisterPage({ onBack, onRegistered, onPrivacy, initialEmail = "", init
           </div>
         </form>
       </div>
-    </div>
+    </main>
   );
 }
 

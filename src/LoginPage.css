@@ -84,7 +84,7 @@
   padding: 2px;
   cursor: pointer;
   color: var(--text);
-  opacity: 0.4;
+  opacity: 0.55;
   display: flex;
   align-items: center;
   transition: opacity 0.15s;
@@ -96,7 +96,7 @@
 
 .login-form__input::placeholder {
   color: var(--text);
-  opacity: 0.4;
+  opacity: 0.65;
 }
 
 .login-form__input:focus {

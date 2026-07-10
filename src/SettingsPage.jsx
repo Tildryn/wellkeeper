@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { IconEye, IconEyeOff } from "./Icons";
 import "./SettingsPage.css";
 
-function PasswordInput({ id, value, onChange, disabled, readOnly, onFocus, autoComplete, placeholder }) {
+function PasswordInput({ id, label, value, onChange, disabled, readOnly, onFocus, autoComplete, placeholder }) {
   const [visible, setVisible] = useState(false);
   return (
     <div className="settings-form__pw-wrapper">
@@ -22,8 +22,7 @@ function PasswordInput({ id, value, onChange, disabled, readOnly, onFocus, autoC
         type="button"
         className="settings-form__eye-btn"
         onClick={() => setVisible((v) => !v)}
-        tabIndex={-1}
-        aria-label={visible ? "Hide password" : "Show password"}
+        aria-label={visible ? `Hide ${label || "password"}` : `Show ${label || "password"}`}
       >
         {visible ? <IconEyeOff /> : <IconEye />}
       </button>
@@ -49,8 +48,11 @@ function SettingsPage({ authToken, accountUuid, displayName, onDisplayNameChange
   const [displayNameError, setDisplayNameError] = useState(null);
   const [displayNameSuccess, setDisplayNameSuccess] = useState(false);
 
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [pwReady, setPwReady] = useState(false);
+  const [currentPasswordEmail, setCurrentPasswordEmail] = useState("");
+  const [pwEmailReady, setPwEmailReady] = useState(false);
+
+  const [currentPasswordPw, setCurrentPasswordPw] = useState("");
+  const [pwPwReady, setPwPwReady] = useState(false);
 
   const [newEmail, setNewEmail] = useState("");
   const [emailLoading, setEmailLoading] = useState(false);
@@ -97,13 +99,13 @@ function SettingsPage({ authToken, accountUuid, displayName, onDisplayNameChange
       const res = await fetch(`${import.meta.env.VITE_API_URL}/email`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({ email: newEmail }),
+        body: JSON.stringify({ email: newEmail, current_password: currentPasswordEmail }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? `Server error (${res.status}).`);
       setCurrentEmail(newEmail);
       setNewEmail("");
-      setCurrentPassword(""); setPwReady(false);
+      setCurrentPasswordEmail(""); setPwEmailReady(false);
       setEmailSuccess(true);
     } catch (err) {
       setEmailError(err.message);
@@ -125,13 +127,13 @@ function SettingsPage({ authToken, accountUuid, displayName, onDisplayNameChange
       const res = await fetch(`${import.meta.env.VITE_API_URL}/password`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+        body: JSON.stringify({ current_password: currentPasswordPw, new_password: newPassword }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? `Server error (${res.status}).`);
       setNewPassword("");
       setConfirmPassword("");
-      setCurrentPassword(""); setPwReady(false);
+      setCurrentPasswordPw(""); setPwPwReady(false);
       setPasswordSuccess(true);
     } catch (err) {
       setPasswordError(err.message);
@@ -179,8 +181,8 @@ function SettingsPage({ authToken, accountUuid, displayName, onDisplayNameChange
                 required
               />
             </div>
-            {displayNameError && <p className="settings-form__error">{displayNameError}</p>}
-            {displayNameSuccess && <p className="settings-form__success">Display name updated successfully.</p>}
+            {displayNameError && <p className="settings-form__error" role="alert">{displayNameError}</p>}
+            {displayNameSuccess && <p className="settings-form__success" role="status">Display name updated successfully.</p>}
             <button
               className="settings-form__submit"
               type="submit"
@@ -192,24 +194,22 @@ function SettingsPage({ authToken, accountUuid, displayName, onDisplayNameChange
 
           <div className="settings-section__divider" />
 
-          <div className="settings-form__field">
-            <label className="settings-form__label" htmlFor="current-password">Current password</label>
-            <PasswordInput
-              id="current-password"
-              autoComplete="off"
-              readOnly={!pwReady}
-              onFocus={() => setPwReady(true)}
-              placeholder="••••••••"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              disabled={busy}
-            />
-          </div>
-
-          <div className="settings-section__divider" />
-
           <form className="settings-form" onSubmit={handleEmailSubmit}>
             <h4 className="settings-form__subheading">Change email</h4>
+            <div className="settings-form__field">
+              <label className="settings-form__label" htmlFor="current-password-email">Current password</label>
+              <PasswordInput
+                id="current-password-email"
+                label="current password"
+                autoComplete="current-password"
+                readOnly={!pwEmailReady}
+                onFocus={() => setPwEmailReady(true)}
+                placeholder="••••••••"
+                value={currentPasswordEmail}
+                onChange={(e) => setCurrentPasswordEmail(e.target.value)}
+                disabled={busy}
+              />
+            </div>
             <div className="settings-form__field">
               <label className="settings-form__label" htmlFor="new-email">New email address</label>
               <input
@@ -224,12 +224,12 @@ function SettingsPage({ authToken, accountUuid, displayName, onDisplayNameChange
                 required
               />
             </div>
-            {emailError && <p className="settings-form__error">{emailError}</p>}
-            {emailSuccess && <p className="settings-form__success">Email updated successfully.</p>}
+            {emailError && <p className="settings-form__error" role="alert">{emailError}</p>}
+            {emailSuccess && <p className="settings-form__success" role="status">Email updated successfully.</p>}
             <button
               className="settings-form__submit"
               type="submit"
-              disabled={emailLoading || !currentPassword || !newEmail}
+              disabled={emailLoading || !currentPasswordEmail || !newEmail}
             >
               {emailLoading ? "Saving…" : "Update email"}
             </button>
@@ -240,9 +240,24 @@ function SettingsPage({ authToken, accountUuid, displayName, onDisplayNameChange
           <form className="settings-form" onSubmit={handlePasswordSubmit}>
             <h4 className="settings-form__subheading">Change password</h4>
             <div className="settings-form__field">
+              <label className="settings-form__label" htmlFor="current-password-pw">Current password</label>
+              <PasswordInput
+                id="current-password-pw"
+                label="current password"
+                autoComplete="current-password"
+                readOnly={!pwPwReady}
+                onFocus={() => setPwPwReady(true)}
+                placeholder="••••••••"
+                value={currentPasswordPw}
+                onChange={(e) => setCurrentPasswordPw(e.target.value)}
+                disabled={busy}
+              />
+            </div>
+            <div className="settings-form__field">
               <label className="settings-form__label" htmlFor="new-password">New password</label>
               <PasswordInput
                 id="new-password"
+                label="new password"
                 autoComplete="new-password"
                 placeholder="••••••••"
                 value={newPassword}
@@ -254,6 +269,7 @@ function SettingsPage({ authToken, accountUuid, displayName, onDisplayNameChange
               <label className="settings-form__label" htmlFor="confirm-password">Confirm new password</label>
               <PasswordInput
                 id="confirm-password"
+                label="confirm password"
                 autoComplete="new-password"
                 placeholder="••••••••"
                 value={confirmPassword}
@@ -261,12 +277,12 @@ function SettingsPage({ authToken, accountUuid, displayName, onDisplayNameChange
                 disabled={passwordLoading}
               />
             </div>
-            {passwordError && <p className="settings-form__error">{passwordError}</p>}
-            {passwordSuccess && <p className="settings-form__success">Password updated successfully.</p>}
+            {passwordError && <p className="settings-form__error" role="alert">{passwordError}</p>}
+            {passwordSuccess && <p className="settings-form__success" role="status">Password updated successfully.</p>}
             <button
               className="settings-form__submit"
               type="submit"
-              disabled={passwordLoading || !currentPassword || !newPassword || !confirmPassword}
+              disabled={passwordLoading || !currentPasswordPw || !newPassword || !confirmPassword}
             >
               {passwordLoading ? "Saving…" : "Update password"}
             </button>

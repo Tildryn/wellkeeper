@@ -1,11 +1,37 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import "./BanModal.css";
+
+const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 function BanModal({ target, onConfirm, onCancel }) {
   const [reason, setReason] = useState("");
   const [temporary, setTemporary] = useState(false);
   const [banDate, setBanDate] = useState("");
   const [banTime, setBanTime] = useState("00:00");
+
+  const dialogRef = useRef(null);
+  const prevFocusRef = useRef(null);
+
+  useEffect(() => {
+    prevFocusRef.current = document.activeElement;
+    const first = dialogRef.current?.querySelector(FOCUSABLE);
+    first?.focus();
+    return () => prevFocusRef.current?.focus();
+  }, []);
+
+  function handleKeyDown(e) {
+    if (e.key === "Escape") { onCancel(); return; }
+    if (e.key !== "Tab") return;
+    const focusable = Array.from(dialogRef.current?.querySelectorAll(FOCUSABLE) ?? []);
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  }
 
   function handleConfirm() {
     onConfirm({
@@ -19,8 +45,16 @@ function BanModal({ target, onConfirm, onCancel }) {
 
   return (
     <div className="ban-modal__overlay" onClick={onCancel}>
-      <div className="ban-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="ban-modal__title">Ban Player</h2>
+      <div
+        className="ban-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ban-modal-title"
+        ref={dialogRef}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
+      >
+        <h2 className="ban-modal__title" id="ban-modal-title">Ban Player</h2>
         <p className="ban-modal__target">{target.playerNames?.[0] || target.cdKeys?.[0]}</p>
 
         <div className="ban-modal__field">
@@ -60,7 +94,7 @@ function BanModal({ target, onConfirm, onCancel }) {
 
         {temporary && (
           <div className="ban-modal__field">
-            <label className="ban-modal__label">Ban ends</label>
+            <label className="ban-modal__label" htmlFor="ban-end-date">Ban ends</label>
             <div className="ban-modal__datetime">
               <input
                 id="ban-end-date"
@@ -73,6 +107,7 @@ function BanModal({ target, onConfirm, onCancel }) {
                 id="ban-end-time"
                 className="ban-modal__input ban-modal__input--time"
                 type="time"
+                aria-label="Ban end time"
                 value={banTime}
                 onChange={(e) => setBanTime(e.target.value)}
               />

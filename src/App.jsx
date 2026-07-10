@@ -17,7 +17,7 @@ import ForgotPasswordPage from "./ForgotPasswordPage";
 import ResetPasswordPage from "./ResetPasswordPage";
 import SettingsPage from "./SettingsPage";
 import { IconRefresh } from "./Icons";
-import { PAGES } from "./pages";
+import { PAGES, PAGE_TITLES } from "./pages";
 import "./App.css";
 
 function sortPlayers(players, key, dir) {
@@ -61,12 +61,21 @@ function App() {
   const [banTarget, setBanTarget] = useState(null);
   const [expandGen, setExpandGen] = useState({ v: 0, expanded: null });
   const [onlineExpandGen, setOnlineExpandGen] = useState({ v: 0, expanded: null });
+  const [actionError, setActionError] = useState(null);
+  const mainRef = useRef(null);
 
   const useDummyData = import.meta.env.VITE_USE_DUMMY_DATA === "true";
   const editLockRef = useRef(false);
   function setEditActive(active) { editLockRef.current = active; }
 
   const isDM = useMemo(() => cdKeys.some((k) => k.dm), [cdKeys]);
+
+  useEffect(() => {
+    const pageTitle = PAGE_TITLES[activePage];
+    document.title = pageTitle ? `${pageTitle} — Wellkeeper` : "Wellkeeper — NWN Server Administration";
+    setActionError(null);
+    mainRef.current?.focus();
+  }, [activePage]);
 
   function authHeaders(extra = {}) {
     return authToken
@@ -181,11 +190,11 @@ function App() {
       } else {
         const text = await res.text().catch(() => "");
         console.error(`Unban failed (${res.status}):`, text);
-        alert(`Unban failed (${res.status})${text ? ": " + text : ""}`);
+        setActionError(`Unban failed (${res.status})${text ? ": " + text : ""}`);
       }
     }).catch((err) => {
       console.error("Unban request error:", err);
-      alert("Unban request failed: " + err.message);
+      setActionError("Unban request failed: " + err.message);
     });
   }
 
@@ -202,11 +211,11 @@ function App() {
       } else {
         const text = await res.text().catch(() => "");
         console.error(`Expunge failed (${res.status}):`, text);
-        alert(`Expunge failed (${res.status})${text ? ": " + text : ""}`);
+        setActionError(`Expunge failed (${res.status})${text ? ": " + text : ""}`);
       }
     }).catch((err) => {
       console.error("Expunge request error:", err);
-      alert("Expunge request failed: " + err.message);
+      setActionError("Expunge request failed: " + err.message);
     });
   }
 
@@ -375,18 +384,22 @@ const cdKeyToBanId = useMemo(() => {
     });
   }, [activeBansData, bannedSearchQuery]);
 
+  const inactiveBans = useMemo(
+    () => bannedPlayers.filter((b) => b.ban_end && new Date(b.ban_end) <= new Date()),
+    [bannedPlayers]
+  );
+
   const filteredAllBans = useMemo(() => {
-    const inactive = bannedPlayers.filter((b) => b.ban_end && new Date(b.ban_end) <= new Date());
     const q = bannedSearchQuery.trim().toLowerCase();
-    if (!q) return inactive;
-    return inactive.filter((b) => {
+    if (!q) return inactiveBans;
+    return inactiveBans.filter((b) => {
       if (b.cd_keys?.some((k) => k.toLowerCase().includes(q))) return true;
       if (b.player_names?.some((n) => n.toLowerCase().includes(q))) return true;
       if (b.ip_addresses?.some((ip) => ip.toLowerCase().includes(q))) return true;
       if (b.ban_reason?.toLowerCase().includes(q)) return true;
       return false;
     });
-  }, [bannedPlayers, bannedSearchQuery]);
+  }, [inactiveBans, bannedSearchQuery]);
 
   const cdKeyToBans = useMemo(() => {
     const map = {};
@@ -464,7 +477,7 @@ const cdKeyToBanId = useMemo(() => {
     return (
       <div className="App">
         <Navbar activePage={activePage} onNavigate={navigateTo} isDM={false} displayName={displayName} onLogout={() => setAuthToken(null)} />
-        <div className="page-content"><p>Verifying access…</p></div>
+        <main id="main-content" className="page-content"><p role="status">Verifying access…</p></main>
       </div>
     );
   }
@@ -473,9 +486,12 @@ const cdKeyToBanId = useMemo(() => {
     <EditLockContext.Provider value={setEditActive}>
     <div className="App">
       <Navbar activePage={activePage} onNavigate={navigateTo} isDM={isDM} displayName={displayName} onLogout={() => setAuthToken(null)} />
-      <div className="page-content">
+      <main id="main-content" ref={mainRef} tabIndex={-1} className="page-content">
+        <h1 className="sr-only">Wellkeeper</h1>
+        {actionError && <p role="alert" style={{ color: "#e05560", fontSize: "13px", margin: "0 0 8px" }}>{actionError}</p>}
         {isDM && activePage === PAGES.ONLINE_PLAYERS && (
           <>
+            <h2 className="sr-only">{PAGE_TITLES[PAGES.ONLINE_PLAYERS]}</h2>
             <div className="list-toolbar">
               <SortBar sortKey={sortKey} sortDir={sortDir} onSort={handleSort} fields={[
                 { key: "online_player_name", label: "Name" },
@@ -486,10 +502,10 @@ const cdKeyToBanId = useMemo(() => {
                 <button className="refresh-btn" onClick={() => setOnlineExpandGen(g => ({ v: g.v + 1, expanded: true }))}>Expand All</button>
                 <button className="refresh-btn" onClick={() => setOnlineExpandGen(g => ({ v: g.v + 1, expanded: false }))}>Collapse All</button>
               </div>
-              <button className="refresh-btn refresh-btn--refresh" onClick={fetchPlayers}><IconRefresh /><span className="refresh-btn__label"> Refresh</span></button>
+              <button className="refresh-btn refresh-btn--refresh" aria-label="Refresh" onClick={fetchPlayers}><IconRefresh /><span className="refresh-btn__label" aria-hidden="true"> Refresh</span></button>
             </div>
-            {loading && <p>Loading...</p>}
-            {error && <p style={{ color: "#c0323a" }}>Error: {error}</p>}
+            {loading && <p role="status">Loading...</p>}
+            {error && <p role="alert" style={{ color: "#c0323a" }}>Error: {error}</p>}
             {!loading && !error && onlinePlayers.length === 0 && (
               <p className="result-count">No players are currently online.</p>
             )}
@@ -508,13 +524,16 @@ const cdKeyToBanId = useMemo(() => {
         )}
         {isDM && activePage === PAGES.BANS && (
           <>
+            <h2 className="sr-only">{PAGE_TITLES[PAGES.BANS]}</h2>
             <div className="list-toolbar">
               <div className="bans-filter">
                 <button
+                  aria-pressed={bansFilter === "active"}
                   className={`bans-filter__btn${bansFilter === "active" ? " bans-filter__btn--active" : ""}`}
                   onClick={() => { setBansFilter("active"); setBannedSearchQuery(""); }}
                 >Active</button>
                 <button
+                  aria-pressed={bansFilter === "old"}
                   className={`bans-filter__btn${bansFilter === "old" ? " bans-filter__btn--active" : ""}`}
                   onClick={() => { setBansFilter("old"); setBannedSearchQuery(""); }}
                 >Old</button>
@@ -522,16 +541,22 @@ const cdKeyToBanId = useMemo(() => {
               <input
                 className="search-input"
                 type="text"
+                aria-label="Search bans"
                 placeholder="Search by name, CD key, IP, reason…"
                 value={bannedSearchQuery}
                 onChange={(e) => setBannedSearchQuery(e.target.value)}
               />
-              <button className="refresh-btn refresh-btn--refresh" onClick={bansFilter === "active" ? fetchActiveBans : fetchBannedPlayers}><IconRefresh /><span className="refresh-btn__label"> Refresh</span></button>
+              <button className="refresh-btn refresh-btn--refresh" aria-label="Refresh" onClick={bansFilter === "active" ? fetchActiveBans : fetchBannedPlayers}><IconRefresh /><span className="refresh-btn__label" aria-hidden="true"> Refresh</span></button>
             </div>
+            <span className="result-count" aria-live="polite" aria-atomic="true">
+              {bansFilter === "active"
+                ? `${filteredBannedPlayers.length} of ${activeBansData.length} active ban${activeBansData.length !== 1 ? "s" : ""}`
+                : `${filteredAllBans.length} of ${inactiveBans.length} old ban${inactiveBans.length !== 1 ? "s" : ""}`}
+            </span>
             {bansFilter === "active" && (
               <>
-                {activeBansLoading && <p>Loading...</p>}
-                {activeBansError && <p style={{ color: "#c0323a" }}>Error: {activeBansError}</p>}
+                {activeBansLoading && <p role="status">Loading...</p>}
+                {activeBansError && <p role="alert" style={{ color: "#c0323a" }}>Error: {activeBansError}</p>}
                 {!activeBansLoading && !activeBansError && (
                   <div className="search-list">
                     {filteredBannedPlayers.length === 0
@@ -544,8 +569,8 @@ const cdKeyToBanId = useMemo(() => {
             )}
             {bansFilter === "old" && (
               <>
-                {bannedLoading && <p>Loading...</p>}
-                {bannedError && <p style={{ color: "#c0323a" }}>Error: {bannedError}</p>}
+                {bannedLoading && <p role="status">Loading...</p>}
+                {bannedError && <p role="alert" style={{ color: "#c0323a" }}>Error: {bannedError}</p>}
                 {!bannedLoading && !bannedError && (
                   <div className="search-list">
                     {filteredAllBans.length === 0
@@ -560,23 +585,25 @@ const cdKeyToBanId = useMemo(() => {
         )}
         {isDM && activePage === PAGES.ALL_PLAYERS && (
           <>
-<div className="list-toolbar">
+            <h2 className="sr-only">{PAGE_TITLES[PAGES.ALL_PLAYERS]}</h2>
+            <div className="list-toolbar">
               <input
                 className="search-input"
                 type="text"
+                aria-label="Search players"
                 placeholder="Search by name, CD key, IP, character…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               <button className="refresh-btn" onClick={() => setExpandGen(g => ({ v: g.v + 1, expanded: true }))}>Expand All</button>
               <button className="refresh-btn" onClick={() => setExpandGen(g => ({ v: g.v + 1, expanded: false }))}>Collapse All</button>
-              <button className="refresh-btn refresh-btn--refresh" onClick={fetchPlayerSearch}><IconRefresh /><span className="refresh-btn__label"> Refresh</span></button>
+              <button className="refresh-btn refresh-btn--refresh" aria-label="Refresh" onClick={fetchPlayerSearch}><IconRefresh /><span className="refresh-btn__label" aria-hidden="true"> Refresh</span></button>
             </div>
-            <span className="result-count">
+            <span className="result-count" aria-live="polite" aria-atomic="true">
               {filteredPlayerSearch.length} of {playerSearchData.length} result{playerSearchData.length !== 1 ? "s" : ""} — sorted by last logout
             </span>
-            {searchLoading && <p>Loading...</p>}
-            {searchError && <p style={{ color: "#c0323a" }}>Error: {searchError}</p>}
+            {searchLoading && <p role="status">Loading...</p>}
+            {searchError && <p role="alert" style={{ color: "#c0323a" }}>Error: {searchError}</p>}
             {!searchLoading && !searchError && (
               <div className="search-list">
                 {filteredPlayerSearch.length === 0
@@ -589,8 +616,8 @@ const cdKeyToBanId = useMemo(() => {
                       );
                       const insertAt = dividerIndex === -1 ? filteredPlayerSearch.length : dividerIndex;
                       const divider = (
-                        <div key="__divider" className="search-list__divider">
-                          <span>Older than 24 hours</span>
+                        <div key="__divider" className="search-list__divider" role="separator" aria-label="Older than 24 hours">
+                          <span aria-hidden="true">Older than 24 hours</span>
                         </div>
                       );
                       const cards = filteredPlayerSearch.map((entry) => (
@@ -633,7 +660,7 @@ const cdKeyToBanId = useMemo(() => {
             onDisplayNameChanged={(name) => setDisplayName(name)}
           />
         )}
-      </div>
+      </main>
       {banTarget && (
         <BanModal
           target={banTarget}

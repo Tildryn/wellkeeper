@@ -4,6 +4,8 @@ import { IconCopy, IconCheck } from "./Icons";
 import "./BannedPlayerItem.css";
 import "./PlayerSearchItem.css";
 
+const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 function UUIDReveal({ displayName, uuid }) {
   const [showUuid, setShowUuid] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -21,16 +23,18 @@ function UUIDReveal({ displayName, uuid }) {
 
   return (
     <>
-      <span
+      <button
         className={`search-card__session banned-card__name-reveal${showUuid ? " banned-card__name-reveal--active" : ""}`}
         onClick={() => setShowUuid((v) => !v)}
+        aria-expanded={showUuid}
+        aria-label={showUuid ? `Hide UUID for ${displayName}` : `Show UUID for ${displayName}`}
       >
         {displayName}
-      </span>
+      </button>
       {showUuid && uuid && (
-        <button className="banned-card__uuid-copy" onClick={handleCopy} title="Copy UUID">
+        <button className="banned-card__uuid-copy" onClick={handleCopy} aria-label="Copy UUID">
           <code className="banned-card__uuid-text">{uuid}</code>
-          <span className={`banned-card__copy-icon${copied ? " banned-card__copy-icon--done" : ""}`}>
+          <span className={`banned-card__copy-icon${copied ? " banned-card__copy-icon--done" : ""}`} aria-hidden="true">
             {copied ? <IconCheck /> : <IconCopy />}
           </span>
         </button>
@@ -52,7 +56,7 @@ function TagList({ items, onRemove, removingItems }) {
               className="search-card__tag-remove"
               onClick={() => onRemove(item)}
               disabled={removingItems?.has(item)}
-              title="Remove"
+              aria-label={`Remove ${item}`}
             >×</button>
           </span>
         ) : (
@@ -87,13 +91,43 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
   const [convertSaving, setConvertSaving] = useState(false);
   const [convertError, setConvertError] = useState(null);
 
+  const convertDialogRef = useRef(null);
+  const convertTriggerRef = useRef(null);
+  const unbanYesRef = useRef(null);
+  const expungeYesRef = useRef(null);
+
+  useEffect(() => { if (confirmingUnban) unbanYesRef.current?.focus(); }, [confirmingUnban]);
+  useEffect(() => { if (confirmingExpunge) expungeYesRef.current?.focus(); }, [confirmingExpunge]);
+
   function startConvertToTemporary() {
+    convertTriggerRef.current = document.activeElement;
     const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
     const pad = (n) => String(n).padStart(2, "0");
     setConvertDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
     setConvertTime(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
     setConvertError(null);
     setConvertingToTemporary(true);
+  }
+
+  useEffect(() => {
+    if (!convertingToTemporary) return;
+    const first = convertDialogRef.current?.querySelector(FOCUSABLE);
+    first?.focus();
+    return () => convertTriggerRef.current?.focus();
+  }, [convertingToTemporary]);
+
+  function handleConvertKeyDown(e) {
+    if (e.key === "Escape" && !convertSaving) { setConvertingToTemporary(false); return; }
+    if (e.key !== "Tab") return;
+    const focusable = Array.from(convertDialogRef.current?.querySelectorAll(FOCUSABLE) ?? []);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
   }
 
   function handleConvertToTemporary() {
@@ -119,6 +153,15 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
   const [addSaving, setAddSaving] = useState(false);
   const [addError, setAddError] = useState(null);
   const [removingItems, setRemovingItems] = useState(new Set());
+  const [saveAnnouncement, setSaveAnnouncement] = useState(false);
+  const saveAnnouncementTimer = useRef(null);
+
+  function announceSaved() {
+    setSaveAnnouncement(true);
+    clearTimeout(saveAnnouncementTimer.current);
+    saveAnnouncementTimer.current = setTimeout(() => setSaveAnnouncement(false), 2500);
+  }
+  useEffect(() => () => clearTimeout(saveAnnouncementTimer.current), []);
 
   function handleRemove(removeBodyKey, item) {
     setRemovingItems((prev) => new Set(prev).add(item));
@@ -148,7 +191,7 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
     setReasonError(null);
     const newReason = reasonDraft.trim() || null;
     onEditBan({ ban_reason: newReason })
-      .then(() => { setEditingReason(false); setCurrentBanReason(newReason); })
+      .then(() => { setEditingReason(false); setCurrentBanReason(newReason); announceSaved(); })
       .catch((err) => setReasonError(err.message))
       .finally(() => setReasonSaving(false));
   }
@@ -165,7 +208,7 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
     setAddSaving(true);
     setAddError(null);
     onEditBan({ [bodyKey]: [val] })
-      .then(() => setAddingField(null))
+      .then(() => { setAddingField(null); announceSaved(); })
       .catch((err) => setAddError(err.message))
       .finally(() => setAddSaving(false));
   }
@@ -175,13 +218,14 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
       <div className="search-card__row">
         <span className="search-card__label">{label}</span>
         {addingField !== fieldKey && (
-          <button className="banned-card__add-btn" onClick={() => startAdd(fieldKey)} title={`Add ${label.toLowerCase()}`}>+</button>
+          <button className="banned-card__add-btn" onClick={() => startAdd(fieldKey)} aria-label={`Add ${label.toLowerCase()}`}>+</button>
         )}
         <TagList items={items} onRemove={(item) => handleRemove(removeBodyKey, item)} removingItems={removingItems} />
         {addingField === fieldKey && (
           <div className="banned-card__add-row">
             <input
               className="banned-card__reason-input"
+              aria-label={label}
               value={addDraft}
               onChange={(e) => setAddDraft(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleAdd(bodyKey); if (e.key === "Escape") setAddingField(null); }}
@@ -195,24 +239,34 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
             <button className="banned-card__reason-cancel" onClick={() => setAddingField(null)} disabled={addSaving}>
               Cancel
             </button>
-            {addError && <span className="banned-card__reason-error">{addError}</span>}
+            {addError && <span className="banned-card__reason-error" role="alert">{addError}</span>}
           </div>
         )}
       </div>
     );
   }
 
+  const convertibleBadge = isActive && !currentBanTemporary;
+  const permanentBadgeClass = `banned-card__type banned-card__type--${currentBanTemporary ? "temporary" : "permanent"}${convertibleBadge ? " banned-card__type--convertible" : ""}`;
+
   return (
     <div className="search-card">
       <div className="search-card__header">
         <span className="search-card__label">Ban</span>
         <code className="search-card__cdkey">#{ban_id}</code>
-        <span
-          className={`banned-card__type banned-card__type--${currentBanTemporary ? "temporary" : "permanent"}${isActive && !currentBanTemporary ? " banned-card__type--convertible" : ""}`}
-          onClick={isActive && !currentBanTemporary ? startConvertToTemporary : undefined}
-        >
-          {currentBanTemporary ? "Temporary" : "Permanent"}
-        </span>
+        {convertibleBadge ? (
+          <button
+            className={permanentBadgeClass}
+            onClick={startConvertToTemporary}
+            aria-label="Permanent — convert to temporary ban"
+          >
+            Permanent
+          </button>
+        ) : (
+          <span className={permanentBadgeClass}>
+            {currentBanTemporary ? "Temporary" : "Permanent"}
+          </span>
+        )}
         {statusLabel && (
           <span className={`banned-card__status banned-card__status--${statusLabel.toLowerCase()}`}>
             {statusLabel}
@@ -225,16 +279,16 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
           {confirmingUnban && (
             <div className="cdkeys-confirm">
               <span className="cdkeys-confirm__label">Unban?</span>
-              <button className="cdkeys-confirm__yes" onClick={() => { setConfirmingUnban(false); onUnban(); }}>Yes</button>
-              <button className="cdkeys-confirm__no" onClick={() => setConfirmingUnban(false)}>No</button>
+              <button ref={unbanYesRef} className="cdkeys-confirm__yes" aria-label="Confirm unban" onClick={() => { setConfirmingUnban(false); onUnban(); }}>Yes</button>
+              <button className="cdkeys-confirm__no" aria-label="Cancel unban" onClick={() => setConfirmingUnban(false)}>No</button>
             </div>
           )}
           <button className="banned-card__expunge-btn" onClick={() => setConfirmingExpunge(true)} disabled={confirmingExpunge}>Expunge</button>
           {confirmingExpunge && (
             <div className="cdkeys-confirm">
               <span className="cdkeys-confirm__label">Expunge?</span>
-              <button className="cdkeys-confirm__yes" onClick={() => { setConfirmingExpunge(false); onExpunge(); }}>Yes</button>
-              <button className="cdkeys-confirm__no" onClick={() => setConfirmingExpunge(false)}>No</button>
+              <button ref={expungeYesRef} className="cdkeys-confirm__yes" aria-label="Confirm expunge" onClick={() => { setConfirmingExpunge(false); onExpunge(); }}>Yes</button>
+              <button className="cdkeys-confirm__no" aria-label="Cancel expunge" onClick={() => setConfirmingExpunge(false)}>No</button>
             </div>
           )}
         </div>
@@ -266,6 +320,7 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
           <>
             <input
               className="banned-card__reason-input"
+              aria-label="Ban reason"
               value={reasonDraft}
               onChange={(e) => setReasonDraft(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleSaveReason(); if (e.key === "Escape") setEditingReason(false); }}
@@ -279,7 +334,7 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
             <button className="banned-card__reason-cancel" onClick={() => setEditingReason(false)} disabled={reasonSaving}>
               Cancel
             </button>
-            {reasonError && <span className="banned-card__reason-error">{reasonError}</span>}
+            {reasonError && <span className="banned-card__reason-error" role="alert">{reasonError}</span>}
           </>
         ) : (
           <>
@@ -287,7 +342,7 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
               ? <span className="banned-card__reason-text">{currentBanReason}</span>
               : <em className="search-card__empty">No reason given</em>
             }
-            <button className="banned-card__reason-edit" onClick={startEditReason}>Edit</button>
+            <button className="banned-card__reason-edit" aria-label="Edit ban reason" onClick={startEditReason}>Edit</button>
           </>
         )}
       </div>
@@ -302,22 +357,35 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
               ? formatTs(currentBanEnd)
               : currentBanTemporary
                 ? "—"
-                : <span
-                    className={`banned-card__perm${isActive ? " banned-card__perm--clickable" : ""}`}
-                    onClick={isActive ? startConvertToTemporary : undefined}
-                  >Permanent</span>
+                : isActive
+                  ? <button
+                      className="banned-card__perm banned-card__perm--clickable"
+                      onClick={startConvertToTemporary}
+                      aria-label="Permanent — convert to temporary ban"
+                    >Permanent</button>
+                  : <span className="banned-card__perm">Permanent</span>
             }
           </span>
         </span>
       </div>
+      {saveAnnouncement && <p role="status" className="sr-only" aria-atomic="true">Saved.</p>}
       {convertingToTemporary && (
         <div className="ban-modal__overlay" onClick={() => !convertSaving && setConvertingToTemporary(false)}>
-          <div className="ban-modal" onClick={(e) => e.stopPropagation()}>
-            <h2 className="ban-modal__title">Convert to Temporary Ban</h2>
+          <div
+            className="ban-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="convert-modal-title"
+            ref={convertDialogRef}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={handleConvertKeyDown}
+          >
+            <h2 className="ban-modal__title" id="convert-modal-title">Convert to Temporary Ban</h2>
             <div className="ban-modal__field">
-              <label className="ban-modal__label">Ban ends</label>
+              <label className="ban-modal__label" htmlFor="convert-end-date">Ban ends</label>
               <div className="ban-modal__datetime">
                 <input
+                  id="convert-end-date"
                   className="ban-modal__input ban-modal__input--date"
                   type="date"
                   value={convertDate}
@@ -327,13 +395,14 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
                 <input
                   className="ban-modal__input ban-modal__input--time"
                   type="time"
+                  aria-label="Ban end time"
                   value={convertTime}
                   onChange={(e) => setConvertTime(e.target.value)}
                   disabled={convertSaving}
                 />
               </div>
             </div>
-            {convertError && <p className="banned-card__reason-error">{convertError}</p>}
+            {convertError && <p className="banned-card__reason-error" role="alert">{convertError}</p>}
             <div className="ban-modal__actions">
               <button className="ban-modal__cancel" onClick={() => setConvertingToTemporary(false)} disabled={convertSaving}>Cancel</button>
               <button className="ban-modal__confirm" onClick={handleConvertToTemporary} disabled={convertSaving || !convertDate}>

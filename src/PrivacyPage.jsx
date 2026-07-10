@@ -2,11 +2,11 @@ import "./PrivacyPage.css";
 
 function PrivacyPage({ onBack }) {
   return (
-    <div className="privacy-page">
+    <main id="main-content" className="privacy-page">
       <div className="privacy-card">
         <div className="privacy-card__header">
           <h1 className="login-card__title">Privacy Policy</h1>
-          <button className="login-form__link" onClick={onBack}>← Back</button>
+          <button className="login-form__link" onClick={onBack} aria-label="Back to login"><span aria-hidden="true">← </span>Back</button>
         </div>
         <p className="privacy-card__updated">Last updated: July 2026</p>
 
@@ -52,10 +52,10 @@ function PrivacyPage({ onBack }) {
 
         <section className="privacy-section">
           <h2 className="privacy-section__heading">Contact</h2>
-          <p>For any questions regarding this policy or the data we hold, please contact the server administration team via our <a className="privacy-link" href="https://discord.gg/QUQx763d8q" target="_blank" rel="noopener noreferrer">Discord server</a>.</p>
+          <p>For any questions regarding this policy or the data we hold, please contact the server administration team via our <a className="privacy-link" href="https://discord.gg/QUQx763d8q" target="_blank" rel="noopener noreferrer">Discord server<span className="sr-only"> (opens in new tab)</span></a>.</p>
         </section>
       </div>
-    </div>
+    </main>
   );
 }
 

@@ -13,7 +13,7 @@
   gap: 10px;
   margin: 4px 0;
   color: var(--text);
-  opacity: 0.5;
+  opacity: 0.75;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -82,7 +82,7 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text);
-  opacity: 0.7;
+  opacity: 0.75;
   white-space: nowrap;
   min-width: 80px;
 
@@ -128,15 +128,15 @@
   border: 1px solid transparent;
   border-radius: 4px;
   padding: 0;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   font-size: 13px;
   line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: var(--text-muted);
+  color: var(--text);
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.15s, color 0.15s, border-color 0.15s;
@@ -167,7 +167,7 @@
 .search-card__empty {
   font-size: 12px;
   color: var(--text);
-  opacity: 0.5;
+  opacity: 0.75;
 }
 
 .search-card__collapsible-toggle {
@@ -187,11 +187,11 @@
 .search-card__collapsible-count,
 .search-card__collapsible-chevron {
   font-size: 10px;
-  opacity: 0.5;
+  opacity: 0.75;
 }
 
 .search-card__row--characters:not(.search-card__row--chars-open) .search-card__character-list,
-.search-card__row--characters:not(.search-card__row--chars-open) > .search-card__empty,
+.search-card__row--characters:not(.search-card__row--chars-open) .search-card__empty,
 .search-card__row--bans:not(.search-card__row--bans-open) .search-card__ban-list {
   display: none;
 }
@@ -244,7 +244,7 @@
   font-family: var(--mono);
   font-size: 11px;
   color: var(--text);
-  opacity: 0.6;
+  opacity: 0.75;
 }
 
 
@@ -257,7 +257,7 @@
 .search-card__session-sep {
   font-size: 12px;
   color: var(--text);
-  opacity: 0.4;
+  opacity: 0.75;
 }
 
 .search-card__session-label {
@@ -266,7 +266,7 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text);
-  opacity: 0.5;
+  opacity: 0.75;
 }
 
 .search-card__session-group {
@@ -354,7 +354,7 @@
   font-family: var(--mono);
   font-size: 12px;
   color: var(--text);
-  opacity: 0.7;
+  opacity: 0.75;
 }
 
 .ban-detail-modal {

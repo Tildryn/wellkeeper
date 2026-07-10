@@ -118,7 +118,7 @@
     width: 8ch;
     font-size: 11px;
     padding: 2px 4px;
-    opacity: 0.65;
+    opacity: 0.75;
   }
 }
 
@@ -138,7 +138,7 @@
     width: 15ch;
     font-size: 11px;
     padding: 2px 4px;
-    opacity: 0.65;
+    opacity: 0.75;
   }
 }
 
@@ -187,7 +187,7 @@
     padding: 0 2px;
     cursor: pointer;
     color: var(--text);
-    opacity: 0.4;
+    opacity: 0.75;
     font-size: 10px;
     flex-shrink: 0;
     line-height: 1;
@@ -259,6 +259,12 @@
   to   { transform: rotate(360deg); }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .player-card__spinner-ring {
+    animation: none;
+  }
+}
+
 /* ── Action buttons ──────────────────────────────────────────────────────── */
 
 .player-card__action-btn {
@@ -283,9 +289,14 @@
   gap: 5px;
 }
 
-.player-card__action-btn:hover {
+.player-card__action-btn:hover:not([aria-disabled="true"]) {
   background: var(--accent-bg);
   border-color: var(--accent-border);
+}
+
+.player-card__action-btn[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: default;
 }
 
 /* ── Ban / unban buttons ─────────────────────────────────────────────────── */
@@ -305,7 +316,7 @@
 
 .player-card__ban-btn {
   background: transparent;
-  color: #c0323a;
+  color: var(--danger);
 }
 
 .player-card__ban-btn:hover {
@@ -315,7 +326,7 @@
 
 .player-card__unban-btn {
   background: rgba(192, 50, 58, 0.15);
-  color: #e05560;
+  color: var(--text-h);
 }
 
 .player-card__unban-btn:hover {

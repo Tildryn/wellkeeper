@@ -33,7 +33,7 @@ function LoginPage({ onLogin, onRegister, onPrivacy, onForgotPassword }) {
   }
 
   return (
-    <div className="login-page">
+    <main id="main-content" className="login-page">
       <div className="login-card">
         <h1 className="login-card__title">Wellkeeper</h1>
         <p className="login-card__subtitle">Sign in to continue</p>
@@ -66,12 +66,12 @@ function LoginPage({ onLogin, onRegister, onPrivacy, onForgotPassword }) {
                 disabled={loading}
                 required
               />
-              <button type="button" className="login-form__eye-btn" onClick={() => setShowPw((v) => !v)} tabIndex={-1} aria-label={showPw ? "Hide password" : "Show password"}>
+              <button type="button" className="login-form__eye-btn" onClick={() => setShowPw((v) => !v)} aria-label={showPw ? "Hide password" : "Show password"}>
                 {showPw ? <IconEyeOff /> : <IconEye />}
               </button>
             </div>
           </div>
-          {error && <p className="login-form__error">{error}</p>}
+          {error && <p role="alert" className="login-form__error">{error}</p>}
           <button className="login-form__submit" type="submit" disabled={loading}>
             {loading ? "Signing in…" : "Sign in"}
           </button>
@@ -87,7 +87,7 @@ function LoginPage({ onLogin, onRegister, onPrivacy, onForgotPassword }) {
           </div>
         </form>
       </div>
-    </div>
+    </main>
   );
 }
 

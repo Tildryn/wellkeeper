@@ -23,8 +23,7 @@ function PwField({ id, label, value, onChange, disabled }) {
           type="button"
           className="login-form__eye-btn"
           onClick={() => setVisible((v) => !v)}
-          tabIndex={-1}
-          aria-label={visible ? "Hide password" : "Show password"}
+          aria-label={visible ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
         >
           {visible ? <IconEyeOff /> : <IconEye />}
         </button>
@@ -66,14 +65,14 @@ function ResetPasswordPage({ token, onSuccess }) {
   }
 
   return (
-    <div className="login-page">
+    <main id="main-content" className="login-page">
       <div className="login-card">
         <h1 className="login-card__title">Wellkeeper</h1>
         <p className="login-card__subtitle">Set a new password</p>
         <form className="login-form" onSubmit={handleSubmit}>
           {success ? (
             <>
-              <p className="login-form__success">Password reset successfully.</p>
+              <p role="status" className="login-form__success">Password reset successfully.</p>
               <button type="button" className="login-form__submit" onClick={onSuccess}>
                 Go to login
               </button>
@@ -94,7 +93,7 @@ function ResetPasswordPage({ token, onSuccess }) {
                 onChange={(e) => { setConfirmPassword(e.target.value); setError(null); }}
                 disabled={loading}
               />
-              {error && <p className="login-form__error">{error}</p>}
+              {error && <p role="alert" className="login-form__error">{error}</p>}
               <button
                 className="login-form__submit"
                 type="submit"
@@ -106,7 +105,7 @@ function ResetPasswordPage({ token, onSuccess }) {
           )}
         </form>
       </div>
-    </div>
+    </main>
   );
 }
 

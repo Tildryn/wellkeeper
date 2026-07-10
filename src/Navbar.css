@@ -132,10 +132,9 @@
   white-space: nowrap;
 }
 
-.navbar__display-name::before {
-  content: "as ";
+.navbar__display-name-prefix {
   font-weight: 400;
-  opacity: 0.5;
+  opacity: 0.75;
 }
 
 .navbar__logout {
