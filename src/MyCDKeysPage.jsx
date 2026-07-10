@@ -111,7 +111,7 @@ function MyCDKeysPage({ authToken, cdKeys, cdKeysLoading, cdKeysError, onDeleted
             <div className="cdkeys-table__header" role="row">
               <span role="columnheader">CD Key</span>
               <span role="columnheader">DM</span>
-              <span role="columnheader" aria-label="Actions"></span>
+              <span role="columnheader"><span className="sr-only">Actions</span></span>
             </div>
             {cdKeys.map(({ public_cd_key, dm }) => (
               <div key={public_cd_key} className="cdkeys-table__row" role="row">

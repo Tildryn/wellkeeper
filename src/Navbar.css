@@ -134,7 +134,7 @@
 
 .navbar__display-name-prefix {
   font-weight: 400;
-  opacity: 0.75;
+  color: var(--text);
 }
 
 .navbar__logout {

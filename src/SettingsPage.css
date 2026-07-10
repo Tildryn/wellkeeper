@@ -54,7 +54,6 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text);
-  opacity: 0.75;
   white-space: nowrap;
   text-align: right;
 }

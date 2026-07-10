@@ -176,8 +176,8 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
 
   const setEditActive = useContext(EditLockContext);
   useEffect(() => {
-    setEditActive?.(editingReason || addingField !== null);
-  }, [editingReason, addingField]);
+    setEditActive?.(editingReason || addingField !== null || convertingToTemporary);
+  }, [editingReason, addingField, convertingToTemporary]);
   useEffect(() => () => setEditActive?.(false), []);
 
   function startEditReason() {

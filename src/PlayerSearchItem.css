@@ -82,7 +82,6 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text);
-  opacity: 0.75;
   white-space: nowrap;
   min-width: 80px;
 
@@ -187,7 +186,6 @@
 .search-card__collapsible-count,
 .search-card__collapsible-chevron {
   font-size: 10px;
-  opacity: 0.75;
 }
 
 .search-card__row--characters:not(.search-card__row--chars-open) .search-card__character-list,
@@ -266,7 +264,6 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text);
-  opacity: 0.75;
 }
 
 .search-card__session-group {
