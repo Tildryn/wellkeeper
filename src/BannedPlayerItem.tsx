@@ -3,23 +3,29 @@ import EditLockContext from "./EditLockContext";
 import { IconCopy, IconCheck } from "./Icons";
 import "./BannedPlayerItem.css";
 import "./PlayerSearchItem.css";
+import type { BanEditFields } from "./types";
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-function UUIDReveal({ displayName, uuid }) {
+interface UUIDRevealProps {
+  displayName: string;
+  uuid: string;
+}
+
+function UUIDReveal({ displayName, uuid }: UUIDRevealProps) {
   const [showUuid, setShowUuid] = useState(false);
   const [copied, setCopied] = useState(false);
-  const timeoutRef = useRef(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function handleCopy() {
     navigator.clipboard.writeText(uuid).then(() => {
       setCopied(true);
-      clearTimeout(timeoutRef.current);
+      clearTimeout(timeoutRef.current ?? undefined);
       timeoutRef.current = setTimeout(() => setCopied(false), 2000);
     });
   }
 
-  useEffect(() => () => clearTimeout(timeoutRef.current), []);
+  useEffect(() => () => clearTimeout(timeoutRef.current ?? undefined), []);
 
   return (
     <>
@@ -43,7 +49,13 @@ function UUIDReveal({ displayName, uuid }) {
   );
 }
 
-function TagList({ items, onRemove, removingItems }) {
+interface TagListProps {
+  items: string[];
+  onRemove?: ((item: string) => void) | null;
+  removingItems?: Set<string>;
+}
+
+function TagList({ items, onRemove, removingItems }: TagListProps) {
   if (!items || items.length === 0) return <span className="search-card__empty">—</span>;
   const sorted = [...items].sort((a, b) => a.length - b.length);
   return (
@@ -67,13 +79,31 @@ function TagList({ items, onRemove, removingItems }) {
   );
 }
 
-function formatTs(ts) {
+function formatTs(ts: string | null | undefined): string {
   if (!ts) return "—";
   const d = new Date(ts);
   return isNaN(d.getTime()) ? "—" : d.toLocaleString();
 }
 
-function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_reason, ban_start, ban_end, ban_temporary, creator_display_name, ban_creator, ban_lifter, lifter_display_name, onUnban, onExpunge, onEditBan }) {
+export interface BannedPlayerItemProps {
+  ban_id: number;
+  player_names: string[];
+  cd_keys: string[];
+  ip_addresses: string[];
+  ban_reason: string | null;
+  ban_start: string;
+  ban_end: string | null;
+  ban_temporary: boolean;
+  creator_display_name: string | null;
+  ban_creator: string | null;
+  ban_lifter: string | null;
+  lifter_display_name: string | null;
+  onUnban: () => void;
+  onExpunge: () => void;
+  onEditBan: (fields: BanEditFields) => Promise<void>;
+}
+
+function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_reason, ban_start, ban_end, ban_temporary, creator_display_name, ban_creator, ban_lifter, lifter_display_name, onUnban, onExpunge, onEditBan }: BannedPlayerItemProps) {
   const [currentBanTemporary, setCurrentBanTemporary] = useState(ban_temporary);
   const [currentBanEnd, setCurrentBanEnd] = useState(ban_end);
 
@@ -89,20 +119,20 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
   const [convertDate, setConvertDate] = useState("");
   const [convertTime, setConvertTime] = useState("00:00");
   const [convertSaving, setConvertSaving] = useState(false);
-  const [convertError, setConvertError] = useState(null);
+  const [convertError, setConvertError] = useState<string | null>(null);
 
-  const convertDialogRef = useRef(null);
-  const convertTriggerRef = useRef(null);
-  const unbanYesRef = useRef(null);
-  const expungeYesRef = useRef(null);
+  const convertDialogRef = useRef<HTMLDivElement | null>(null);
+  const convertTriggerRef = useRef<HTMLElement | null>(null);
+  const unbanYesRef = useRef<HTMLButtonElement | null>(null);
+  const expungeYesRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => { if (confirmingUnban) unbanYesRef.current?.focus(); }, [confirmingUnban]);
   useEffect(() => { if (confirmingExpunge) expungeYesRef.current?.focus(); }, [confirmingExpunge]);
 
   function startConvertToTemporary() {
-    convertTriggerRef.current = document.activeElement;
+    convertTriggerRef.current = document.activeElement as HTMLElement | null;
     const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    const pad = (n) => String(n).padStart(2, "0");
+    const pad = (n: number) => String(n).padStart(2, "0");
     setConvertDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
     setConvertTime(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
     setConvertError(null);
@@ -111,15 +141,15 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
 
   useEffect(() => {
     if (!convertingToTemporary) return;
-    const first = convertDialogRef.current?.querySelector(FOCUSABLE);
+    const first = convertDialogRef.current?.querySelector<HTMLElement>(FOCUSABLE);
     first?.focus();
     return () => convertTriggerRef.current?.focus();
   }, [convertingToTemporary]);
 
-  function handleConvertKeyDown(e) {
+  function handleConvertKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Escape" && !convertSaving) { setConvertingToTemporary(false); return; }
     if (e.key !== "Tab") return;
-    const focusable = Array.from(convertDialogRef.current?.querySelectorAll(FOCUSABLE) ?? []);
+    const focusable = Array.from(convertDialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []);
     if (!focusable.length) return;
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
@@ -143,29 +173,30 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
       .catch((err) => setConvertError(err.message))
       .finally(() => setConvertSaving(false));
   }
+
   const [editingReason, setEditingReason] = useState(false);
   const [reasonDraft, setReasonDraft] = useState("");
   const [reasonSaving, setReasonSaving] = useState(false);
-  const [reasonError, setReasonError] = useState(null);
+  const [reasonError, setReasonError] = useState<string | null>(null);
 
-  const [addingField, setAddingField] = useState(null);
+  const [addingField, setAddingField] = useState<string | null>(null);
   const [addDraft, setAddDraft] = useState("");
   const [addSaving, setAddSaving] = useState(false);
-  const [addError, setAddError] = useState(null);
-  const [removingItems, setRemovingItems] = useState(new Set());
+  const [addError, setAddError] = useState<string | null>(null);
+  const [removingItems, setRemovingItems] = useState<Set<string>>(new Set());
   const [saveAnnouncement, setSaveAnnouncement] = useState(false);
-  const saveAnnouncementTimer = useRef(null);
+  const saveAnnouncementTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function announceSaved() {
     setSaveAnnouncement(true);
-    clearTimeout(saveAnnouncementTimer.current);
+    clearTimeout(saveAnnouncementTimer.current ?? undefined);
     saveAnnouncementTimer.current = setTimeout(() => setSaveAnnouncement(false), 2500);
   }
-  useEffect(() => () => clearTimeout(saveAnnouncementTimer.current), []);
+  useEffect(() => () => clearTimeout(saveAnnouncementTimer.current ?? undefined), []);
 
-  function handleRemove(removeBodyKey, item) {
+  function handleRemove(removeBodyKey: string, item: string) {
     setRemovingItems((prev) => new Set(prev).add(item));
-    onEditBan({ [removeBodyKey]: [item] })
+    onEditBan({ [removeBodyKey]: [item] } as BanEditFields)
       .catch(() => {})
       .finally(() => setRemovingItems((prev) => {
         const next = new Set(prev);
@@ -196,24 +227,24 @@ function BannedPlayerItem({ ban_id, player_names, cd_keys, ip_addresses, ban_rea
       .finally(() => setReasonSaving(false));
   }
 
-  function startAdd(field) {
+  function startAdd(field: string) {
     setAddDraft("");
     setAddError(null);
     setAddingField(field);
   }
 
-  function handleAdd(bodyKey) {
+  function handleAdd(bodyKey: string) {
     const val = addDraft.trim();
     if (!val) return;
     setAddSaving(true);
     setAddError(null);
-    onEditBan({ [bodyKey]: [val] })
+    onEditBan({ [bodyKey]: [val] } as BanEditFields)
       .then(() => { setAddingField(null); announceSaved(); })
       .catch((err) => setAddError(err.message))
       .finally(() => setAddSaving(false));
   }
 
-  function renderTagRow(label, items, fieldKey, bodyKey, removeBodyKey, placeholder) {
+  function renderTagRow(label: string, items: string[], fieldKey: string, bodyKey: string, removeBodyKey: string, placeholder: string) {
     return (
       <div className="search-card__row">
         <span className="search-card__label">{label}</span>

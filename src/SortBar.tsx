@@ -1,6 +1,18 @@
 import "./SortBar.css";
 
-const DEFAULT_FIELDS = [
+interface SortField {
+  key: string;
+  label: string;
+}
+
+interface SortBarProps {
+  sortKey: string;
+  sortDir: "asc" | "desc";
+  onSort: (key: string) => void;
+  fields?: SortField[];
+}
+
+const DEFAULT_FIELDS: SortField[] = [
   { key: "online_player_name", label: "Name" },
   { key: "character_name",     label: "Character" },
   { key: "public_cd_key",      label: "CD Key" },
@@ -8,7 +20,7 @@ const DEFAULT_FIELDS = [
   { key: "logged_on_at",       label: "Logged On" },
 ];
 
-function SortBar({ sortKey, sortDir, onSort, fields = DEFAULT_FIELDS }) {
+function SortBar({ sortKey, sortDir, onSort, fields = DEFAULT_FIELDS }: SortBarProps) {
   return (
     <div className="sort-bar">
       <span className="sort-bar__label">Sort by</span>

@@ -4,10 +4,15 @@ import "./PlayerListItem.css";
 import "./BannedPlayerItem.css";
 import { IconScroll, IconGlobe } from "./Icons";
 import BannedPlayerItem from "./BannedPlayerItem";
+import type { Character, Ban, PlayerSession, BanEditFields, ExpandGen } from "./types";
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-function TagList({ items }) {
+interface TagListProps {
+  items: string[];
+}
+
+function TagList({ items }: TagListProps) {
   if (!items || items.length === 0) return <span className="search-card__empty">—</span>;
   const sorted = [...items].sort((a, b) => a.length - b.length);
   return (
@@ -19,7 +24,11 @@ function TagList({ items }) {
   );
 }
 
-function CharacterList({ characters }) {
+interface CharacterListProps {
+  characters: Character[];
+}
+
+function CharacterList({ characters }: CharacterListProps) {
   if (!characters || characters.length === 0) return <span className="search-card__empty">—</span>;
   return (
     <div className="search-card__character-list">
@@ -37,13 +46,18 @@ function CharacterList({ characters }) {
   );
 }
 
-function formatTs(ts) {
+function formatTs(ts: string | null | undefined): string {
   if (!ts) return "—";
   const d = new Date(ts);
-  return isNaN(d) ? ts : d.toLocaleString();
+  return isNaN(d.getTime()) ? ts : d.toLocaleString();
 }
 
-function BanSummaryRow({ ban, onClick }) {
+interface BanSummaryRowProps {
+  ban: Ban;
+  onClick: () => void;
+}
+
+function BanSummaryRow({ ban, onClick }: BanSummaryRowProps) {
   const isActive = !ban.ban_end || new Date(ban.ban_end) > new Date();
   const statusLabel = isActive ? "Active" : ban.ban_lifter ? "Lifted" : "Expired";
   return (
@@ -60,15 +74,31 @@ function BanSummaryRow({ ban, onClick }) {
   );
 }
 
-function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, characters, onBan, onUnban, isBanned, session, playerBans, onUnbanById, onExpungeById, onEditBanById, expandGen }) {
-  const [selectedBan, setSelectedBan] = useState(null);
+interface PlayerSearchItemProps {
+  public_cd_key: string;
+  player_names: string[];
+  ip_addresses: string[];
+  characters: Character[];
+  onBan: () => void;
+  onUnban: () => void;
+  isBanned: boolean;
+  session: PlayerSession | null;
+  playerBans: Ban[];
+  onUnbanById: (banId: number) => void;
+  onExpungeById: (banId: number) => void;
+  onEditBanById: (banId: number, fields: BanEditFields) => Promise<void>;
+  expandGen: ExpandGen | null;
+}
+
+function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, characters, onBan, onUnban, isBanned, session, playerBans, onUnbanById, onExpungeById, onEditBanById, expandGen }: PlayerSearchItemProps) {
+  const [selectedBan, setSelectedBan] = useState<Ban | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [charsExpanded, setCharsExpanded] = useState(() => window.innerWidth > 600);
   const [bansExpanded, setBansExpanded] = useState(() => window.innerWidth > 600);
 
-  const banDetailRef = useRef(null);
-  const prevFocusRef = useRef(null);
-  const confirmYesRef = useRef(null);
+  const banDetailRef = useRef<HTMLDivElement | null>(null);
+  const prevFocusRef = useRef<HTMLElement | null>(null);
+  const confirmYesRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => { if (confirming) confirmYesRef.current?.focus(); }, [confirming]);
 
@@ -78,8 +108,8 @@ function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, character
     setBansExpanded(expandGen.expanded);
   }, [expandGen]);
 
-  function openBanDetail(ban) {
-    prevFocusRef.current = document.activeElement;
+  function openBanDetail(ban: Ban) {
+    prevFocusRef.current = document.activeElement as HTMLElement | null;
     setSelectedBan(ban);
   }
 
@@ -89,15 +119,15 @@ function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, character
 
   useEffect(() => {
     if (!selectedBan) return;
-    const first = banDetailRef.current?.querySelector(FOCUSABLE);
+    const first = banDetailRef.current?.querySelector<HTMLElement>(FOCUSABLE);
     first?.focus();
     return () => prevFocusRef.current?.focus();
   }, [selectedBan?.ban_id]);
 
-  function handleDetailKeyDown(e) {
+  function handleDetailKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Escape") { closeBanDetail(); return; }
     if (e.key !== "Tab") return;
-    const focusable = Array.from(banDetailRef.current?.querySelectorAll(FOCUSABLE) ?? []);
+    const focusable = Array.from(banDetailRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []);
     if (!focusable.length) return;
     const first = focusable[0];
     const last = focusable[focusable.length - 1];

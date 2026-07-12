@@ -1,6 +1,10 @@
 import "./PrivacyPage.css";
 
-function PrivacyPage({ onBack }) {
+interface PrivacyPageProps {
+  onBack: () => void;
+}
+
+function PrivacyPage({ onBack }: PrivacyPageProps) {
   return (
     <main id="main-content" className="privacy-page">
       <div className="privacy-card">

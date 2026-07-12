@@ -1,13 +1,17 @@
 import { useState } from "react";
 import "./LoginPage.css";
 
-function ForgotPasswordPage({ onBack }) {
+interface ForgotPasswordPageProps {
+  onBack: () => void;
+}
+
+function ForgotPasswordPage({ onBack }: ForgotPasswordPageProps) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState(null);
-  const [error, setError] = useState(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -18,11 +22,11 @@ function ForgotPasswordPage({ onBack }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      const body = await res.json();
+      const body = await res.json() as { error?: string; message?: string };
       if (!res.ok) throw new Error(body.error ?? `Server error (${res.status}).`);
-      setMessage(body.message);
+      setMessage(body.message ?? null);
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : "Unknown error.");
     } finally {
       setLoading(false);
     }

@@ -1,28 +1,35 @@
 import { useState, useRef, useEffect } from "react";
 import "./BanModal.css";
+import type { BanTarget, BanPayload } from "./types";
+
+interface BanModalProps {
+  target: BanTarget;
+  onConfirm: (payload: BanPayload) => void;
+  onCancel: () => void;
+}
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-function BanModal({ target, onConfirm, onCancel }) {
+function BanModal({ target, onConfirm, onCancel }: BanModalProps) {
   const [reason, setReason] = useState("");
   const [temporary, setTemporary] = useState(false);
   const [banDate, setBanDate] = useState("");
   const [banTime, setBanTime] = useState("00:00");
 
-  const dialogRef = useRef(null);
-  const prevFocusRef = useRef(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const prevFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    prevFocusRef.current = document.activeElement;
-    const first = dialogRef.current?.querySelector(FOCUSABLE);
+    prevFocusRef.current = document.activeElement as HTMLElement | null;
+    const first = dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE);
     first?.focus();
     return () => prevFocusRef.current?.focus();
   }, []);
 
-  function handleKeyDown(e) {
+  function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Escape") { onCancel(); return; }
     if (e.key !== "Tab") return;
-    const focusable = Array.from(dialogRef.current?.querySelectorAll(FOCUSABLE) ?? []);
+    const focusable = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []);
     if (focusable.length === 0) return;
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
@@ -80,7 +87,7 @@ function BanModal({ target, onConfirm, onCancel }) {
               setTemporary(checked);
               if (checked) {
                 const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
-                const pad = (n) => String(n).padStart(2, "0");
+                const pad = (n: number) => String(n).padStart(2, "0");
                 setBanDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
                 setBanTime(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
               } else {

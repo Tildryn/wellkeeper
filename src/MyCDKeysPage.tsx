@@ -1,29 +1,39 @@
 import { useState, useEffect, useRef } from "react";
 import { IconX } from "./Icons";
 import "./MyCDKeysPage.css";
+import type { CdKey } from "./types";
 
-function MyCDKeysPage({ authToken, cdKeys, cdKeysLoading, cdKeysError, onDeleted, onRefreshCdKeys }) {
-  const [otp, setOtp] = useState(null);
+interface MyCDKeysPageProps {
+  authToken: string;
+  cdKeys: CdKey[];
+  cdKeysLoading: boolean;
+  cdKeysError: string | null;
+  onDeleted: (cdKey: string) => void;
+  onRefreshCdKeys: () => void;
+}
+
+function MyCDKeysPage({ authToken, cdKeys, cdKeysLoading, cdKeysError, onDeleted, onRefreshCdKeys }: MyCDKeysPageProps) {
+  const [otp, setOtp] = useState<string | null>(null);
   const [otpAnnouncement, setOtpAnnouncement] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
-  const [otpError, setOtpError] = useState(null);
-  const [deleting, setDeleting] = useState(null);
-  const [deleteError, setDeleteError] = useState(null);
-  const [confirmKey, setConfirmKey] = useState(null);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [confirmKey, setConfirmKey] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
-  const pollRef = useRef(null);
-  const baseCountRef = useRef(0);
-  const checkTimeoutRef = useRef(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const baseCountRef = useRef<number>(0);
+  const checkTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!otp) {
-      clearInterval(pollRef.current);
-      clearTimeout(checkTimeoutRef.current);
+      clearInterval(pollRef.current ?? undefined);
+      clearTimeout(checkTimeoutRef.current ?? undefined);
       pollRef.current = null;
       return;
     }
     pollRef.current = setInterval(onRefreshCdKeys, 5000);
-    return () => clearInterval(pollRef.current);
+    return () => clearInterval(pollRef.current ?? undefined);
   }, [otp]);
 
   function checkNow() {
@@ -38,7 +48,7 @@ function MyCDKeysPage({ authToken, cdKeys, cdKeysLoading, cdKeysError, onDeleted
     }
   }, [cdKeys.length]);
 
-  function handleDelete(public_cd_key) {
+  function handleDelete(public_cd_key: string) {
     setDeleting(public_cd_key);
     setDeleteError(null);
     fetch(`${import.meta.env.VITE_API_URL}/linked_cd_keys`, {
@@ -48,7 +58,7 @@ function MyCDKeysPage({ authToken, cdKeys, cdKeysLoading, cdKeysError, onDeleted
     })
       .then(async (res) => {
         if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
+          const body = await res.json().catch(() => ({})) as { error?: string };
           throw new Error(body.error ?? `Server error (${res.status}).`);
         }
         onDeleted(public_cd_key);
@@ -67,7 +77,7 @@ function MyCDKeysPage({ authToken, cdKeys, cdKeysLoading, cdKeysError, onDeleted
     })
       .then((res) => {
         if (!res.ok) throw new Error(`Server error (${res.status}).`);
-        return res.json();
+        return res.json() as Promise<{ otp: string }>;
       })
       .then((data) => {
         setOtp(data.otp);

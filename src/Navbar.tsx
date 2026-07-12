@@ -1,10 +1,18 @@
 import "./Navbar.css";
-import { PAGES, PAGE_TITLES } from "./pages";
+import { PAGES, PAGE_TITLES, type Page } from "./pages";
 import { IconWell, IconCog } from "./Icons";
 
-const DM_NAV_ITEMS = [PAGES.ONLINE_PLAYERS, PAGES.ALL_PLAYERS, PAGES.BANS];
+interface NavbarProps {
+  activePage: Page;
+  onNavigate: (page: Page) => void;
+  onLogout: () => void;
+  isDM: boolean;
+  displayName: string | null;
+}
 
-function Navbar({ activePage, onNavigate, onLogout, isDM, displayName }) {
+const DM_NAV_ITEMS: Page[] = [PAGES.ONLINE_PLAYERS, PAGES.ALL_PLAYERS, PAGES.BANS];
+
+function Navbar({ activePage, onNavigate, onLogout, isDM, displayName }: NavbarProps) {
   return (
     <nav className="navbar" aria-label="Main navigation">
       <span className="navbar__title">

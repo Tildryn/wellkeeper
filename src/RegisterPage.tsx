@@ -2,18 +2,26 @@ import { useState } from "react";
 import { IconEye, IconEyeOff } from "./Icons";
 import "./LoginPage.css";
 
-function RegisterPage({ onBack, onRegistered, onPrivacy, initialEmail = "", initialPassword = "" }) {
+interface RegisterPageProps {
+  onBack: () => void;
+  onRegistered: () => void;
+  onPrivacy: () => void;
+  initialEmail?: string;
+  initialPassword?: string;
+}
+
+function RegisterPage({ onBack, onRegistered, onPrivacy, initialEmail = "", initialPassword = "" }: RegisterPageProps) {
   const [email, setEmail] = useState(initialEmail);
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState(initialPassword);
   const [confirm, setConfirm] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  function handleSubmit(e) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (password !== confirm) {
       setError("Passwords do not match.");

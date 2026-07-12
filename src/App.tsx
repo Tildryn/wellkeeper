@@ -17,56 +17,61 @@ import ForgotPasswordPage from "./ForgotPasswordPage";
 import ResetPasswordPage from "./ResetPasswordPage";
 import SettingsPage from "./SettingsPage";
 import { IconRefresh } from "./Icons";
-import { PAGES, PAGE_TITLES } from "./pages";
+import { PAGES, PAGE_TITLES, type Page } from "./pages";
+import type { OnlinePlayer, Ban, BanBase, BanDetails, PlayerData, PlayerSession, CdKey, BanTarget, BanPayload, BanEditFields, ExpandGen } from "./types";
 import "./App.css";
 
-function sortPlayers(players, key, dir) {
+type AuthView = "login" | "register" | "reset_password" | "forgot_password" | "privacy";
+
+function sortPlayers(players: OnlinePlayer[], key: string, dir: string): OnlinePlayer[] {
   return [...players].sort((a, b) => {
-    const av = a[key];
-    const bv = b[key];
+    const av = a[key as keyof OnlinePlayer] as string;
+    const bv = b[key as keyof OnlinePlayer] as string;
     const cmp = av < bv ? -1 : av > bv ? 1 : 0;
     return dir === "asc" ? cmp : -cmp;
   });
 }
 
 function App() {
-  const [authToken, setAuthToken] = useState(null);
+  const [authToken, setAuthToken] = useState<string | null>(null);
   const [resetToken] = useState(() => new URLSearchParams(window.location.search).get("token") ?? "");
-  const [authView, setAuthView] = useState(() => new URLSearchParams(window.location.search).get("token") ? "reset_password" : "login");
+  const [authView, setAuthView] = useState<AuthView>(() =>
+    new URLSearchParams(window.location.search).get("token") ? "reset_password" : "login"
+  );
   const [registerPrefill, setRegisterPrefill] = useState({ email: "", password: "" });
-  const [activePage, setActivePage] = useState(PAGES.ONLINE_PLAYERS);
+  const [activePage, setActivePage] = useState<Page>(PAGES.ONLINE_PLAYERS);
   const [sortKey, setSortKey] = useState("logged_on_at");
-  const [sortDir, setSortDir] = useState("desc");
-  const [players, setPlayers] = useState([]);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [players, setPlayers] = useState<OnlinePlayer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [activeBansData, setActiveBansData] = useState([]);
+  const [error, setError] = useState<string | null>(null);
+  const [activeBansData, setActiveBansData] = useState<Ban[]>([]);
   const [activeBansLoading, setActiveBansLoading] = useState(false);
-  const [activeBansError, setActiveBansError] = useState(null);
-  const [bannedPlayers, setBannedPlayers] = useState([]);
+  const [activeBansError, setActiveBansError] = useState<string | null>(null);
+  const [bannedPlayers, setBannedPlayers] = useState<Ban[]>([]);
   const [bannedLoading, setBannedLoading] = useState(false);
-  const [bannedError, setBannedError] = useState(null);
-  const [playerSearchData, setPlayerSearchData] = useState([]);
+  const [bannedError, setBannedError] = useState<string | null>(null);
+  const [playerSearchData, setPlayerSearchData] = useState<PlayerData[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [searchError, setSearchError] = useState(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [bannedSearchQuery, setBannedSearchQuery] = useState("");
   const [bansFilter, setBansFilter] = useState("active");
-  const [playerSessions, setPlayerSessions] = useState([]);
-  const [cdKeys, setCdKeys] = useState([]);
+  const [playerSessions, setPlayerSessions] = useState<PlayerSession[]>([]);
+  const [cdKeys, setCdKeys] = useState<CdKey[]>([]);
   const [cdKeysLoading, setCdKeysLoading] = useState(false);
-  const [cdKeysError, setCdKeysError] = useState(null);
-  const [accountUuid, setAccountUuid] = useState(null);
-  const [displayName, setDisplayName] = useState(null);
-  const [banTarget, setBanTarget] = useState(null);
-  const [expandGen, setExpandGen] = useState({ v: 0, expanded: null });
-  const [onlineExpandGen, setOnlineExpandGen] = useState({ v: 0, expanded: null });
-  const [actionError, setActionError] = useState(null);
-  const mainRef = useRef(null);
+  const [cdKeysError, setCdKeysError] = useState<string | null>(null);
+  const [accountUuid, setAccountUuid] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [banTarget, setBanTarget] = useState<BanTarget | null>(null);
+  const [expandGen, setExpandGen] = useState<ExpandGen>({ v: 0, expanded: null });
+  const [onlineExpandGen, setOnlineExpandGen] = useState<ExpandGen>({ v: 0, expanded: null });
+  const [actionError, setActionError] = useState<string | null>(null);
+  const mainRef = useRef<HTMLElement | null>(null);
 
   const useDummyData = import.meta.env.VITE_USE_DUMMY_DATA === "true";
   const editLockRef = useRef(false);
-  function setEditActive(active) { editLockRef.current = active; }
+  function setEditActive(active: boolean) { editLockRef.current = active; }
 
   const isDM = useMemo(() => cdKeys.some((k) => k.dm), [cdKeys]);
 
@@ -77,7 +82,7 @@ function App() {
     mainRef.current?.focus();
   }, [activePage]);
 
-  function authHeaders(extra = {}) {
+  function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
     return authToken
       ? { Authorization: `Bearer ${authToken}`, ...extra }
       : { ...extra };
@@ -92,7 +97,7 @@ function App() {
     }
     setCdKeysLoading(true);
     setCdKeysError(null);
-    const getJson = (url) =>
+    const getJson = (url: string) =>
       fetch(url, { cache: "no-store", headers: { Authorization: `Bearer ${authToken}` } })
         .then((res) => {
           if (!res.ok) throw new Error(`Server error (${res.status}).`);
@@ -103,7 +108,7 @@ function App() {
       getJson(`${import.meta.env.VITE_API_URL}/account_uuid`),
       getJson(`${import.meta.env.VITE_API_URL}/display_name`),
     ]).then(([keysResult, uuidResult, displayNameResult]) => {
-      const keys = keysResult.status === "fulfilled" ? (keysResult.value.cd_keys ?? []) : [];
+      const keys: CdKey[] = keysResult.status === "fulfilled" ? (keysResult.value.cd_keys ?? []) : [];
       setCdKeys(keys);
       setCdKeysError(keysResult.status === "rejected" ? keysResult.reason.message : null);
       if (uuidResult.status === "fulfilled") setAccountUuid(uuidResult.value.uuid ?? uuidResult.value ?? null);
@@ -116,31 +121,31 @@ function App() {
   function fetchCdKeys() {
     fetch(`${import.meta.env.VITE_API_URL}/linked_cd_keys`, {
       cache: "no-store",
-      headers: { Authorization: `Bearer ${authToken}` },
+      headers: { Authorization: `Bearer ${authToken ?? ""}` },
     })
       .then((res) => {
         if (!res.ok) throw new Error();
-        return res.json();
+        return res.json() as Promise<{ cd_keys?: CdKey[] }>;
       })
       .then((data) => setCdKeys(data.cd_keys ?? []))
       .catch(() => {});
   }
 
-  function navigateTo(page) {
+  function navigateTo(page: Page) {
     if (page === PAGES.ONLINE_PLAYERS) setLoading(true);
     setActivePage(page);
   }
 
   function fetchPlayers(silent = false) {
     if (useDummyData) {
-      setPlayers(dummy_data);
+      setPlayers(dummy_data as OnlinePlayer[]);
       return;
     }
     if (!silent) { setLoading(true); setError(null); }
-    const getJson = (url) =>
+    const getJson = (url: string) =>
       fetch(url, { cache: "no-store", headers: authHeaders() }).then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
+        return res.json() as Promise<OnlinePlayer[]>;
       });
     getJson(`${import.meta.env.VITE_API_URL}/online_players`)
       .then((data) => {
@@ -152,11 +157,11 @@ function App() {
       });
   }
 
-  function openBanModal(cdKeys, playerNames, ipAddresses) {
+  function openBanModal(cdKeys: string[], playerNames: string[], ipAddresses: string[]) {
     setBanTarget({ cdKeys, playerNames, ipAddresses });
   }
 
-  function banPlayer({ ban_reason, ban_temporary, ban_end }) {
+  function banPlayer({ ban_reason, ban_temporary, ban_end }: BanPayload) {
     if (!banTarget) return;
     const { cdKeys, playerNames, ipAddresses } = banTarget;
     setBanTarget(null);
@@ -177,7 +182,7 @@ function App() {
     });
   }
 
-  function unbanPlayer(banId) {
+  function unbanPlayer(banId: number) {
     if (useDummyData) return;
     fetch(`${import.meta.env.VITE_API_URL}/unban`, {
       method: "PATCH",
@@ -198,7 +203,7 @@ function App() {
     });
   }
 
-  function expungeBan(banId) {
+  function expungeBan(banId: number) {
     if (useDummyData) return;
     fetch(`${import.meta.env.VITE_API_URL}/expunge`, {
       method: "DELETE",
@@ -219,14 +224,14 @@ function App() {
     });
   }
 
-  async function editBan(banId, fields) {
+  async function editBan(banId: number, fields: BanEditFields): Promise<void> {
     const res = await fetch(`${import.meta.env.VITE_API_URL}/bans/${banId}`, {
       method: "PATCH",
       headers: authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(fields),
     });
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
+      const body = await res.json().catch(() => ({})) as { error?: string };
       throw new Error(body.error ?? `Server error (${res.status}).`);
     }
     fetchActiveBans();
@@ -239,21 +244,21 @@ function App() {
     fetch(`${import.meta.env.VITE_API_URL}/bans`, { cache: "no-store", headers: authHeaders() })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
+        return res.json() as Promise<BanBase[]>;
       })
       .then((bans) =>
         Promise.allSettled(
           bans.map((b) =>
             fetch(`${import.meta.env.VITE_API_URL}/bans/${b.ban_id}`, { cache: "no-store", headers: authHeaders() })
-              .then((r) => r.ok ? r.json() : { ban_id: b.ban_id, cd_keys: [], player_names: [], ip_addresses: [] })
-              .catch(() => ({ ban_id: b.ban_id, cd_keys: [], player_names: [], ip_addresses: [] }))
+              .then((r) => r.ok ? r.json() as Promise<BanDetails> : { ban_id: b.ban_id, cd_keys: [], player_names: [], ip_addresses: [] } as BanDetails)
+              .catch(() => ({ ban_id: b.ban_id, cd_keys: [], player_names: [], ip_addresses: [] } as BanDetails))
           )
         ).then((results) => {
-          const detailMap = {};
+          const detailMap: Record<number, BanDetails> = {};
           results.forEach((r) => { if (r.status === "fulfilled") detailMap[r.value.ban_id] = r.value; });
           return bans.map((b) => {
-            const d = detailMap[b.ban_id] ?? {};
-            return { ...b, cd_keys: d.cd_keys ?? [], player_names: d.player_names ?? [], ip_addresses: d.ip_addresses ?? [] };
+            const d = detailMap[b.ban_id];
+            return { ...b, cd_keys: d?.cd_keys ?? [], player_names: d?.player_names ?? [], ip_addresses: d?.ip_addresses ?? [] } as Ban;
           });
         })
       )
@@ -273,21 +278,21 @@ function App() {
     fetch(`${import.meta.env.VITE_API_URL}/active_bans`, { cache: "no-store", headers: authHeaders() })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
+        return res.json() as Promise<BanBase[]>;
       })
       .then((bans) =>
         Promise.allSettled(
           bans.map((b) =>
             fetch(`${import.meta.env.VITE_API_URL}/bans/${b.ban_id}`, { cache: "no-store", headers: authHeaders() })
-              .then((r) => r.ok ? r.json() : { ban_id: b.ban_id, cd_keys: [], player_names: [], ip_addresses: [] })
-              .catch(() => ({ ban_id: b.ban_id, cd_keys: [], player_names: [], ip_addresses: [] }))
+              .then((r) => r.ok ? r.json() as Promise<BanDetails> : { ban_id: b.ban_id, cd_keys: [], player_names: [], ip_addresses: [] } as BanDetails)
+              .catch(() => ({ ban_id: b.ban_id, cd_keys: [], player_names: [], ip_addresses: [] } as BanDetails))
           )
         ).then((results) => {
-          const detailMap = {};
+          const detailMap: Record<number, BanDetails> = {};
           results.forEach((r) => { if (r.status === "fulfilled") detailMap[r.value.ban_id] = r.value; });
           return bans.map((b) => {
-            const d = detailMap[b.ban_id] ?? {};
-            return { ...b, cd_keys: d.cd_keys ?? [], player_names: d.player_names ?? [], ip_addresses: d.ip_addresses ?? [] };
+            const d = detailMap[b.ban_id];
+            return { ...b, cd_keys: d?.cd_keys ?? [], player_names: d?.player_names ?? [], ip_addresses: d?.ip_addresses ?? [] } as Ban;
           });
         })
       )
@@ -304,7 +309,7 @@ function App() {
   function fetchPlayerSearch() {
     setSearchLoading(true);
     setSearchError(null);
-    const getJson = (url) =>
+    const getJson = (url: string) =>
       fetch(url, { cache: "no-store", headers: authHeaders() }).then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -314,10 +319,10 @@ function App() {
       getJson(`${import.meta.env.VITE_API_URL}/player_sessions`),
     ]).then(([playerResult, sessionResult]) => {
       if (playerResult.status === "fulfilled")
-        setPlayerSearchData(Array.isArray(playerResult.value) ? playerResult.value.filter((e) => e.public_cd_key) : []);
+        setPlayerSearchData(Array.isArray(playerResult.value) ? (playerResult.value as PlayerData[]).filter((e) => e.public_cd_key) : []);
       else setSearchError(playerResult.reason.message);
       if (sessionResult.status === "fulfilled" && Array.isArray(sessionResult.value))
-        setPlayerSessions(sessionResult.value);
+        setPlayerSessions(sessionResult.value as PlayerSession[]);
       setSearchLoading(false);
     });
   }
@@ -347,7 +352,7 @@ function App() {
     }
   }, [activePage, authToken, isDM]);
 
-  function handleSort(key) {
+  function handleSort(key: string) {
     if (key === sortKey) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
@@ -366,8 +371,8 @@ function App() {
     [activeBansData]
   );
 
-const cdKeyToBanId = useMemo(() => {
-    const map = {};
+  const cdKeyToBanId = useMemo(() => {
+    const map: Record<string, number> = {};
     activeBansData.forEach((b) => { (b.cd_keys ?? []).forEach((k) => { map[k] = b.ban_id; }); });
     return map;
   }, [activeBansData]);
@@ -402,7 +407,7 @@ const cdKeyToBanId = useMemo(() => {
   }, [inactiveBans, bannedSearchQuery]);
 
   const cdKeyToBans = useMemo(() => {
-    const map = {};
+    const map: Record<string, Ban[]> = {};
     bannedPlayers.forEach((b) => {
       (b.cd_keys ?? []).forEach((k) => {
         if (!map[k]) map[k] = [];
@@ -413,7 +418,7 @@ const cdKeyToBanId = useMemo(() => {
   }, [bannedPlayers]);
 
   const sessionMap = useMemo(() => {
-    const map = {};
+    const map: Record<string, PlayerSession> = {};
     playerSessions.forEach((s) => { map[s.public_cd_key] = s; });
     return map;
   }, [playerSessions]);
@@ -502,7 +507,7 @@ const cdKeyToBanId = useMemo(() => {
                 <button className="refresh-btn" onClick={() => setOnlineExpandGen(g => ({ v: g.v + 1, expanded: true }))}>Expand All</button>
                 <button className="refresh-btn" onClick={() => setOnlineExpandGen(g => ({ v: g.v + 1, expanded: false }))}>Collapse All</button>
               </div>
-              <button className="refresh-btn refresh-btn--refresh" aria-label="Refresh" onClick={fetchPlayers}><IconRefresh /><span className="refresh-btn__label" aria-hidden="true"> Refresh</span></button>
+              <button className="refresh-btn refresh-btn--refresh" aria-label="Refresh" onClick={() => fetchPlayers()}><IconRefresh /><span className="refresh-btn__label" aria-hidden="true"> Refresh</span></button>
             </div>
             {loading && <p role="status">Loading...</p>}
             {error && <p role="alert" style={{ color: "#c0323a" }}>Error: {error}</p>}

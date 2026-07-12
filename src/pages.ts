@@ -4,9 +4,11 @@ export const PAGES = {
   ALL_PLAYERS:    2,
   MY_CD_KEYS:     3,
   SETTINGS:       4,
-};
+} as const;
 
-export const PAGE_TITLES = {
+export type Page = typeof PAGES[keyof typeof PAGES];
+
+export const PAGE_TITLES: Record<Page, string> = {
   [PAGES.ONLINE_PLAYERS]: "Online Players",
   [PAGES.BANS]:           "Bans",
   [PAGES.ALL_PLAYERS]:    "All Players",

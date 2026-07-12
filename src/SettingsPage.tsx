@@ -2,7 +2,19 @@ import { useState, useEffect } from "react";
 import { IconEye, IconEyeOff } from "./Icons";
 import "./SettingsPage.css";
 
-function PasswordInput({ id, label, value, onChange, disabled, readOnly, onFocus, autoComplete, placeholder }) {
+interface PasswordInputProps {
+  id: string;
+  label?: string;
+  value: string;
+  onChange: React.ChangeEventHandler<HTMLInputElement>;
+  disabled?: boolean;
+  readOnly?: boolean;
+  onFocus?: React.FocusEventHandler<HTMLInputElement>;
+  autoComplete?: string;
+  placeholder?: string;
+}
+
+function PasswordInput({ id, label, value, onChange, disabled, readOnly, onFocus, autoComplete, placeholder }: PasswordInputProps) {
   const [visible, setVisible] = useState(false);
   return (
     <div className="settings-form__pw-wrapper">
@@ -22,7 +34,7 @@ function PasswordInput({ id, label, value, onChange, disabled, readOnly, onFocus
         type="button"
         className="settings-form__eye-btn"
         onClick={() => setVisible((v) => !v)}
-        aria-label={visible ? `Hide ${label || "password"}` : `Show ${label || "password"}`}
+        aria-label={visible ? `Hide ${label ?? "password"}` : `Show ${label ?? "password"}`}
       >
         {visible ? <IconEyeOff /> : <IconEye />}
       </button>
@@ -30,7 +42,14 @@ function PasswordInput({ id, label, value, onChange, disabled, readOnly, onFocus
   );
 }
 
-function SettingsPage({ authToken, accountUuid, displayName, onDisplayNameChanged }) {
+interface SettingsPageProps {
+  authToken: string;
+  accountUuid: string | null;
+  displayName: string | null;
+  onDisplayNameChanged: (name: string) => void;
+}
+
+function SettingsPage({ authToken, accountUuid, displayName, onDisplayNameChanged }: SettingsPageProps) {
   const [currentEmail, setCurrentEmail] = useState("");
 
   useEffect(() => {
@@ -38,14 +57,14 @@ function SettingsPage({ authToken, accountUuid, displayName, onDisplayNameChange
       cache: "no-store",
       headers: { Authorization: `Bearer ${authToken}` },
     })
-      .then((res) => res.ok ? res.json() : null)
+      .then((res) => res.ok ? res.json() as Promise<{ email?: string }> : null)
       .then((data) => { if (data?.email) setCurrentEmail(data.email); })
       .catch(() => {});
   }, [authToken]);
 
   const [newDisplayName, setNewDisplayName] = useState("");
   const [displayNameLoading, setDisplayNameLoading] = useState(false);
-  const [displayNameError, setDisplayNameError] = useState(null);
+  const [displayNameError, setDisplayNameError] = useState<string | null>(null);
   const [displayNameSuccess, setDisplayNameSuccess] = useState(false);
 
   const [currentPasswordEmail, setCurrentPasswordEmail] = useState("");
@@ -56,18 +75,18 @@ function SettingsPage({ authToken, accountUuid, displayName, onDisplayNameChange
 
   const [newEmail, setNewEmail] = useState("");
   const [emailLoading, setEmailLoading] = useState(false);
-  const [emailError, setEmailError] = useState(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [emailSuccess, setEmailSuccess] = useState(false);
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
-  const [passwordError, setPasswordError] = useState(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   const busy = displayNameLoading || emailLoading || passwordLoading;
 
-  async function handleDisplayNameSubmit(e) {
+  async function handleDisplayNameSubmit(e: React.FormEvent) {
     e.preventDefault();
     setDisplayNameError(null);
     setDisplayNameSuccess(false);
@@ -78,19 +97,19 @@ function SettingsPage({ authToken, accountUuid, displayName, onDisplayNameChange
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({ display_name: newDisplayName }),
       });
-      const body = await res.json();
+      const body = await res.json() as { error?: string; display_name?: string };
       if (!res.ok) throw new Error(body.error ?? `Server error (${res.status}).`);
       setNewDisplayName("");
       setDisplayNameSuccess(true);
       onDisplayNameChanged(body.display_name ?? newDisplayName);
     } catch (err) {
-      setDisplayNameError(err.message);
+      setDisplayNameError(err instanceof Error ? err.message : "Unknown error.");
     } finally {
       setDisplayNameLoading(false);
     }
   }
 
-  async function handleEmailSubmit(e) {
+  async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
     setEmailError(null);
     setEmailSuccess(false);
@@ -101,20 +120,20 @@ function SettingsPage({ authToken, accountUuid, displayName, onDisplayNameChange
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({ email: newEmail, current_password: currentPasswordEmail }),
       });
-      const body = await res.json();
+      const body = await res.json() as { error?: string };
       if (!res.ok) throw new Error(body.error ?? `Server error (${res.status}).`);
       setCurrentEmail(newEmail);
       setNewEmail("");
       setCurrentPasswordEmail(""); setPwEmailReady(false);
       setEmailSuccess(true);
     } catch (err) {
-      setEmailError(err.message);
+      setEmailError(err instanceof Error ? err.message : "Unknown error.");
     } finally {
       setEmailLoading(false);
     }
   }
 
-  async function handlePasswordSubmit(e) {
+  async function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
     setPasswordError(null);
     setPasswordSuccess(false);
@@ -129,14 +148,14 @@ function SettingsPage({ authToken, accountUuid, displayName, onDisplayNameChange
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({ current_password: currentPasswordPw, new_password: newPassword }),
       });
-      const body = await res.json();
+      const body = await res.json() as { error?: string };
       if (!res.ok) throw new Error(body.error ?? `Server error (${res.status}).`);
       setNewPassword("");
       setConfirmPassword("");
       setCurrentPasswordPw(""); setPwPwReady(false);
       setPasswordSuccess(true);
     } catch (err) {
-      setPasswordError(err.message);
+      setPasswordError(err instanceof Error ? err.message : "Unknown error.");
     } finally {
       setPasswordLoading(false);
     }
@@ -174,7 +193,7 @@ function SettingsPage({ authToken, accountUuid, displayName, onDisplayNameChange
                 className="settings-form__input"
                 type="text"
                 autoComplete="nickname"
-                placeholder={displayName || "Your name"}
+                placeholder={displayName ?? "Your name"}
                 value={newDisplayName}
                 onChange={(e) => { setNewDisplayName(e.target.value); setDisplayNameSuccess(false); }}
                 disabled={displayNameLoading}

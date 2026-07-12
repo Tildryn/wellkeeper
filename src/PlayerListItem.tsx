@@ -2,8 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import "./PlayerListItem.css";
 import "./BannedPlayerItem.css";
 import { IconScroll, IconGlobe } from "./Icons";
+import type { ExpandGen } from "./types";
 
-const BootSpinner = ({ visible }) => (
+interface BootSpinnerProps {
+  visible: boolean;
+}
+
+const BootSpinner = ({ visible }: BootSpinnerProps) => (
   <span className={`player-card__boot-spinner${visible ? "" : " player-card__boot-spinner--hidden"}`}>
     <span className="sr-only">Kick pending</span>
     <svg className="player-card__spinner-ring" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -16,10 +21,22 @@ const BootSpinner = ({ visible }) => (
   </span>
 );
 
-function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_address, logged_on_at, onBan, onUnban, isBanned, expandGen }) {
+interface PlayerListItemProps {
+  online_player_name: string;
+  character_name: string;
+  public_cd_key: string;
+  ip_address: string;
+  logged_on_at: string;
+  onBan: () => void;
+  onUnban: () => void;
+  isBanned: boolean;
+  expandGen: ExpandGen | null;
+}
+
+function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_address, logged_on_at, onBan, onUnban, isBanned, expandGen }: PlayerListItemProps) {
   const [confirming, setConfirming] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const confirmYesRef = useRef(null);
+  const confirmYesRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => { if (confirming) confirmYesRef.current?.focus(); }, [confirming]);
 
@@ -34,7 +51,7 @@ function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_
   }
 
   return (
-    <div className={`player-card${isBanned ? " player-card--kick-pending" : ""}`} onClick={e => { if (!e.target.closest('button')) setExpanded(x => !x); }}>
+    <div className={`player-card${isBanned ? " player-card--kick-pending" : ""}`} onClick={e => { if (!(e.target as HTMLElement).closest('button')) setExpanded(x => !x); }}>
       <div className="player-card__primary">
         <span className="player-card__username">{online_player_name}</span>
         <span className="player-card__character">{character_name}</span>

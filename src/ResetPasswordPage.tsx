@@ -2,7 +2,15 @@ import { useState } from "react";
 import { IconEye, IconEyeOff } from "./Icons";
 import "./LoginPage.css";
 
-function PwField({ id, label, value, onChange, disabled }) {
+interface PwFieldProps {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  disabled: boolean;
+}
+
+function PwField({ id, label, value, onChange, disabled }: PwFieldProps) {
   const [visible, setVisible] = useState(false);
   return (
     <div className="login-form__field">
@@ -32,14 +40,19 @@ function PwField({ id, label, value, onChange, disabled }) {
   );
 }
 
-function ResetPasswordPage({ token, onSuccess }) {
+interface ResetPasswordPageProps {
+  token: string;
+  onSuccess: () => void;
+}
+
+function ResetPasswordPage({ token, onSuccess }: ResetPasswordPageProps) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
       setError("Passwords do not match.");
@@ -53,12 +66,12 @@ function ResetPasswordPage({ token, onSuccess }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, new_password: newPassword }),
       });
-      const body = await res.json();
+      const body = await res.json() as { error?: string };
       if (!res.ok) throw new Error(body.error ?? `Server error (${res.status}).`);
       setSuccess(true);
       window.history.replaceState({}, "", window.location.pathname);
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : "Unknown error.");
     } finally {
       setLoading(false);
     }

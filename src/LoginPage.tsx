@@ -2,14 +2,21 @@ import { useState } from "react";
 import { IconEye, IconEyeOff } from "./Icons";
 import "./LoginPage.css";
 
-function LoginPage({ onLogin, onRegister, onPrivacy, onForgotPassword }) {
+interface LoginPageProps {
+  onLogin: (token: string | null) => void;
+  onRegister: (email: string, password: string) => void;
+  onPrivacy: () => void;
+  onForgotPassword: () => void;
+}
+
+function LoginPage({ onLogin, onRegister, onPrivacy, onForgotPassword }: LoginPageProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
@@ -20,7 +27,7 @@ function LoginPage({ onLogin, onRegister, onPrivacy, onForgotPassword }) {
     })
       .then((res) => {
         if (!res.ok) throw new Error(res.status === 401 ? "Invalid email or password." : `Server error (${res.status}).`);
-        return res.json();
+        return res.json() as Promise<{ token?: string; access_token?: string }>;
       })
       .then((data) => {
         setLoading(false);
