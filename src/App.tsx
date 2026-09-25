@@ -515,6 +515,11 @@ function App() {
               <p className="result-count">No players are currently online.</p>
             )}
             {!loading && !error && onlinePlayers.length > 0 && (
+              <span className="result-count" aria-live="polite" aria-atomic="true">
+                {onlinePlayers.length} player{onlinePlayers.length !== 1 ? "s" : ""} online
+              </span>
+            )}
+            {!loading && !error && onlinePlayers.length > 0 && (
               <div className="player-list">
                 <div className="player-list__header">
                   <span>Player</span><span>Character</span><span>CD Key</span>

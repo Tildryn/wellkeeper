@@ -319,6 +319,33 @@ describe('App — online players page states', () => {
     expect(await screen.findByText(/no players are currently online/i)).toBeInTheDocument()
   })
 
+  it('shows how many players are online', async () => {
+    server.use(
+      http.get('http://localhost:3001/online_players', () =>
+        HttpResponse.json([
+          { public_cd_key: 'KEY-ZORRO', online_player_name: 'Zorro', character_name: 'El Zorro', ip_address: '10.0.0.3', logged_on_at: '2026-07-12 09:00:00' },
+          { public_cd_key: 'KEY-ALICE', online_player_name: 'Alice', character_name: 'Lady Alice', ip_address: '10.0.0.4', logged_on_at: '2026-07-11 09:00:00' },
+        ])
+      ),
+    )
+    const user = userEvent.setup()
+    await loginAsDM(user)
+    expect(await screen.findByText('2 players online')).toBeInTheDocument()
+  })
+
+  it('uses the singular when one player is online', async () => {
+    server.use(
+      http.get('http://localhost:3001/online_players', () =>
+        HttpResponse.json([
+          { public_cd_key: 'KEY-ALICE', online_player_name: 'Alice', character_name: 'Lady Alice', ip_address: '10.0.0.4', logged_on_at: '2026-07-11 09:00:00' },
+        ])
+      ),
+    )
+    const user = userEvent.setup()
+    await loginAsDM(user)
+    expect(await screen.findByText('1 player online')).toBeInTheDocument()
+  })
+
   it('shows an error alert when the online players fetch fails', async () => {
     server.use(
       http.get('http://localhost:3001/online_players', () =>
