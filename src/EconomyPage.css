@@ -1,0 +1,210 @@
+.economy {
+  /* Chart series, stepped for this app's dark surface. Neighbouring colours in
+     each stack were checked for colour-blind separation. */
+  --eco-blue: #3987e5;
+  --eco-blue-wash: rgba(57, 135, 229, 0.14);
+  --eco-aqua: #199e70;
+  --eco-yellow: #c98500;
+  --eco-magenta: #d55181;
+  --eco-green: #008300;
+  --eco-other: #9a9ca6;
+  --eco-ref: #d9b36a;
+  --eco-pos: #0ca30c;
+  --eco-neg: #ef6b63;
+
+  display: grid;
+  gap: 20px;
+  text-align: left;
+}
+
+.economy__section {
+  display: grid;
+  gap: 14px;
+}
+
+.economy__section h3 {
+  margin: 12px 0 0;
+  font-size: 20px;
+  color: var(--text-h);
+}
+
+.economy__sub {
+  margin: 0;
+  font-size: 14px;
+  max-width: 72ch;
+}
+
+.economy__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.economy__stat {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--code-bg);
+}
+
+.economy__stat-label {
+  font-size: 13px;
+}
+
+.economy__stat-value {
+  font-size: 24px;
+  font-weight: 650;
+  line-height: 1.2;
+  color: var(--text-h);
+  font-variant-numeric: tabular-nums;
+}
+
+.economy__stat-value--hero {
+  font-size: 34px;
+}
+
+.economy__stat-note {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.economy__pos { color: var(--eco-pos); }
+.economy__neg { color: var(--eco-neg); }
+
+.economy__card {
+  display: grid;
+  gap: 10px;
+  padding: 14px 14px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--code-bg);
+}
+
+.economy__card h4 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text-h);
+}
+
+.economy__chart {
+  position: relative;
+  width: 100%;
+}
+
+.economy__chart svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+
+.economy__chart svg:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.economy__grid { stroke: var(--border); stroke-width: 1; }
+.economy__axis { stroke: #4a4c57; stroke-width: 1; }
+.economy__ref { stroke: var(--eco-ref); stroke-width: 1; stroke-opacity: 0.7; }
+.economy__ref-text { font-size: 11px; fill: var(--eco-ref); }
+.economy__tick { font-size: 11px; fill: var(--text-muted); font-variant-numeric: tabular-nums; }
+.economy__area { fill: var(--eco-blue-wash); stroke: none; }
+.economy__line { fill: none; stroke: var(--eco-blue); stroke-width: 2; stroke-linejoin: round; }
+.economy__dot { fill: var(--eco-blue); stroke: var(--code-bg); stroke-width: 2; }
+.economy__hair { stroke: var(--text); stroke-width: 1; stroke-opacity: 0.5; }
+
+.economy__tip {
+  position: absolute;
+  pointer-events: none;
+  display: grid;
+  gap: 2px;
+  min-width: 150px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  box-shadow: var(--shadow);
+}
+
+.economy__tip strong {
+  font-size: 15px;
+  color: var(--text-h);
+}
+
+.economy__tip-row,
+.economy__legend span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.economy__tip-row b {
+  margin-left: auto;
+  padding-left: 10px;
+  color: var(--text-h);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.economy__tip i,
+.economy__legend i {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  flex: none;
+}
+
+.economy__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 13px;
+}
+
+.economy__empty {
+  margin: 8px 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.economy__details {
+  font-size: 13.5px;
+}
+
+.economy__details summary {
+  cursor: pointer;
+  color: var(--text-h);
+}
+
+.economy__table-wrap {
+  overflow-x: auto;
+  margin-top: 8px;
+}
+
+.economy__table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.economy__table-wrap th,
+.economy__table-wrap td {
+  padding: 5px 10px;
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+
+.economy__table-wrap th:first-child,
+.economy__table-wrap td:first-child {
+  text-align: left;
+}
+
+.economy__table-wrap th {
+  color: var(--text-h);
+  font-weight: 600;
+}

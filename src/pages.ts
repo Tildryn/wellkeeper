@@ -4,6 +4,7 @@ export const PAGES = {
   ALL_PLAYERS:    2,
   MY_CD_KEYS:     3,
   SETTINGS:       4,
+  ECONOMY:        5,
 } as const;
 
 export type Page = typeof PAGES[keyof typeof PAGES];
@@ -14,4 +15,5 @@ export const PAGE_TITLES: Record<Page, string> = {
   [PAGES.ALL_PLAYERS]:    "All Players",
   [PAGES.MY_CD_KEYS]:     "My CD Keys",
   [PAGES.SETTINGS]:       "Settings",
+  [PAGES.ECONOMY]:        "Economy",
 };

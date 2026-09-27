@@ -16,6 +16,7 @@ import PrivacyPage from "./PrivacyPage";
 import ForgotPasswordPage from "./ForgotPasswordPage";
 import ResetPasswordPage from "./ResetPasswordPage";
 import SettingsPage from "./SettingsPage";
+import EconomyPage from "./EconomyPage";
 import { IconRefresh } from "./Icons";
 import { PAGES, PAGE_TITLES, type Page } from "./pages";
 import type { OnlinePlayer, Ban, BanBase, BanDetails, PlayerData, PlayerSession, CdKey, BanTarget, BanPayload, BanEditFields, ExpandGen } from "./types";
@@ -652,6 +653,7 @@ function App() {
             )}
           </>
         )}
+        {isDM && activePage === PAGES.ECONOMY && <EconomyPage authToken={authToken} />}
         {activePage === PAGES.MY_CD_KEYS && (
           <MyCDKeysPage
             authToken={authToken}
