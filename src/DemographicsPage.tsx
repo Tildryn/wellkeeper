@@ -7,22 +7,36 @@ import "./DemographicsPage.css";
 // Who the characters are, from wkserver's /demographics: one snapshot of the
 // servervault per day. A snapshot is bucketed by character level, so leaving
 // out the low levels is done here by summing only the buckets wanted. Classes,
-// skills, and archetypes arrive as 2da rows, named by the response's labels.
+// races, skills, and archetypes arrive as 2da rows, named by the response's
+// labels.
+//
+// A snapshot also carries the same summary for V2 characters alone (those with
+// a VERSION player var), which the version switch picks between. Snapshots
+// from before 2026-09-29 have no V2 half and no races; for those the switch
+// falls back to every character and says so.
 //
 // Shares the Economy page's stat tiles, cards, and chart styles.
 
 type Bucket = {
   characters: number;
   multiclassed: number;
+  races?: Record<string, number>;
   classes: Record<string, [number, number]>;
   primary: Record<string, number>;
   feats: Record<string, number>;
   skills: Record<string, number[]>;
 };
-type Snapshot = { date: string; t: number; levels: Record<string, Bucket>; account_levels: Record<string, number> };
-type Counts = { date: string; characters: Record<string, number>; accounts: Record<string, number> };
+type Summary = { levels: Record<string, Bucket>; account_levels: Record<string, number> };
+type Snapshot = Summary & { date: string; t: number; v2?: Summary };
+type LevelCounts = { characters: Record<string, number>; accounts: Record<string, number> };
+type Counts = LevelCounts & { date: string; v2?: LevelCounts };
 type ArchetypeClass = { cls: number; selection: number; options: [number, string][] };
-type Labels = { classes: Record<string, string>; skills: Record<string, string>; archetypes: ArchetypeClass[] };
+type Labels = {
+  classes: Record<string, string>;
+  races?: Record<string, string>;
+  skills: Record<string, string>;
+  archetypes: ArchetypeClass[];
+};
 type Demographics = { history: Counts[]; snapshot: Snapshot | null; labels: Labels };
 
 // Characters below this level are the ones made and never played on: new
@@ -45,6 +59,10 @@ function merge(levels: Record<string, Bucket>, minLevel: number): Bucket {
     if (Number(level) < minLevel) continue;
     out.characters += b.characters;
     out.multiclassed += b.multiclassed ?? 0;
+    if (b.races) {
+      out.races ??= {};
+      for (const [r, n] of Object.entries(b.races)) out.races[r] = (out.races[r] ?? 0) + n;
+    }
     for (const [c, [n, l]] of Object.entries(b.classes)) {
       const e = (out.classes[c] ??= [0, 0]);
       e[0] += n;
@@ -155,16 +173,20 @@ function LevelColumns({ levels, minLevel }: { levels: Record<string, Bucket>; mi
   );
 }
 
-// Characters and accounts per day. Needs two snapshots to draw a line.
-function HistoryChart({ history, minLevel }: { history: Counts[]; minLevel: number }) {
+// Characters and accounts per day. Needs two snapshots to draw a line; with
+// v2Only, two that recorded the V2 characters.
+function HistoryChart({ history, minLevel, v2Only }: { history: Counts[]; minLevel: number; v2Only: boolean }) {
   const [box, W] = useWidth<HTMLDivElement>();
   const [hover, setHover] = useState<number | null>(null);
-  const points = history.map((h) => ({ date: h.date, characters: sumFrom(h.characters, minLevel), accounts: sumFrom(h.accounts, minLevel) }));
+  const points = history.flatMap((h) => {
+    const c = v2Only ? h.v2 : h;
+    return c ? [{ date: h.date, characters: sumFrom(c.characters, minLevel), accounts: sumFrom(c.accounts, minLevel) }] : [];
+  });
   if (points.length < 2) {
     return (
       <p className="economy__empty">
-        {points.length ? `The first snapshot was taken on ${dateLabel(points[0].date)}. ` : ""}
-        A snapshot is taken once a day, so this fills in from tomorrow.
+        {points.length ? `The first ${v2Only ? "snapshot of V2 characters" : "snapshot"} was taken on ${dateLabel(points[0].date)}. ` : ""}
+        A snapshot is taken once a day, so this fills in as the days go by.
       </p>
     );
   }
@@ -214,6 +236,34 @@ function HistoryChart({ history, minLevel }: { history: Counts[]; minLevel: numb
           <span className="economy__tip-row"><i className="demo-key--accounts" />Accounts<b>{fmt(hp.accounts)}</b></span>
         </div>
       )}
+    </div>
+  );
+}
+
+function RacesCard({ bucket, labels }: { bucket: Bucket; labels: Labels }) {
+  if (!bucket.races) {
+    return (
+      <div className="economy__card">
+        <h4>Races</h4>
+        <p className="economy__empty">Races were not recorded in snapshots before Sep 29, 2026.</p>
+      </div>
+    );
+  }
+  const rows = Object.entries(bucket.races)
+    .map(([r, n]) => ({ r, name: labels.races?.[r] ?? `Race ${r}`, n }))
+    .sort((a, b) => b.n - a.n);
+  const max = Math.max(...rows.map((r) => r.n), 1);
+
+  return (
+    <div className="economy__card">
+      <h4>Races</h4>
+      <div className="demo-bars">
+        {rows.map((r) => (
+          <BarRow key={r.r} label={r.name} value={fmt(r.n)} max={max}
+            segments={[{ n: r.n, className: "demo-seg--main" }]}
+            tip={<><strong>{r.name}</strong><span>{fmt(r.n)} characters, {pct(r.n, bucket.characters)} of them</span></>} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -382,6 +432,7 @@ interface DemographicsPageProps {
 function DemographicsPage({ authToken }: DemographicsPageProps) {
   const [date, setDate] = useState<string | null>(null);
   const [excludeNew, setExcludeNew] = useState(true);
+  const [v2Only, setV2Only] = useState(true);
   const [data, setData] = useState<Demographics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -413,10 +464,13 @@ function DemographicsPage({ authToken }: DemographicsPageProps) {
 
   const minLevel = excludeNew ? MIN_LEVEL : 1;
   const snapshot = data?.snapshot ?? null;
-  const bucket = useMemo(() => (snapshot ? merge(snapshot.levels, minLevel) : null), [snapshot, minLevel]);
-  const allCharacters = snapshot ? Object.values(snapshot.levels).reduce((s, b) => s + b.characters, 0) : 0;
-  const accounts = snapshot ? sumFrom(snapshot.account_levels, minLevel) : 0;
-  const median = snapshot ? medianLevel(snapshot.levels, minLevel) : null;
+  // The characters the page counts: the V2 half when asked for and recorded.
+  const noV2 = v2Only && snapshot !== null && !snapshot.v2;
+  const summary: Summary | null = snapshot ? (v2Only && snapshot.v2 ? snapshot.v2 : snapshot) : null;
+  const bucket = useMemo(() => (summary ? merge(summary.levels, minLevel) : null), [summary, minLevel]);
+  const allCharacters = summary ? Object.values(summary.levels).reduce((s, b) => s + b.characters, 0) : 0;
+  const accounts = summary ? sumFrom(summary.account_levels, minLevel) : 0;
+  const median = summary ? medianLevel(summary.levels, minLevel) : null;
   const dates = data ? [...data.history].reverse().map((h) => h.date) : [];
 
   return (
@@ -428,6 +482,12 @@ function DemographicsPage({ authToken }: DemographicsPageProps) {
             className={`bans-filter__btn${excludeNew ? " bans-filter__btn--active" : ""}`}>Level {MIN_LEVEL}+</button>
           <button aria-pressed={!excludeNew} onClick={() => setExcludeNew(false)}
             className={`bans-filter__btn${!excludeNew ? " bans-filter__btn--active" : ""}`}>All Levels</button>
+        </div>
+        <div className="bans-filter" role="group" aria-label="Character versions to count">
+          <button aria-pressed={v2Only} onClick={() => setV2Only(true)}
+            className={`bans-filter__btn${v2Only ? " bans-filter__btn--active" : ""}`}>V2 Only</button>
+          <button aria-pressed={!v2Only} onClick={() => setV2Only(false)}
+            className={`bans-filter__btn${!v2Only ? " bans-filter__btn--active" : ""}`}>With V1</button>
         </div>
         {dates.length > 0 && (
           <label className="demo-date">
@@ -448,7 +508,7 @@ function DemographicsPage({ authToken }: DemographicsPageProps) {
         <p className="economy__empty">No snapshot has been taken yet. The first is taken when wkserver starts with the servervault mounted.</p>
       )}
 
-      {!loading && !error && data && snapshot && bucket && (
+      {!loading && !error && data && snapshot && summary && bucket && (
         <>
           <section className="economy__section" aria-labelledby="demo-overview">
             <h3 id="demo-overview">Characters</h3>
@@ -457,7 +517,13 @@ function DemographicsPage({ authToken }: DemographicsPageProps) {
               {excludeNew
                 ? ` Characters below level ${MIN_LEVEL}, most of them made and never played, are left out.`
                 : " Every level is counted, including characters made and never played."}
+              {v2Only && !noV2 && " V1 characters that have not logged in since V2 are left out too."}
             </p>
+            {noV2 && (
+              <p className="demo-warning" role="note">
+                This snapshot is from before V1 and V2 characters were told apart, so every character is counted.
+              </p>
+            )}
             <div className="economy__stats">
               <div className="economy__stat">
                 <span className="economy__stat-label">Characters</span>
@@ -489,8 +555,10 @@ function DemographicsPage({ authToken }: DemographicsPageProps) {
                   <span><i className="demo-key--excluded" />Left out, below level {MIN_LEVEL}</span>
                 </div>
               )}
-              <LevelColumns levels={snapshot.levels} minLevel={minLevel} />
+              <LevelColumns levels={summary.levels} minLevel={minLevel} />
             </div>
+
+            <RacesCard bucket={bucket} labels={data.labels} />
           </section>
 
           <section className="economy__section" aria-labelledby="demo-classes">
@@ -514,7 +582,7 @@ function DemographicsPage({ authToken }: DemographicsPageProps) {
                   <span><i className="demo-key--accounts" />Accounts</span>
                 </div>
               )}
-              <HistoryChart history={data.history} minLevel={minLevel} />
+              <HistoryChart history={data.history} minLevel={minLevel} v2Only={v2Only} />
             </div>
           </section>
         </>

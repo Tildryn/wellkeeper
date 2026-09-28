@@ -21,6 +21,16 @@
   }
 }
 
+.demo-warning {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 13.5px;
+  color: var(--text-h);
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  background: var(--accent-bg);
+}
+
 .demo-note {
   margin: 0;
   font-size: 13px;
