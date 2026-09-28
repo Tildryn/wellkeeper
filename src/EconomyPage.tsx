@@ -1,5 +1,6 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { IconRefresh } from "./Icons";
+import { niceMax, useWidth } from "./chart";
 import "./EconomyPage.css";
 
 // History of the town's shared resources, from wkserver's /economy/:resource.
@@ -90,25 +91,6 @@ function foldFlows(flows: Flow[], config: ResourceConfig): DayFlows[] {
     d.net += amount;
   }
   return [...days.values()].sort((a, b) => a.t - b.t);
-}
-
-function useWidth<T extends HTMLElement>(): [React.RefObject<T | null>, number] {
-  const ref = useRef<T | null>(null);
-  const [width, setWidth] = useState(600);
-  useLayoutEffect(() => {
-    if (!ref.current || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver((entries) => setWidth(Math.max(300, entries[0].contentRect.width)));
-    ro.observe(ref.current);
-    return () => ro.disconnect();
-  }, []);
-  return [ref, width];
-}
-
-function niceMax(v: number): number {
-  if (v <= 0) return 10;
-  const p = Math.pow(10, Math.floor(Math.log10(v)));
-  for (const m of [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p;
-  return 10 * p;
 }
 
 function LevelChart({ levels, refs, title }: { levels: Level[]; refs?: [number, string][]; title: string }) {

@@ -1,0 +1,180 @@
+/* The Demographics page. Tiles, cards, ticks, and tooltips come from
+   EconomyPage.css; this adds the bar lists and the page's own series. */
+
+.demographics {
+  /* Main and multiclassed are two steps of one blue (an ordinal pair, checked
+     against the card surface). Characters and accounts in the history chart
+     are the first two categorical hues. */
+  --demo-main: #3987e5;
+  --demo-multi: #184f95;
+  --demo-pending: #5b5e6b;
+  --demo-excluded: #3a3c47;
+  --demo-characters: #3987e5;
+  --demo-accounts: #199e70;
+}
+
+/* On a phone the Refresh button sits over the toolbar's top right corner
+   (App.css), so the snapshot picker wraps rather than run under it. */
+@media (max-width: 600px) {
+  .demographics .list-toolbar {
+    padding-right: 44px;
+  }
+}
+
+.demo-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.demo-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.demo-card-head h4 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text-h);
+}
+
+.demo-date {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.demo-date select {
+  padding: 5px 8px;
+  font: inherit;
+  color: var(--text-h);
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+/* Bar lists */
+
+/* One grid per list, which each row joins as a subgrid, so the label column
+   is as wide as the list's longest label and every bar starts level. */
+.demo-bars {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) 1fr max-content;
+  column-gap: 10px;
+  row-gap: 2px;
+}
+
+.demo-bar {
+  position: relative;
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  padding: 3px 4px;
+  font-size: 13.5px;
+  border-radius: 4px;
+}
+
+.demo-bar:hover,
+.demo-bar:focus-visible {
+  background: var(--social-bg);
+  outline: none;
+}
+
+.demo-bar__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-h);
+}
+
+.demo-bar--muted .demo-bar__label {
+  color: var(--text);
+  font-style: italic;
+}
+
+.demo-bar__track {
+  display: flex;
+  gap: 2px;
+  height: 14px;
+}
+
+.demo-bar__seg {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+}
+
+.demo-bar__seg--end {
+  border-radius: 0 4px 4px 0;
+}
+
+.demo-bar__value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-h);
+}
+
+.demo-bar__tip {
+  left: 30%;
+  bottom: calc(100% + 4px);
+  z-index: 2;
+}
+
+.demo-seg--main    { background: var(--demo-main); }
+.demo-seg--multi   { background: var(--demo-multi); }
+.demo-seg--pending { background: var(--demo-pending); }
+
+.demo-key--main       { background: var(--demo-main); }
+.demo-key--multi      { background: var(--demo-multi); }
+.demo-key--excluded   { background: var(--demo-excluded); }
+.demo-key--characters { background: var(--demo-characters); }
+.demo-key--accounts   { background: var(--demo-accounts); }
+
+/* Archetypes: one small panel per class */
+
+.demo-archetypes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.demo-archetype {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 10px 10px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.demo-archetype h5 {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 4px 4px;
+  font-size: 14px;
+  color: var(--text-h);
+}
+
+.demo-archetype h5 span {
+  font-weight: 400;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Charts */
+
+.demo-col { fill: var(--demo-main); }
+.demo-col--excluded { fill: var(--demo-excluded); }
+
+.demo-line { fill: none; stroke-width: 2; stroke-linejoin: round; }
+.demo-line--characters { stroke: var(--demo-characters); }
+.demo-line--accounts { stroke: var(--demo-accounts); }
+.demo-dot { stroke: var(--code-bg); stroke-width: 2; }
+.demo-dot--characters { fill: var(--demo-characters); }
+.demo-dot--accounts { fill: var(--demo-accounts); }
