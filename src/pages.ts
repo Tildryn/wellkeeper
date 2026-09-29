@@ -6,6 +6,7 @@ export const PAGES = {
   SETTINGS:       4,
   ECONOMY:        5,
   DEMOGRAPHICS:   6,
+  METRICS:        7,
 } as const;
 
 export type Page = typeof PAGES[keyof typeof PAGES];
@@ -18,4 +19,5 @@ export const PAGE_TITLES: Record<Page, string> = {
   [PAGES.SETTINGS]:       "Settings",
   [PAGES.ECONOMY]:        "Economy",
   [PAGES.DEMOGRAPHICS]:   "Demographics",
+  [PAGES.METRICS]:        "Metrics",
 };

@@ -10,7 +10,7 @@ interface NavbarProps {
   displayName: string | null;
 }
 
-const DM_NAV_ITEMS: Page[] = [PAGES.ONLINE_PLAYERS, PAGES.ALL_PLAYERS, PAGES.BANS, PAGES.ECONOMY, PAGES.DEMOGRAPHICS];
+const DM_NAV_ITEMS: Page[] = [PAGES.ONLINE_PLAYERS, PAGES.ALL_PLAYERS, PAGES.BANS, PAGES.ECONOMY, PAGES.DEMOGRAPHICS, PAGES.METRICS];
 
 function Navbar({ activePage, onNavigate, onLogout, isDM, displayName }: NavbarProps) {
   return (

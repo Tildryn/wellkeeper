@@ -1,0 +1,13 @@
+/* The Metrics page. Tiles, cards, and tables come from EconomyPage.css, and
+   the bar lists and their colours from DemographicsPage.css; this adds the
+   little the page needs besides. */
+
+.metrics-key--pending { background: var(--demo-pending); }
+
+/* A card's own controls: the Scar picker and its two switches. */
+.metrics-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}

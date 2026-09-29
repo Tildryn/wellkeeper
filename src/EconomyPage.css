@@ -22,6 +22,15 @@
   gap: 14px;
 }
 
+/* One column that may shrink below its content. An implicit column is sized
+   `auto`, so a wide table opened in a card widened the card, the section,
+   and the page with it, instead of scrolling in its own .economy__table-wrap. */
+.economy,
+.economy__section,
+.economy__card {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .economy__section h3 {
   margin: 12px 0 0;
   font-size: 20px;
