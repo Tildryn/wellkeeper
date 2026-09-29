@@ -118,4 +118,16 @@ describe('MetricsPage', () => {
     render(<MetricsPage authToken="test-token" />)
     expect(await screen.findByText(/No Scar runs in the last 30 days/)).toBeInTheDocument()
   })
+
+  it('says how many players and runs were left out for bouncing', async () => {
+    mockMetrics([], { ...METRICS, bounces: { runs: 1, players: 3 } })
+    await renderPage()
+    expect(screen.getByText(/3 players, and 1 run that was nothing else\./)).toBeInTheDocument()
+  })
+
+  it('says nothing about bounces when there were none', async () => {
+    mockMetrics([], { ...METRICS, bounces: { runs: 0, players: 0 } })
+    await renderPage()
+    expect(screen.queryByText(/walked straight back out/)).not.toBeInTheDocument()
+  })
 })

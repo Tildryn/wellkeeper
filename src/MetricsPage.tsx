@@ -50,7 +50,12 @@ type Metrics = {
   now: number;
   lifespan: number;
   labels: { classes: Record<string, string>; archetypes: ArchetypeClass[] };
+  // Left out by wkserver: players who walked straight back out, and runs that
+  // were nothing else.
+  bounces?: { runs: number; players: number };
 };
+
+const plural = (n: number, one: string, many: string) => `${fmt(n)} ${n === 1 ? one : many}`;
 
 const RANGES: [number, string][] = [[7, "7 Days"], [30, "30 Days"], [0, "All"]];
 
@@ -161,6 +166,14 @@ function RunsSection({ data, runs }: { data: Metrics; runs: Run[] }) {
       <p className="economy__sub">
         Every Scar a party was sent into. A run is completed when its boss dies, and given up on if its
         instance expires first, two hours after the start. The level and outcome filters do not apply here.
+        {data.bounces && data.bounces.players > 0 && (
+          <>
+            {" "}Players who walked straight back out, inside a minute and without dealing any damage, are left
+            out of the whole page: {plural(data.bounces.players, "player", "players")}
+            {data.bounces.runs > 0 &&
+              `, and ${plural(data.bounces.runs, "run", "runs")} that ${data.bounces.runs === 1 ? "was" : "were"} nothing else`}.
+          </>
+        )}
       </p>
       <div className="economy__stats">
         <div className="economy__stat">
