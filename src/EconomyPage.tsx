@@ -32,15 +32,18 @@ const RESOURCES: ResourceConfig[] = [
   {
     resource: "food",
     title: "Food Stores",
-    description: "The town's food stores. Foodstock hand-ins add to them; snacks, meals, thrown food, and the hourly decay of 200 a day take from them.",
+    description: "The town's food stores. Fishing (2,000 a day), farming (1,000 a day), and Foodstock hand-ins add to them; the villagers (320, each eating three meals and a snack, 3,200 a day), snacks, meals, and thrown food take from them. Before the baselines, a flat decay of 200 a day stood in for all of that.",
     gains: [
+      { key: "fishing", label: "Fishing (2,000 a day)", color: "var(--eco-violet)", reasons: ["fishing"] },
+      { key: "farming", label: "Farming (1,000 a day)", color: "var(--eco-brown)", reasons: ["farming"] },
       { key: "handin", label: "Foodstock handed in", color: "var(--eco-blue)", reasons: ["handin"] },
     ],
     losses: [
+      { key: "villagers", label: "Eaten by villagers (3,200 a day)", color: "var(--eco-orange)", reasons: ["villagers"] },
       { key: "purchase", label: "Bought before Sep 23 (snack or meal)", color: "var(--eco-magenta)", reasons: ["purchase"] },
       { key: "snack", label: "Snacks bought", color: "var(--eco-green)", reasons: ["snack"] },
       { key: "meal", label: "Meals bought (3 each)", color: "var(--eco-yellow)", reasons: ["meal"] },
-      { key: "decay", label: "Passive decay", color: "var(--eco-aqua)", reasons: ["decay"] },
+      { key: "decay", label: "Passive decay (200 a day, before the baselines)", color: "var(--eco-aqua)", reasons: ["decay"] },
     ],
     refs: [[900, "900 · snack markup 0% above this"], [500, "500 · meal markup 0% above this"]],
   },
