@@ -12,7 +12,8 @@ type Flow = [number, string, number, number];
 type Latest = { t: number; value: number; detail: Record<string, number | string> | null } | null;
 type History = { resource: string; levels: Level[]; flows: Flow[]; latest: Latest };
 
-type Series = { key: string; label: string; color: string; reasons: string[] };
+// reasonLabels names each reason in the table when one series claims several.
+type Series = { key: string; label: string; color: string; reasons: string[]; reasonLabels?: Record<string, string> };
 
 type ResourceConfig = {
   resource: "food" | "gold";
@@ -32,18 +33,19 @@ const RESOURCES: ResourceConfig[] = [
   {
     resource: "food",
     title: "Food Stores",
-    description: "The town's food stores. Fishing (2,000 a day), farming (1,000 a day), and Foodstock hand-ins add to them; the villagers (320, each eating three meals and a snack, 3,200 a day), snacks, meals, and thrown food take from them. Before the baselines, a flat decay of 200 a day stood in for all of that.",
+    description: "The town's food stores. Fishing (2,500 a day), farming (1,500 a day of wheat), and Foodstock hand-ins add to them; the villagers (420, each eating three meals and a snack, 4,200 a day), snacks, meals, thrown food, and rot take from them. Everyone eats the most perishable food first, and whatever is left rots at its own rate: berries fastest, then fish and mushrooms, then meat, and wheat barely at all. Before the baselines, a flat decay of 200 a day stood in for all of that.",
     gains: [
-      { key: "fishing", label: "Fishing (2,000 a day)", color: "var(--eco-violet)", reasons: ["fishing"] },
-      { key: "farming", label: "Farming (1,000 a day)", color: "var(--eco-brown)", reasons: ["farming"] },
+      { key: "fishing", label: "Fishing (2,500 a day)", color: "var(--eco-violet)", reasons: ["fishing"] },
+      { key: "farming", label: "Farming (1,500 a day)", color: "var(--eco-brown)", reasons: ["farming"] },
       { key: "handin", label: "Foodstock handed in", color: "var(--eco-blue)", reasons: ["handin"] },
     ],
     losses: [
-      { key: "villagers", label: "Eaten by villagers (3,200 a day)", color: "var(--eco-orange)", reasons: ["villagers"] },
+      { key: "villagers", label: "Eaten by villagers (4,200 a day)", color: "var(--eco-orange)", reasons: ["villagers"] },
       { key: "purchase", label: "Bought before Sep 23 (snack or meal)", color: "var(--eco-magenta)", reasons: ["purchase"] },
       { key: "snack", label: "Snacks bought", color: "var(--eco-green)", reasons: ["snack"] },
       { key: "meal", label: "Meals bought (3 each)", color: "var(--eco-yellow)", reasons: ["meal"] },
       { key: "decay", label: "Passive decay (200 a day, before the baselines)", color: "var(--eco-aqua)", reasons: ["decay"] },
+      { key: "rot", label: "Rotted", color: "var(--eco-rot)", reasons: ["rot_berries", "rot_fish", "rot_mushrooms", "rot_meat", "rot_wheat"], reasonLabels: { rot_berries: "Rotted: berries", rot_fish: "Rotted: fish", rot_mushrooms: "Rotted: mushrooms", rot_meat: "Rotted: meat", rot_wheat: "Rotted: wheat" } },
     ],
     refs: [[900, "900 · snack markup 0% above this"], [500, "500 · meal markup 0% above this"]],
   },
@@ -282,8 +284,10 @@ function ResourceSection({ config, history }: { config: ResourceConfig; history:
   const added = weekFlows.reduce((s, f) => s + Math.max(0, f[2]), 0) / weekDays;
   const removed = weekFlows.reduce((s, f) => s + Math.max(0, -f[2]), 0) / weekDays;
   const reasons = [...new Set(history.flows.map((f) => f[1]))];
-  const labelOf = (reason: string) =>
-    [...config.gains, ...config.losses].find((s) => s.reasons.includes(reason))?.label ?? reason.replace(/_/g, " ");
+  const labelOf = (reason: string) => {
+    const s = [...config.gains, ...config.losses].find((s) => s.reasons.includes(reason));
+    return s?.reasonLabels?.[reason] ?? s?.label ?? reason.replace(/_/g, " ");
+  };
   const detail = latest?.detail;
 
   return (
