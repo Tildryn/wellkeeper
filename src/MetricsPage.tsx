@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { IconRefresh } from "./Icons";
 import { BarRow } from "./BarRow";
+import { useWidth } from "./chart";
 import "./EconomyPage.css";
 import "./DemographicsPage.css";
 import "./MetricsPage.css";
@@ -16,8 +17,11 @@ import "./MetricsPage.css";
 // averaging each player's own rate, keeps a player who left a minute in from
 // swinging a whole Scar's figure.
 //
-// Shares the Demographics page's bar lists and the Economy page's tiles,
-// cards, and tables.
+// Below the Scars come the letters sent by Crow, from /metrics/letters (see
+// Letters): a count per day, which the level and outcome filters leave alone.
+//
+// Shares the Demographics page's bar lists and columns, and the Economy
+// page's tiles, cards, and tables.
 
 type Run = {
   scar: string;
@@ -476,6 +480,170 @@ function DamageSection({ data, rows }: { data: Metrics; rows: Participant[] }) {
   );
 }
 
+// Letters sent by Crow, from wkserver's /metrics/letters: the hours any were
+// sent in, as [unix seconds of the hour, letters], within the time range.
+// `total` and `first` take in every letter the game has recorded
+// (RecordLetterSent in the module's pw_inc_letter), and `waiting` is the
+// letters still queued for a character who has not been online since.
+type Letters = { hours: [number, number][]; total: number; first: number | null; waiting: number; now: number };
+
+// Days are UTC, as on the Economy page.
+const dayKey = (t: number) => Math.floor(t / 86400) * 86400;
+const dayLabel = (t: number) => { const d = new Date(t * 1000); return `${MON[d.getUTCMonth()]} ${d.getUTCDate()}`; };
+
+// The letters of every day in the range, the days without one included: from
+// the start of the range, or from the first letter recorded if that is later.
+function letterDays(letters: Letters, days: number): [number, number][] {
+  if (letters.first === null) return [];
+  const byDay = new Map<number, number>();
+  for (const [t, n] of letters.hours) byDay.set(dayKey(t), (byDay.get(dayKey(t)) ?? 0) + n);
+  const out: [number, number][] = [];
+  const start = dayKey(Math.max(letters.first, days ? letters.now - days * 86400 : 0));
+  for (let t = start; t <= letters.now; t += 86400) out.push([t, byDay.get(t) ?? 0]);
+  return out;
+}
+
+// The step between the ticks of a count axis: a whole number, so no tick
+// stands for a fraction of a letter, with at most four of them to the top.
+function countStep(max: number): number {
+  for (let p = 1; ; p *= 10) for (const s of [1, 2, 5]) if (max <= s * p * 4) return s * p;
+}
+
+function LetterColumns({ days }: { days: [number, number][] }) {
+  const [box, W] = useWidth<HTMLDivElement>();
+  const [hover, setHover] = useState<number | null>(null);
+
+  const H = 220;
+  const m = { l: 48, r: 8, t: 12, b: 26 };
+  const top = Math.max(...days.map((d) => d[1]), 1);
+  const step = countStep(top);
+  const vMax = step * Math.ceil(top / step);
+  const ticks = Array.from({ length: vMax / step + 1 }, (_, i) => i * step);
+  const y = (v: number) => m.t + (1 - v / vMax) * (H - m.t - m.b);
+  const band = (W - m.l - m.r) / days.length;
+  const bw = Math.max(2, Math.min(24, band * 0.6));
+  const labelEvery = Math.ceil(46 / band);
+  const hd = hover === null ? null : days[hover];
+
+  return (
+    <div className="economy__chart" ref={box}>
+      <svg viewBox={`0 0 ${W} ${H}`} height={H} role="img" onPointerLeave={() => setHover(null)}
+        aria-label={`Letters sent per day, ${dayLabel(days[0][0])} to ${dayLabel(days[days.length - 1][0])}. The figures are in the table below.`}>
+        {ticks.map((v) => (
+          <g key={v}>
+            <line x1={m.l} x2={W - m.r} y1={y(v)} y2={y(v)} className={v === 0 ? "economy__axis" : "economy__grid"} />
+            <text x={m.l - 8} y={y(v) + 4} textAnchor="end" className="economy__tick">{fmt(v)}</text>
+          </g>
+        ))}
+        {days.map(([t, n], i) => {
+          const cx = m.l + band * (i + 0.5);
+          const h = y(0) - y(n);
+          const rad = Math.min(4, h, bw / 2);
+          const xl = cx - bw / 2, xr = cx + bw / 2, yt = y(n), yb = y(0) - 1;
+          return (
+            <g key={t} opacity={hover === null || hover === i ? 1 : 0.55}>
+              {h >= 0.5 && (
+                <path className="demo-col"
+                  d={`M${xl},${yb}V${yt + rad}Q${xl},${yt} ${xl + rad},${yt}H${xr - rad}Q${xr},${yt} ${xr},${yt + rad}V${yb}Z`} />
+              )}
+              {i % labelEvery === 0 && <text x={cx} y={H - 8} textAnchor="middle" className="economy__tick">{dayLabel(t)}</text>}
+              <rect x={cx - band / 2} y={m.t} width={band} height={H - m.t - m.b} fill="transparent"
+                onPointerEnter={() => setHover(i)} />
+            </g>
+          );
+        })}
+      </svg>
+      {hd && (
+        <div className="economy__tip" style={{ left: Math.min(((m.l + band * (hover! + 0.5)) / W) * 100, 72) + "%", top: 4 }}>
+          <strong>{plural(hd[1], "letter", "letters")}</strong>
+          <span>{dayLabel(hd[0])} (UTC)</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LettersSection({ letters, days }: { letters: Letters; days: number }) {
+  const byDay = useMemo(() => letterDays(letters, days), [letters, days]);
+  const sent = byDay.reduce((s, d) => s + d[1], 0);
+  const busiest = byDay.reduce<[number, number] | null>((b, d) => (d[1] > (b?.[1] ?? 0) ? d : b), null);
+  // The days the average is over: the range, or as much of it as the count
+  // has been kept for.
+  const from = Math.max(letters.first ?? letters.now, days ? letters.now - days * 86400 : 0);
+  const span = Math.max(1, (letters.now - from) / 86400);
+  // The day the count began, with its year once that is not this one.
+  const year = (t: number) => new Date(t * 1000).getUTCFullYear();
+  const began = letters.first === null ? ""
+    : dayLabel(letters.first) + (year(letters.first) === year(letters.now) ? "" : `, ${year(letters.first)}`);
+
+  return (
+    <section className="economy__section" aria-labelledby="metrics-letters">
+      <h3 id="metrics-letters">Crow Letters</h3>
+      <p className="economy__sub">
+        Letters handed to the Crow for delivery, counted as it takes each one.{" "}
+        {letters.first === null
+          ? "None has been counted yet."
+          : `The count begins on ${began}, and says nothing of who wrote to whom.`}
+        {" "}The level and outcome filters do not apply here.
+      </p>
+      <div className="economy__stats">
+        <div className="economy__stat">
+          <span className="economy__stat-label">Letters Sent</span>
+          <span className="economy__stat-value economy__stat-value--hero">{fmt(sent)}</span>
+          <span className="economy__stat-note">
+            {letters.first === null ? "Nothing counted yet"
+              : days ? `${fmt(letters.total)} since ${began}` : `Since ${began}`}
+          </span>
+        </div>
+        <div className="economy__stat">
+          <span className="economy__stat-label">Per Day</span>
+          <span className="economy__stat-value">{letters.first === null ? "–" : rate(sent / span)}</span>
+          <span className="economy__stat-note">
+            {letters.first === null ? "Needs a letter to go on"
+              : `Average over ${Number.isInteger(span) ? plural(span, "day", "days") : `${span.toFixed(1)} days`}`}
+          </span>
+        </div>
+        <div className="economy__stat">
+          <span className="economy__stat-label">Busiest Day</span>
+          <span className="economy__stat-value">{busiest ? fmt(busiest[1]) : "–"}</span>
+          <span className="economy__stat-note">{busiest ? `${dayLabel(busiest[0])} (UTC)` : "No letters in this range"}</span>
+        </div>
+        <div className="economy__stat">
+          <span className="economy__stat-label">Waiting for Delivery</span>
+          <span className="economy__stat-value">{fmt(letters.waiting)}</span>
+          <span className="economy__stat-note">For characters not online since</span>
+        </div>
+      </div>
+
+      <div className="economy__card">
+        <h4>Letters per Day</h4>
+        {sent === 0 ? (
+          <p className="economy__empty">
+            No letters {days ? `in the last ${days} days` : "have been counted yet"}.
+          </p>
+        ) : (
+          <>
+            <LetterColumns days={byDay} />
+            <details className="economy__details">
+              <summary>Show as a table</summary>
+              <div className="economy__table-wrap">
+                <table>
+                  <thead><tr><th>Day (UTC)</th><th>Letters</th></tr></thead>
+                  <tbody>
+                    {[...byDay].reverse().map(([t, n]) => (
+                      <tr key={t}><td>{dayLabel(t)}</td><td>{fmt(n)}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
 interface MetricsPageProps {
   authToken: string;
 }
@@ -486,6 +654,7 @@ function MetricsPage({ authToken }: MetricsPageProps) {
   const [maxLevel, setMaxLevel] = useState(0);   // 0: no upper limit
   const [finishedOnly, setFinishedOnly] = useState(true);
   const [data, setData] = useState<Metrics | null>(null);
+  const [letters, setLetters] = useState<Letters | string | null>(null);   // a string: why they did not load
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloads, setReloads] = useState(0);
@@ -501,15 +670,18 @@ function MetricsPage({ authToken }: MetricsPageProps) {
 
   useEffect(() => {
     let current = true;
-    fetch(`${import.meta.env.VITE_API_URL}/metrics/scars?days=${days}`, {
-      cache: "no-store",
-      headers: { Authorization: `Bearer ${authToken}` },
-    })
-      .then((res) => {
+    const get = <T,>(what: string) =>
+      fetch(`${import.meta.env.VITE_API_URL}/metrics/${what}?days=${days}`, {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${authToken}` },
+      }).then((res) => {
         if (!res.ok) throw new Error(`Server error (${res.status}).`);
-        return res.json() as Promise<Metrics>;
-      })
-      .then((d) => { if (current) { setData(d); setLoading(false); } })
+        return res.json() as Promise<T>;
+      });
+    // The letters failing must not take the Scars down with them: their table
+    // reaches a server with a module deploy, which can trail wkserver's.
+    Promise.all([get<Metrics>("scars"), get<Letters>("letters").catch((err: Error) => err.message)])
+      .then(([d, l]) => { if (current) { setData(d); setLetters(l); setLoading(false); } })
       .catch((err) => { if (current) { setError(err.message); setLoading(false); } });
     return () => { current = false; };
   }, [days, authToken, reloads]);
@@ -577,6 +749,14 @@ function MetricsPage({ authToken }: MetricsPageProps) {
           )}
         </>
       )}
+
+      {!loading && !error && typeof letters === "string" && (
+        <section className="economy__section" aria-labelledby="metrics-letters">
+          <h3 id="metrics-letters">Crow Letters</h3>
+          <p role="alert" style={{ color: "#c0323a" }}>Error: {letters}</p>
+        </section>
+      )}
+      {!loading && !error && letters && typeof letters !== "string" && <LettersSection letters={letters} days={days} />}
     </div>
   );
 }

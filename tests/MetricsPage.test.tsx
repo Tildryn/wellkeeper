@@ -40,12 +40,24 @@ const METRICS = {
   },
 }
 
-function mockMetrics(requested: string[] = [], body: object = METRICS) {
+// NOW is midnight UTC on Sep 29. Seven letters in the last 30 days, three on
+// Sep 26 and four on Sep 28, and five more before that, back to Aug 20; two
+// are still waiting on their recipients.
+const LETTERS = {
+  hours: [[NOW - 3 * 86400 + 7200, 2], [NOW - 3 * 86400 + 10800, 1], [NOW - 86400 + 3600, 4]],
+  total: 12,
+  first: NOW - 40 * 86400,
+  waiting: 2,
+  now: NOW,
+}
+
+function mockMetrics(requested: string[] = [], body: object = METRICS, letters: object = LETTERS) {
   server.use(
     http.get(`${API}/metrics/scars`, ({ request }) => {
       requested.push(new URL(request.url).search)
       return HttpResponse.json(body)
-    })
+    }),
+    http.get(`${API}/metrics/letters`, () => HttpResponse.json(letters))
   )
 }
 
@@ -123,6 +135,56 @@ describe('MetricsPage', () => {
     mockMetrics([], { ...METRICS, bounces: { runs: 1, players: 3 } })
     await renderPage()
     expect(screen.getByText(/3 players, and 1 run that was nothing else\./)).toBeInTheDocument()
+  })
+
+  it('counts the letters sent by Crow, day by day', async () => {
+    mockMetrics()
+    await renderPage()
+    expect(within(stat('Letters Sent')).getByText('7')).toBeInTheDocument()
+    expect(within(stat('Letters Sent')).getByText('12 since Aug 20')).toBeInTheDocument()
+    expect(within(stat('Per Day')).getByText('0.23')).toBeInTheDocument()
+    expect(within(stat('Per Day')).getByText('Average over 30 days')).toBeInTheDocument()
+    expect(within(stat('Busiest Day')).getByText('4')).toBeInTheDocument()
+    expect(within(stat('Busiest Day')).getByText('Sep 28 (UTC)')).toBeInTheDocument()
+    expect(within(stat('Waiting for Delivery')).getByText('2')).toBeInTheDocument()
+
+    // Every day of the range has a row, the days without a letter included.
+    const rows = within(screen.getByRole('region', { name: 'Crow Letters' })).getAllByRole('row')
+      .map((r) => [...r.querySelectorAll('td')].map((c) => c.textContent).join(' '))
+    expect(rows.slice(1, 5)).toEqual(['Sep 29 0', 'Sep 28 4', 'Sep 27 0', 'Sep 26 3'])
+    expect(rows).toHaveLength(32)
+  })
+
+  it('averages over the days the count has been kept for, when that is less than the range', async () => {
+    mockMetrics([], METRICS, { ...LETTERS, hours: [[NOW - 86400 - 43200, 3]], total: 3, first: NOW - 86400 - 43200 })
+    await renderPage()
+    expect(within(stat('Per Day')).getByText('2.0')).toBeInTheDocument()
+    expect(within(stat('Per Day')).getByText('Average over 1.5 days')).toBeInTheDocument()
+  })
+
+  it('shows the letters when no Scar has been run', async () => {
+    mockMetrics([], { ...METRICS, runs: [], participants: [], scars: {} })
+    render(<MetricsPage authToken="test-token" />)
+    expect(await screen.findByRole('region', { name: 'Crow Letters' })).toBeInTheDocument()
+    expect(screen.getByText(/No Scar runs in the last 30 days/)).toBeInTheDocument()
+  })
+
+  it('says when no letter has been counted', async () => {
+    mockMetrics([], METRICS, { hours: [], total: 0, first: null, waiting: 1, now: NOW })
+    await renderPage()
+    expect(within(stat('Letters Sent')).getByText('0')).toBeInTheDocument()
+    expect(within(stat('Waiting for Delivery')).getByText('1')).toBeInTheDocument()
+    expect(screen.getByText('No letters in the last 30 days.')).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: /Letters sent per day/ })).not.toBeInTheDocument()
+  })
+
+  it('still shows the Scars when the letters cannot be loaded', async () => {
+    mockMetrics()
+    server.use(http.get(`${API}/metrics/letters`, () => HttpResponse.json({}, { status: 500 })))
+    await renderPage()
+    expect(within(stat('Runs Started')).getByText('3')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Crow Letters' })).getByRole('alert'))
+      .toHaveTextContent('Error: Server error (500).')
   })
 
   it('says nothing about bounces when there were none', async () => {
