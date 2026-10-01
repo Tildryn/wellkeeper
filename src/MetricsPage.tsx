@@ -17,8 +17,11 @@ import "./MetricsPage.css";
 // averaging each player's own rate, keeps a player who left a minute in from
 // swinging a whole Scar's figure.
 //
-// Below the Scars come the letters sent by Crow, from /metrics/letters (see
-// Letters): a count per day, which the level and outcome filters leave alone.
+// Below the Scars come the intrusions, from /metrics/invasions (see
+// Invasions): how each Intruder's landing ended and what it did to the party,
+// to tell whether the Intruders need strengthening. Then the letters sent by
+// Crow, from /metrics/letters (see Letters): a count per day. The level and
+// outcome filters leave both alone.
 //
 // Shares the Demographics page's bar lists and columns, and the Economy
 // page's tiles, cards, and tables.
@@ -644,6 +647,334 @@ function LettersSection({ letters, days }: { letters: Letters; days: number }) {
   );
 }
 
+// Intrusions, from wkserver's /metrics/invasions: a row per Intruder landing
+// in a Scar (pw_inc_invmetr in the module), oldest first. `runs` counts the
+// Scar runs in the range since the first landing was recorded, those whose
+// party allowed intrusions, and those an Intruder landed in. The module's
+// migration (20261001000002_add_invasions.sql) says what each count means.
+type Invasion = {
+  scar: string | null;
+  party_size: number | null;
+  landed: number;
+  ended: number | null;
+  outcome: string | null;
+  threat: number;
+  intruder_level: number;
+  intruder_hp: number;
+  hp_left: number | null;
+  defenders: number;
+  defender_levels: number[];
+  intruders: number;
+} & Record<InvasionCount, number>;
+const INVASION_COUNTS = [
+  "downs", "defender_deaths", "defenders_killed", "killing_blows", "respawns",
+  "dealt", "taken", "xp", "seeds", "seed_value",
+] as const;
+type InvasionCount = typeof INVASION_COUNTS[number];
+type Invasions = {
+  invasions: Invasion[];
+  scars: Record<string, string>;
+  runs: { total: number; open: number; invaded: number };
+  first: number | null;
+  now: number;
+  lifespan: number;
+};
+
+// Whose win an ending is. An Intruder is there to put the party down or drive
+// it out of the Scar; it loses by being put down, by its player stepping out
+// (which pays the defenders as a kill), or by the party finishing the Scar
+// around it. A recall, and an ending nobody recorded, decide nothing.
+type Side = "intruder" | "defenders" | "neither";
+const ENDINGS: Record<string, { label: string; side: Side; note: string }> = {
+  defeated:  { label: "Wiped the Party", side: "intruder", note: "Every defender fell: died, or respawned since it landed" },
+  abandoned: { label: "Drove the Party Out", side: "intruder", note: "Every defender left the Scar or logged off" },
+  killed:    { label: "Killed", side: "defenders", note: "The defenders put it down" },
+  forfeited: { label: "Fled", side: "defenders", note: "Its player stepped out of it, which pays the defenders as a kill" },
+  completed: { label: "Party Completed the Scar", side: "defenders", note: "The boss died with the Intruder still inside" },
+  recalled:  { label: "Recalled", side: "neither", note: "Its player's own body came under attack" },
+  unknown:   { label: "Unknown", side: "neither", note: "It ended some way the game did not name" },
+  cut:       { label: "Cut Short", side: "neither", note: "It never ended: the server restarted first" },
+  running:   { label: "In Progress", side: "neither", note: "Still going, or cut short within the last two hours" },
+};
+const SIDE_SEG: Record<Side, string> = { intruder: "metrics-seg--intruder", defenders: "demo-seg--main", neither: "demo-seg--pending" };
+
+// An invasion with no end whose Scar instance must be gone by now (it lives
+// two hours from the run's start, which is before the landing) was cut short.
+function ending(i: Invasion, data: Invasions): string {
+  if (i.outcome) return ENDINGS[i.outcome] ? i.outcome : "unknown";
+  return data.now - i.landed > data.lifespan ? "cut" : "running";
+}
+
+// The totals a group of invasions is described by. Damage is written as an
+// invasion ends, so the minutes it is divided by are those of the invasions
+// that ended.
+type InvasionTotals = {
+  n: number;
+  won: number;
+  lost: number;
+  killed: number;
+  minutes: number;
+  lengths: number[];
+  winHP: number[];          // the Intruder's hit points left on each win, as a fraction
+  defenderLevels: number[];
+  threats: number[];
+} & Record<InvasionCount, number>;
+
+function invasionTotals(rows: Invasion[], data: Invasions): InvasionTotals {
+  const t = { n: rows.length, won: 0, lost: 0, killed: 0, minutes: 0, lengths: [], winHP: [], defenderLevels: [], threats: [] } as unknown as InvasionTotals;
+  for (const c of INVASION_COUNTS) t[c] = 0;
+  for (const i of rows) {
+    const side = ENDINGS[ending(i, data)].side;
+    if (side === "intruder") {
+      t.won++;
+      if (i.hp_left !== null && i.intruder_hp > 0) t.winHP.push(i.hp_left / i.intruder_hp);
+    }
+    if (side === "defenders") t.lost++;
+    if (i.outcome === "killed") t.killed++;
+    if (i.ended !== null) {
+      t.minutes += (i.ended - i.landed) / 60;
+      t.lengths.push(i.ended - i.landed);
+    }
+    t.defenderLevels.push(...i.defender_levels);
+    t.threats.push(i.threat);
+    for (const c of INVASION_COUNTS) t[c] += i[c];
+  }
+  return t;
+}
+
+const decided = (t: InvasionTotals) => t.won + t.lost;
+const winRate = (t: InvasionTotals) => (decided(t) ? t.won / decided(t) : null);
+const each = (t: InvasionTotals, v: number) => (t.n ? v / t.n : null);
+const perInvasionMinute = (t: InvasionTotals, v: number) => (t.minutes > 0 ? v / t.minutes : null);
+const pctOf = (f: number | null) => (f === null ? "–" : `${Math.round(f * 100)}%`);
+
+type InvasionGroupBy = "party" | "intruders" | "scar";
+const INVASION_GROUPS: [InvasionGroupBy, string][] = [["party", "Party Size"], ["intruders", "Intruders"], ["scar", "Scar"]];
+
+// The group an invasion is filed under, and the number the groups are sorted
+// by (the Scars, which have none, go by how many invasions they drew).
+function invasionGroup(i: Invasion, by: InvasionGroupBy, data: Invasions): [string, number] {
+  if (by === "party") return [plural(i.defenders, "defender", "defenders"), i.defenders];
+  if (by === "intruders") return [i.intruders === 1 ? "Alone" : `${i.intruders} at once`, i.intruders];
+  return [i.scar === null ? "Unknown Scar" : data.scars[i.scar] ?? i.scar, 0];
+}
+
+function InvasionsSection({ data }: { data: Invasions }) {
+  const [by, setBy] = useState<InvasionGroupBy>("party");
+  const all = useMemo(() => invasionTotals(data.invasions, data), [data]);
+  const endings = useMemo(() => {
+    const n = new Map<string, number>();
+    for (const i of data.invasions) n.set(ending(i, data), (n.get(ending(i, data)) ?? 0) + 1);
+    return Object.keys(ENDINGS).filter((k) => n.get(k)).map((k) => ({ key: k, n: n.get(k)!, ...ENDINGS[k] }));
+  }, [data]);
+  const groups = useMemo(() => {
+    const g = new Map<string, { order: number; rows: Invasion[] }>();
+    for (const i of data.invasions) {
+      const [name, order] = invasionGroup(i, by, data);
+      const e = g.get(name) ?? { order, rows: [] };
+      e.rows.push(i);
+      g.set(name, e);
+    }
+    return [...g].map(([name, e]) => ({ name, order: e.order, t: invasionTotals(e.rows, data) }))
+      .sort((a, b) => (by === "scar" ? b.t.n - a.t.n : a.order - b.order));
+  }, [data, by]);
+  const count = (key: string) => endings.find((e) => e.key === key)?.n ?? 0;
+  const maxEnding = Math.max(...endings.map((e) => e.n), 1);
+  const recent = [...data.invasions].reverse().slice(0, 30);
+  const groupLabel = INVASION_GROUPS.find(([k]) => k === by)![1];
+  const year = (t: number) => new Date(t * 1000).getUTCFullYear();
+  const began = data.first === null ? ""
+    : `${MON[new Date(data.first * 1000).getUTCMonth()]} ${new Date(data.first * 1000).getUTCDate()}` +
+      (year(data.first) === year(data.now) ? "" : `, ${year(data.first)}`);
+
+  return (
+    <section className="economy__section" aria-labelledby="metrics-invasions">
+      <h3 id="metrics-invasions">Intrusions</h3>
+      <p className="economy__sub">
+        Every Intruder that landed in a Scar, and how it fared against the party it found.{" "}
+        {data.first === null ? "None has been recorded yet." : `The count begins on ${began}.`}{" "}
+        An Intruder wins by wiping the party out or driving it from the Scar, and loses by being killed, by fleeing,
+        or by the party completing the Scar around it. Defenders count as killed by every Intruder within 40m when
+        they die, the reach its kill XP is paid within. The level and outcome filters do not apply here.
+      </p>
+      {data.invasions.length === 0 ? (
+        <p className="economy__empty">No Intruder has landed in this range.</p>
+      ) : (
+        <>
+          <div className="economy__stats">
+            <div className="economy__stat">
+              <span className="economy__stat-label">Intrusions</span>
+              <span className="economy__stat-value economy__stat-value--hero">{fmt(all.n)}</span>
+              <span className="economy__stat-note">
+                {data.runs.open
+                  ? `Into ${pct(data.runs.invaded, data.runs.open)} of the ${fmt(data.runs.open)} runs open to Intruders`
+                  : "No run was open to Intruders"}
+              </span>
+            </div>
+            <div className="economy__stat">
+              <span className="economy__stat-label">Intruder Win Rate</span>
+              <span className="economy__stat-value">{pctOf(winRate(all))}</span>
+              <span className="economy__stat-note">
+                {fmt(all.won)} won, {fmt(all.lost)} lost{decided(all) < all.n ? `, ${fmt(all.n - decided(all))} undecided` : ""}
+              </span>
+            </div>
+            <div className="economy__stat">
+              <span className="economy__stat-label">Defenders Killed</span>
+              <span className="economy__stat-value">{rate(each(all, all.defenders_killed))}</span>
+              <span className="economy__stat-note">
+                Per intrusion, each defender once; {rate(each(all, all.defender_deaths))} counting the same one dying again
+              </span>
+            </div>
+            <div className="economy__stat">
+              <span className="economy__stat-label">Intruders Killed</span>
+              <span className="economy__stat-value">{pct(all.killed, all.n)}</span>
+              <span className="economy__stat-note">Median {duration(median(all.lengths))} from landing to the end</span>
+            </div>
+          </div>
+          <div className="economy__stats">
+            <div className="economy__stat">
+              <span className="economy__stat-label">Defenders Downed</span>
+              <span className="economy__stat-value">{rate(each(all, all.downs))}</span>
+              <span className="economy__stat-note">Per intrusion, raised again or not</span>
+            </div>
+            <div className="economy__stat">
+              <span className="economy__stat-label">Defenders Respawned</span>
+              <span className="economy__stat-value">{rate(each(all, all.respawns))}</span>
+              <span className="economy__stat-note">Per intrusion: rose again rather than wait to be raised</span>
+            </div>
+            <div className="economy__stat">
+              <span className="economy__stat-label">Health Left on a Win</span>
+              <span className="economy__stat-value">{pctOf(median(all.winHP))}</span>
+              <span className="economy__stat-note">The Intruder's, median, of {plural(all.winHP.length, "win", "wins")}</span>
+            </div>
+            <div className="economy__stat">
+              <span className="economy__stat-label">Intruder's Reward</span>
+              <span className="economy__stat-value">{rate(each(all, all.xp))} XP</span>
+              <span className="economy__stat-note">And {rate(each(all, all.seeds))} forging seeds, per intrusion</span>
+            </div>
+          </div>
+
+          <div className="economy__card">
+            <h4>How Intrusions End</h4>
+            <div className="economy__legend" aria-hidden="true">
+              <span><i className="metrics-key--intruder" />Intruder won</span>
+              <span><i className="demo-key--main" />Defenders won</span>
+              <span><i className="metrics-key--pending" />Neither</span>
+            </div>
+            <div className="demo-bars">
+              {endings.map((e) => (
+                <BarRow key={e.key} label={e.label} value={fmt(e.n)} max={maxEnding}
+                  segments={[{ n: e.n, className: SIDE_SEG[e.side] }]}
+                  tip={<>
+                    <strong>{e.label}</strong>
+                    <span>{e.note}.</span>
+                    <span className="economy__tip-row">Intrusions<b>{fmt(e.n)}</b></span>
+                    <span className="economy__tip-row">Share<b>{pct(e.n, all.n)}</b></span>
+                  </>} />
+              ))}
+            </div>
+            {(count("cut") > 0 || count("unknown") > 0) && (
+              <p className="demo-note">
+                An intrusion cut short or unknown counts toward neither side's wins.
+              </p>
+            )}
+          </div>
+
+          <div className="economy__card">
+            <div className="demo-card-head">
+              <h4>Intruder Win Rate by {groupLabel}</h4>
+              <div className="bans-filter" role="group" aria-label="Group intrusions by">
+                {INVASION_GROUPS.map(([k, name]) => (
+                  <button key={k} aria-pressed={by === k} onClick={() => setBy(k)}
+                    className={`bans-filter__btn${by === k ? " bans-filter__btn--active" : ""}`}>{name}</button>
+                ))}
+              </div>
+            </div>
+            <p className="demo-note">
+              {by === "party" && "Party size is the defenders in the Scar when the Intruder landed. "}
+              {by === "intruders" && "Intruders in the Scar when each one landed, itself included; a second arriving later does not count for the first. "}
+              Greyed rows rest on fewer than {MIN_SAMPLES} decided intrusions.
+            </p>
+            <div className="demo-bars">
+              {groups.map(({ name, t }) => (
+                <BarRow key={name} label={name} value={pctOf(winRate(t))} max={1} muted={decided(t) < MIN_SAMPLES}
+                  segments={[{ n: winRate(t) ?? 0, className: decided(t) < MIN_SAMPLES ? "demo-seg--pending" : "metrics-seg--intruder" }]}
+                  tip={<>
+                    <strong>{name}</strong>
+                    <span className="economy__tip-row">Intrusions<b>{fmt(t.n)}</b></span>
+                    <span className="economy__tip-row">Won, lost<b>{fmt(t.won)} / {fmt(t.lost)}</b></span>
+                    <span className="economy__tip-row">Intruder killed<b>{pct(t.killed, t.n)}</b></span>
+                    <span className="economy__tip-row">Defenders killed per intrusion<b>{rate(each(t, t.defenders_killed))}</b></span>
+                    <span className="economy__tip-row">Deaths per intrusion, repeats counted<b>{rate(each(t, t.defender_deaths))}</b></span>
+                    <span className="economy__tip-row">Respawns per intrusion<b>{rate(each(t, t.respawns))}</b></span>
+                    <span className="economy__tip-row">Damage dealt, taken per minute<b>{rate(perInvasionMinute(t, t.dealt))} / {rate(perInvasionMinute(t, t.taken))}</b></span>
+                    <span className="economy__tip-row">Median length<b>{duration(median(t.lengths))}</b></span>
+                    <span className="economy__tip-row">Median defender level<b>{median(t.defenderLevels) ?? "–"}</b></span>
+                  </>} />
+              ))}
+            </div>
+            <details className="economy__details">
+              <summary>Show as a table</summary>
+              <div className="economy__table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>{groupLabel}</th><th>Intrusions</th><th>Won</th><th>Lost</th><th>Win Rate</th><th>Intruder Killed</th>
+                      <th>Downed/Intrusion</th><th>Killed/Intrusion</th><th>Deaths/Intrusion</th><th>Respawns/Intrusion</th>
+                      <th>Dealt/Min</th><th>Taken/Min</th><th>Health Left on a Win</th><th>Median Length</th>
+                      <th>Median Defender Level</th><th>Median Threat</th><th>XP/Intrusion</th><th>Seeds/Intrusion</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groups.map(({ name, t }) => (
+                      <tr key={name}>
+                        <td>{name}</td><td>{fmt(t.n)}</td><td>{fmt(t.won)}</td><td>{fmt(t.lost)}</td><td>{pctOf(winRate(t))}</td>
+                        <td>{pct(t.killed, t.n)}</td><td>{rate(each(t, t.downs))}</td><td>{rate(each(t, t.defenders_killed))}</td>
+                        <td>{rate(each(t, t.defender_deaths))}</td><td>{rate(each(t, t.respawns))}</td>
+                        <td>{rate(perInvasionMinute(t, t.dealt))}</td><td>{rate(perInvasionMinute(t, t.taken))}</td>
+                        <td>{pctOf(median(t.winHP))}</td><td>{duration(median(t.lengths))}</td>
+                        <td>{median(t.defenderLevels) ?? "–"}</td><td>{median(t.threats) ?? "–"}</td>
+                        <td>{rate(each(t, t.xp))}</td><td>{rate(each(t, t.seeds))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+            <details className="economy__details">
+              <summary>Show the latest intrusions</summary>
+              <div className="economy__table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Landed</th><th>Scar</th><th>Defender Levels</th><th>Intruders</th><th>Threat</th><th>Length</th>
+                      <th>Downed</th><th>Killed</th><th>Deaths</th><th>Respawns</th><th>Dealt</th><th>Taken</th>
+                      <th>Health Left</th><th>XP</th><th>Seeds</th><th>Outcome</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recent.map((i, n) => (
+                      <tr key={n}>
+                        <td>{when(i.landed)}</td><td>{i.scar === null ? "–" : data.scars[i.scar] ?? i.scar}</td>
+                        <td>{i.defender_levels.length ? i.defender_levels.join(", ") : "–"}</td><td>{i.intruders}</td><td>{i.threat}</td>
+                        <td>{duration(i.ended === null ? null : i.ended - i.landed)}</td>
+                        <td>{i.downs}</td><td>{i.defenders_killed}</td><td>{i.defender_deaths}</td><td>{i.respawns}</td>
+                        <td>{fmt(i.dealt)}</td><td>{fmt(i.taken)}</td>
+                        <td>{i.hp_left === null || !i.intruder_hp ? "–" : pct(i.hp_left, i.intruder_hp)}</td>
+                        <td>{fmt(i.xp)}</td><td>{i.seeds}</td><td>{ENDINGS[ending(i, data)].label}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 interface MetricsPageProps {
   authToken: string;
 }
@@ -655,6 +986,7 @@ function MetricsPage({ authToken }: MetricsPageProps) {
   const [finishedOnly, setFinishedOnly] = useState(true);
   const [data, setData] = useState<Metrics | null>(null);
   const [letters, setLetters] = useState<Letters | string | null>(null);   // a string: why they did not load
+  const [invasions, setInvasions] = useState<Invasions | string | null>(null);   // likewise
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloads, setReloads] = useState(0);
@@ -678,10 +1010,15 @@ function MetricsPage({ authToken }: MetricsPageProps) {
         if (!res.ok) throw new Error(`Server error (${res.status}).`);
         return res.json() as Promise<T>;
       });
-    // The letters failing must not take the Scars down with them: their table
-    // reaches a server with a module deploy, which can trail wkserver's.
-    Promise.all([get<Metrics>("scars"), get<Letters>("letters").catch((err: Error) => err.message)])
-      .then(([d, l]) => { if (current) { setData(d); setLetters(l); setLoading(false); } })
+    // The letters or the intrusions failing must not take the Scars down with
+    // them: their tables reach a server with a module deploy, which can trail
+    // wkserver's.
+    Promise.all([
+      get<Metrics>("scars"),
+      get<Letters>("letters").catch((err: Error) => err.message),
+      get<Invasions>("invasions").catch((err: Error) => err.message),
+    ])
+      .then(([d, l, i]) => { if (current) { setData(d); setLetters(l); setInvasions(i); setLoading(false); } })
       .catch((err) => { if (current) { setError(err.message); setLoading(false); } });
     return () => { current = false; };
   }, [days, authToken, reloads]);
@@ -749,6 +1086,14 @@ function MetricsPage({ authToken }: MetricsPageProps) {
           )}
         </>
       )}
+
+      {!loading && !error && typeof invasions === "string" && (
+        <section className="economy__section" aria-labelledby="metrics-invasions">
+          <h3 id="metrics-invasions">Intrusions</h3>
+          <p role="alert" style={{ color: "#c0323a" }}>Error: {invasions}</p>
+        </section>
+      )}
+      {!loading && !error && invasions && typeof invasions !== "string" && <InvasionsSection data={invasions} />}
 
       {!loading && !error && typeof letters === "string" && (
         <section className="economy__section" aria-labelledby="metrics-letters">

@@ -51,13 +51,43 @@ const LETTERS = {
   now: NOW,
 }
 
-function mockMetrics(requested: string[] = [], body: object = METRICS, letters: object = LETTERS) {
+const INVADED = {
+  scar: 'pw_ar_scarforge', party_size: 2, threat: 10, intruder_level: 9, intruder_hp: 240, intruders: 1,
+  downs: 0, defender_deaths: 0, defenders_killed: 0, killing_blows: 0, respawns: 0,
+  dealt: 0, taken: 0, xp: 0, seeds: 0, seed_value: 0,
+}
+
+// Five Intruders. One wiped a lone defender and was left on half health; one
+// was killed by a pair, having killed one of them twice; one fled a pair it
+// landed beside a second Intruder to fight; one outlasted a party of three
+// who left the Scar; and one never ended, more than two hours ago.
+const INVASIONS = {
+  invasions: [
+    { ...INVADED, landed: NOW - 10000, ended: null, outcome: null, hp_left: null, defenders: 1, defender_levels: [7], scar: null, party_size: null },
+    { ...INVADED, landed: NOW - 5000, ended: NOW - 4800, outcome: 'defeated', hp_left: 120, defenders: 1, defender_levels: [8],
+      downs: 1, defender_deaths: 1, defenders_killed: 1, killing_blows: 1, respawns: 1, dealt: 400, taken: 120, xp: 900, seeds: 2, seed_value: 3 },
+    { ...INVADED, landed: NOW - 4000, ended: NOW - 3700, outcome: 'killed', hp_left: 1, defenders: 2, defender_levels: [8, 9],
+      downs: 2, defender_deaths: 2, defenders_killed: 1, killing_blows: 2, dealt: 600, taken: 239, xp: 900 },
+    { ...INVADED, scar: 'pw_ar_scardog', landed: NOW - 3000, ended: NOW - 2990, outcome: 'forfeited', hp_left: 200, defenders: 2,
+      defender_levels: [4, 4], intruders: 2 },
+    { ...INVADED, scar: null, party_size: null, landed: NOW - 2000, ended: NOW - 1400, outcome: 'abandoned', hp_left: 240, defenders: 3,
+      defender_levels: [5, 6, 7] },
+  ],
+  scars: { pw_ar_scarforge: 'The Forge', pw_ar_scardog: 'Dog Scar' },
+  runs: { total: 10, open: 6, invaded: 3 },
+  first: NOW - 10000,
+  now: NOW,
+  lifespan: 7200,
+}
+
+function mockMetrics(requested: string[] = [], body: object = METRICS, letters: object = LETTERS, invasions: object = INVASIONS) {
   server.use(
     http.get(`${API}/metrics/scars`, ({ request }) => {
       requested.push(new URL(request.url).search)
       return HttpResponse.json(body)
     }),
-    http.get(`${API}/metrics/letters`, () => HttpResponse.json(letters))
+    http.get(`${API}/metrics/letters`, () => HttpResponse.json(letters)),
+    http.get(`${API}/metrics/invasions`, () => HttpResponse.json(invasions))
   )
 }
 
@@ -68,6 +98,10 @@ async function renderPage() {
 
 const stat = (label: string) => screen.getByText(label, { selector: '.economy__stat-label' }).parentElement!
 const bars = (region: string) => within(screen.getByRole('region', { name: region }))
+  .getAllByText(/./, { selector: '.demo-bar__label' })
+  .map((l) => `${l.textContent} ${l.parentElement!.querySelector('.demo-bar__value')!.textContent}`)
+// The bars of the card headed `title`, for a section with more than one card.
+const cardBars = (title: string) => within(screen.getByRole('heading', { name: title }).closest('.economy__card') as HTMLElement)
   .getAllByText(/./, { selector: '.demo-bar__label' })
   .map((l) => `${l.textContent} ${l.parentElement!.querySelector('.demo-bar__value')!.textContent}`)
 
@@ -184,6 +218,59 @@ describe('MetricsPage', () => {
     await renderPage()
     expect(within(stat('Runs Started')).getByText('3')).toBeInTheDocument()
     expect(within(screen.getByRole('region', { name: 'Crow Letters' })).getByRole('alert'))
+      .toHaveTextContent('Error: Server error (500).')
+  })
+
+  it('says how Intruders fare against the parties they find', async () => {
+    mockMetrics()
+    await renderPage()
+    await screen.findByRole('region', { name: 'Intrusions' })
+    expect(within(stat('Intrusions')).getByText('5')).toBeInTheDocument()
+    expect(within(stat('Intrusions')).getByText('Into 50% of the 6 runs open to Intruders')).toBeInTheDocument()
+    // The wipe and the party driven out are wins; the kill and the flight are
+    // losses; the one cut short is neither.
+    expect(within(stat('Intruder Win Rate')).getByText('50%')).toBeInTheDocument()
+    expect(within(stat('Intruder Win Rate')).getByText('2 won, 2 lost, 1 undecided')).toBeInTheDocument()
+    // Two defenders killed, one of them twice, over five intrusions.
+    expect(within(stat('Defenders Killed')).getByText('0.40')).toBeInTheDocument()
+    expect(within(stat('Defenders Killed')).getByText(/0\.60 counting the same one dying again/)).toBeInTheDocument()
+    expect(within(stat('Intruders Killed')).getByText('20%')).toBeInTheDocument()
+    expect(within(stat('Intruders Killed')).getByText('Median 4m from landing to the end')).toBeInTheDocument()
+    expect(within(stat('Defenders Respawned')).getByText('0.20')).toBeInTheDocument()
+    expect(within(stat('Health Left on a Win')).getByText('75%')).toBeInTheDocument()
+    expect(within(stat("Intruder's Reward")).getByText('360 XP')).toBeInTheDocument()
+
+    expect(cardBars('How Intrusions End'))
+      .toEqual(['Wiped the Party 1', 'Drove the Party Out 1', 'Killed 1', 'Fled 1', 'Cut Short 1'])
+  })
+
+  it('breaks the Intruder win rate down by party size, Intruders, or Scar', async () => {
+    mockMetrics()
+    await renderPage()
+    const region = within(await screen.findByRole('region', { name: 'Intrusions' }))
+    expect(cardBars('Intruder Win Rate by Party Size')).toEqual(['1 defender 100%', '2 defenders 0%', '3 defenders 100%'])
+
+    await userEvent.click(region.getByRole('button', { name: 'Intruders' }))
+    expect(cardBars('Intruder Win Rate by Intruders')).toEqual(['Alone 67%', '2 at once 0%'])
+
+    await userEvent.click(region.getByRole('button', { name: 'Scar' }))
+    expect(cardBars('Intruder Win Rate by Scar')).toEqual(['Unknown Scar 100%', 'The Forge 50%', 'Dog Scar 0%'])
+  })
+
+  it('says when no Intruder has landed', async () => {
+    mockMetrics([], METRICS, LETTERS, { ...INVASIONS, invasions: [], scars: {}, runs: { total: 0, open: 0, invaded: 0 }, first: null })
+    await renderPage()
+    const region = within(await screen.findByRole('region', { name: 'Intrusions' }))
+    expect(region.getByText(/None has been recorded yet\./)).toBeInTheDocument()
+    expect(region.getByText('No Intruder has landed in this range.')).toBeInTheDocument()
+  })
+
+  it('still shows the Scars when the intrusions cannot be loaded', async () => {
+    mockMetrics()
+    server.use(http.get(`${API}/metrics/invasions`, () => HttpResponse.json({}, { status: 500 })))
+    await renderPage()
+    expect(within(stat('Runs Started')).getByText('3')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Intrusions' })).getByRole('alert'))
       .toHaveTextContent('Error: Server error (500).')
   })
 

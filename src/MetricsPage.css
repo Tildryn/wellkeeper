@@ -4,6 +4,12 @@
 
 .metrics-key--pending { background: var(--demo-pending); }
 
+/* The Intruders' side in the Intrusions section, against the defenders' blue
+   (--demo-main). */
+.metrics { --metrics-intruder: #e5484d; }
+.metrics-seg--intruder,
+.metrics-key--intruder { background: var(--metrics-intruder); }
+
 /* A card's own controls: the Scar picker and its two switches. */
 .metrics-controls {
   display: flex;
