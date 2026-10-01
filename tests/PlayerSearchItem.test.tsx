@@ -23,7 +23,7 @@ const defaultProps = {
   public_cd_key: 'SEARCH-KEY-1',
   player_names: ['PlayerOne', 'AltName'],
   ip_addresses: ['192.168.1.1'],
-  characters: [{ pcid: 'pcid-1', character_name: 'Gandalf' }],
+  characters: [{ pcid: 'pcid-1', character_name: 'Gandalf', inner_world: 'unread' as const }],
   onBan: vi.fn(),
   onUnban: vi.fn(),
   isBanned: false,
@@ -32,6 +32,7 @@ const defaultProps = {
   onUnbanById: vi.fn(),
   onExpungeById: vi.fn(),
   onEditBanById: vi.fn().mockResolvedValue(undefined),
+  onView: vi.fn(),
   expandGen: null,
 }
 
@@ -182,5 +183,33 @@ describe('PlayerSearchItem', () => {
     await user.click(screen.getByRole('button', { name: /cancel unban/i }))
     expect(onUnban).not.toHaveBeenCalled()
     expect(screen.queryByText('Unban?')).not.toBeInTheDocument()
+  })
+
+  it('opens a character\'s description and Inner World', async () => {
+    const onView = vi.fn()
+    const user = userEvent.setup()
+    render(<PlayerSearchItem {...defaultProps} onView={onView} />)
+    await user.click(screen.getByRole('button', { name: /description/i }))
+    expect(onView).toHaveBeenLastCalledWith({ kind: 'description', pcid: 'pcid-1', name: 'Gandalf' })
+    await user.click(screen.getByRole('button', { name: /inner world/i }))
+    expect(onView).toHaveBeenLastCalledWith({ kind: 'inner_world', pcid: 'pcid-1', name: 'Gandalf' })
+  })
+
+  it('makes an unread Inner World glow, and greys an empty one', async () => {
+    const onView = vi.fn()
+    const user = userEvent.setup()
+    const { rerender } = render(<PlayerSearchItem {...defaultProps} onView={onView} />)
+    const button = screen.getByRole('button', { name: /inner world/i })
+    expect(button).toHaveClass('player-card__action-btn--new')
+    expect(button).toHaveAttribute('title', expect.stringMatching(/not read it yet/))
+
+    rerender(<PlayerSearchItem {...defaultProps} onView={onView}
+      characters={[{ pcid: 'pcid-1', character_name: 'Gandalf', inner_world: 'empty' }]} />)
+    const empty = screen.getByRole('button', { name: /inner world/i })
+    expect(empty).toHaveAttribute('aria-disabled', 'true')
+    expect(empty).not.toHaveClass('player-card__action-btn--new')
+    expect(empty).toHaveAttribute('title', 'Gandalf has not written anything in their Inner World')
+    await user.click(empty)
+    expect(onView).not.toHaveBeenCalled()
   })
 })

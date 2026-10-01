@@ -1,16 +1,45 @@
 // ── API response shapes ────────────────────────────────────────────────────
 
+// The state of a character's Inner World button for the DM looking, as the
+// in-game Player List shows it: nothing written (greyed), read and unchanged
+// since, never opened by this DM, or changed since they last did. The last two
+// make the button glow.
+export type InnerWorldState = "empty" | "seen" | "unread" | "changed";
+
 export interface OnlinePlayer {
+  // Optional only because the dummy data has neither.
+  pcid?: string;
   public_cd_key: string;
   online_player_name: string;
   character_name: string;
   ip_address: string;
   logged_on_at: string;
+  inner_world?: InnerWorldState;
 }
 
 export interface Character {
   pcid: string;
   character_name: string;
+  inner_world: InnerWorldState;
+}
+
+export interface Bond {
+  type: number;
+  type_name: string;
+  description: string;
+}
+
+export interface InnerWorldPage {
+  text: string;
+  bonds: Bond[];
+  state: InnerWorldState;
+  fingerprint: number;
+}
+
+export interface CharacterDescription {
+  description: string | null;
+  source: "custom" | "character" | null;
+  vault: boolean;
 }
 
 export interface BanBase {
@@ -81,4 +110,11 @@ export interface BanEditFields {
 export interface ExpandGen {
   v: number;
   expanded: boolean | null;
+}
+
+// A character's Description or Inner World, open in the viewer.
+export interface CharacterView {
+  kind: "description" | "inner_world";
+  pcid: string;
+  name: string;
 }

@@ -110,4 +110,23 @@ describe('PlayerListItem', () => {
     expect(onUnban).not.toHaveBeenCalled()
     expect(screen.queryByRole('button', { name: /confirm unban/i })).not.toBeInTheDocument()
   })
+
+  it('opens the description and Inner World, and says when the Inner World has changed', async () => {
+    const onDescription = vi.fn()
+    const onInnerWorld = vi.fn()
+    const user = userEvent.setup()
+    render(<PlayerListItem {...defaultProps} inner_world="changed" onDescription={onDescription} onInnerWorld={onInnerWorld} />)
+    await user.click(screen.getByRole('button', { name: 'Description' }))
+    expect(onDescription).toHaveBeenCalled()
+    const inner = screen.getByRole('button', { name: 'Inner World, changed' })
+    expect(inner).toHaveClass('player-card__action-btn--new')
+    expect(inner).toHaveAttribute('title', expect.stringMatching(/changed since you last read it/))
+    await user.click(inner)
+    expect(onInnerWorld).toHaveBeenCalled()
+  })
+
+  it('does not glow an Inner World already read', () => {
+    render(<PlayerListItem {...defaultProps} inner_world="seen" onInnerWorld={vi.fn()} />)
+    expect(screen.getByRole('button', { name: 'Inner World' })).not.toHaveClass('player-card__action-btn--new')
+  })
 })

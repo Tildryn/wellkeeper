@@ -1,0 +1,126 @@
+/* The Description / Inner World viewer. Built on the ban modal's frame
+   (BanModal.css), only wider, since this is for reading. */
+
+.char-text-modal {
+  max-width: 640px;
+  max-height: calc(100vh - 48px);
+  box-sizing: border-box;
+  text-align: left;
+
+  /* Restated, since the max-width above outranks .ban-modal's own phone
+     rule by coming later. */
+  @media (max-width: 600px) {
+    max-width: calc(100% - 24px);
+    max-height: calc(100vh - 24px);
+  }
+}
+
+.char-text-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.char-text-modal__name {
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+
+.char-text-modal__badge {
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.char-text-modal__body {
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-right: 4px;
+  outline: none;
+}
+
+.char-text-modal__body:focus-visible {
+  outline: 1px solid var(--accent-border);
+  outline-offset: 2px;
+}
+
+.char-text-modal__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.char-text-modal__section h3 {
+  margin: 0;
+}
+
+.char-text-modal__text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text-h);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.char-text-modal__muted {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.char-text-modal__note {
+  font-size: 13px;
+}
+
+.char-text-modal__error {
+  margin: 0;
+  font-size: 14px;
+  color: var(--danger);
+}
+
+.char-text-modal__bonds {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.char-text-modal__bond {
+  display: grid;
+  grid-template-columns: 6.5em 1fr;
+  gap: 12px;
+  padding: 8px 12px;
+  align-items: baseline;
+
+  & + & {
+    border-top: 1px solid var(--border);
+  }
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
+.char-text-modal__bond-type {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}

@@ -11,6 +11,7 @@ import SortBar from "./SortBar";
 import LoginPage from "./LoginPage";
 import MyCDKeysPage from "./MyCDKeysPage";
 import BanModal from "./BanModal";
+import CharacterTextModal from "./CharacterTextModal";
 import RegisterPage from "./RegisterPage";
 import PrivacyPage from "./PrivacyPage";
 import ForgotPasswordPage from "./ForgotPasswordPage";
@@ -21,7 +22,7 @@ import DemographicsPage from "./DemographicsPage";
 import MetricsPage from "./MetricsPage";
 import { IconRefresh } from "./Icons";
 import { PAGES, PAGE_TITLES, type Page } from "./pages";
-import type { OnlinePlayer, Ban, BanBase, BanDetails, PlayerData, PlayerSession, CdKey, BanTarget, BanPayload, BanEditFields, ExpandGen } from "./types";
+import type { OnlinePlayer, Ban, BanBase, BanDetails, PlayerData, PlayerSession, CdKey, BanTarget, BanPayload, BanEditFields, ExpandGen, CharacterView, InnerWorldState } from "./types";
 import "./App.css";
 
 type AuthView = "login" | "register" | "reset_password" | "forgot_password" | "privacy";
@@ -67,6 +68,7 @@ function App() {
   const [accountUuid, setAccountUuid] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [banTarget, setBanTarget] = useState<BanTarget | null>(null);
+  const [characterView, setCharacterView] = useState<CharacterView | null>(null);
   const [expandGen, setExpandGen] = useState<ExpandGen>({ v: 0, expanded: null });
   const [onlineExpandGen, setOnlineExpandGen] = useState<ExpandGen>({ v: 0, expanded: null });
   const [actionError, setActionError] = useState<string | null>(null);
@@ -162,6 +164,18 @@ function App() {
 
   function openBanModal(cdKeys: string[], playerNames: string[], ipAddresses: string[]) {
     setBanTarget({ cdKeys, playerNames, ipAddresses });
+  }
+
+  // Once a DM has been shown a character's Inner World, stop its button
+  // glowing everywhere it appears, rather than wait for the next fetch of
+  // each list (the player search is never re-fetched on its own).
+  function setInnerWorldState(pcid: string, state: InnerWorldState) {
+    setPlayers((prev) => prev.map((p) => (p.pcid === pcid ? { ...p, inner_world: state } : p)));
+    setPlayerSearchData((prev) => prev.map((entry) =>
+      entry.characters.some((c) => c.pcid === pcid)
+        ? { ...entry, characters: entry.characters.map((c) => (c.pcid === pcid ? { ...c, inner_world: state } : c)) }
+        : entry
+    ));
   }
 
   function banPlayer({ ban_reason, ban_temporary, ban_end }: BanPayload) {
@@ -529,7 +543,16 @@ function App() {
                   <span>IP Address</span><span>Logged On</span><span></span><span></span>
                 </div>
                 {onlinePlayers.map((player) => (
-                  <PlayerListItem key={player.public_cd_key} {...player} isBanned={bannedKeySet.has(player.public_cd_key)} onBan={() => openBanModal([player.public_cd_key], player.online_player_name ? [player.online_player_name] : [], player.ip_address ? [player.ip_address] : [])} onUnban={() => unbanPlayer(cdKeyToBanId[player.public_cd_key])} expandGen={onlineExpandGen} />
+                  <PlayerListItem
+                    key={player.public_cd_key}
+                    {...player}
+                    isBanned={bannedKeySet.has(player.public_cd_key)}
+                    onBan={() => openBanModal([player.public_cd_key], player.online_player_name ? [player.online_player_name] : [], player.ip_address ? [player.ip_address] : [])}
+                    onUnban={() => unbanPlayer(cdKeyToBanId[player.public_cd_key])}
+                    onDescription={player.pcid ? () => setCharacterView({ kind: "description", pcid: player.pcid!, name: player.character_name }) : undefined}
+                    onInnerWorld={player.pcid ? () => setCharacterView({ kind: "inner_world", pcid: player.pcid!, name: player.character_name }) : undefined}
+                    expandGen={onlineExpandGen}
+                  />
                 ))}
               </div>
             )}
@@ -645,6 +668,7 @@ function App() {
                           onUnbanById={(banId) => unbanPlayer(banId)}
                           onExpungeById={(banId) => expungeBan(banId)}
                           onEditBanById={(banId, fields) => editBan(banId, fields)}
+                          onView={setCharacterView}
                           expandGen={expandGen}
                         />
                       ));
@@ -682,6 +706,14 @@ function App() {
           target={banTarget}
           onConfirm={banPlayer}
           onCancel={() => setBanTarget(null)}
+        />
+      )}
+      {characterView && (
+        <CharacterTextModal
+          view={characterView}
+          authToken={authToken}
+          onClose={() => setCharacterView(null)}
+          onInnerWorldState={setInnerWorldState}
         />
       )}
     </div>

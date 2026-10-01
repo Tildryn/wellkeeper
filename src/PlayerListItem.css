@@ -300,6 +300,27 @@
   cursor: default;
 }
 
+/* An Inner World with something this DM has not read: the in-game Player
+   List's "encouraged" glow. */
+.player-card__action-btn--new {
+  color: var(--accent);
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+  animation: player-action-glow 2.4s ease-in-out infinite;
+}
+
+@keyframes player-action-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 168, 67, 0); }
+  50%      { box-shadow: 0 0 8px 1px rgba(212, 168, 67, 0.45); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-card__action-btn--new {
+    animation: none;
+    box-shadow: 0 0 6px 1px rgba(212, 168, 67, 0.4);
+  }
+}
+
 /* ── Ban / unban buttons ─────────────────────────────────────────────────── */
 
 .player-card__ban-btn,
