@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { IconRefresh } from "./Icons";
 import { BarRow } from "./BarRow";
 import { niceMax, useWidth } from "./chart";
@@ -715,6 +715,173 @@ function SpendingSection({ history, now }: { history: History; now: number }) {
   );
 }
 
+// Foodstock handed in, from wkserver's /economy/food/contributors: one row per
+// hand-in, [unix seconds, character, amount, kinds], oldest first, where
+// `character` indexes `characters`. `total` and `first` count every hand-in
+// recorded, whatever the range.
+type Contribution = [number, number, number, Record<string, number>];
+type Contributions = {
+  contributions: Contribution[];
+  characters: { pcid: string; name: string }[];
+  total: number;
+  first: number | null;
+};
+
+// The kinds of Foodstock, keyed as the game's stores are (GetFoodTypeName in
+// pw_inc_foodstore), in the order the bars stack them. Every Foodstock item
+// is one of the first four; the stores take anything else carrying the tag as
+// wheat, which keeps.
+const FOOD_KINDS: { key: string; label: string }[] = [
+  { key: "fish", label: "Fish" },
+  { key: "berries", label: "Berries" },
+  { key: "mushrooms", label: "Mushrooms" },
+  { key: "meat", label: "Meat" },
+  { key: "wheat", label: "Other provisions" },
+];
+
+// How many of the leaderboard get a bar; the table under it has everyone.
+const LEADERBOARD_BARS = 20;
+
+const kindsText = (kinds: Record<string, number>) =>
+  FOOD_KINDS.filter((k) => kinds[k.key]).map((k) => `${fmt(kinds[k.key])} ${k.label.toLowerCase()}`).join(", ");
+
+// Who hands Foodstock in to the town's stores, ranked by how much over the
+// range shown, and the latest hand-ins.
+function ContributorsSection({ data }: { data: Contributions }) {
+  const { contributions, characters, total, first } = data;
+
+  const ranked = useMemo(() => {
+    const by = characters.map((c) => ({ ...c, amount: 0, handins: 0, first: 0, last: 0, kinds: {} as Record<string, number> }));
+    for (const [t, i, amount, kinds] of contributions) {
+      const c = by[i];
+      c.amount += amount;
+      c.handins += 1;
+      if (!c.first) c.first = t;
+      c.last = t;
+      for (const [k, n] of Object.entries(kinds)) c.kinds[k] = (c.kinds[k] ?? 0) + n;
+    }
+    // Level pegging goes to whoever got there first.
+    return by.sort((a, b) => b.amount - a.amount || a.first - b.first);
+  }, [contributions, characters]);
+
+  const handedIn = ranked.reduce((s, c) => s + c.amount, 0);
+  const top = ranked[0];
+  const latest = contributions[contributions.length - 1];
+  const recent = contributions.slice(-50).reverse();
+
+  return (
+    <section className="economy__section" aria-labelledby="eco-food_contributors">
+      <h3 id="eco-food_contributors">Foodstock Contributors</h3>
+      <p className="economy__sub">
+        Who hands Foodstock in to the town's stores, ranked by how much they brought over the range shown. Each hand-in takes every Foodstock item the character carries. DMs' hand-ins are left out.
+        {first !== null && ` Recorded since ${timeLabel(first)}, ${fmt(total)} hand-ins in all; the hand-ins in the Food Stores chart above go back further, but say nothing of who made them.`}
+      </p>
+
+      {contributions.length === 0 ? (
+        <p className="economy__empty">
+          {first === null ? "No hand-ins recorded yet." : "No hand-ins in this range."}
+        </p>
+      ) : (
+        <>
+          <div className="economy__stats">
+            <div className="economy__stat">
+              <span className="economy__stat-label">Handed In</span>
+              <span className="economy__stat-value economy__stat-value--hero">{fmt(handedIn)}</span>
+              <span className="economy__stat-note">{fmt(contributions.length)} hand-ins, over the range shown</span>
+            </div>
+            <div className="economy__stat">
+              <span className="economy__stat-label">Contributors</span>
+              <span className="economy__stat-value">{fmt(ranked.length)}</span>
+              <span className="economy__stat-note">Characters who handed any in</span>
+            </div>
+            <div className="economy__stat">
+              <span className="economy__stat-label">Top Contributor</span>
+              <span className="economy__stat-value">{share(top.amount, handedIn)}</span>
+              <span className="economy__stat-note">{top.name}, {fmt(top.amount)} of it</span>
+            </div>
+            <div className="economy__stat">
+              <span className="economy__stat-label">Latest Hand-in</span>
+              <span className="economy__stat-value">{fmt(latest[2])}</span>
+              <span className="economy__stat-note">{characters[latest[1]].name}, {timeLabel(latest[0])}</span>
+            </div>
+          </div>
+
+          <div className="economy__card">
+            <h4>Leaderboard</h4>
+            <div className="economy__legend" aria-hidden="true">
+              {FOOD_KINDS.map((k) => <span key={k.key}><i className={`eco-kind--${k.key}`} />{k.label}</span>)}
+            </div>
+            <div className="demo-bars">
+              {ranked.slice(0, LEADERBOARD_BARS).map((c, i) => (
+                <BarRow key={c.pcid} label={`${i + 1}. ${c.name}`} value={fmt(c.amount)} max={top.amount}
+                  segments={FOOD_KINDS.map((k) => ({ n: c.kinds[k.key] ?? 0, className: `eco-kind--${k.key}` }))}
+                  tip={<>
+                    <strong>{c.name}</strong>
+                    <span>{share(c.amount, handedIn)} of the Foodstock handed in · {fmt(c.handins)} hand-ins, {fmt(c.amount / c.handins)} each on average</span>
+                    <span>{c.handins > 1 ? `First ${timeLabel(c.first)}, latest ${timeLabel(c.last)}` : timeLabel(c.last)}</span>
+                    {FOOD_KINDS.filter((k) => c.kinds[k.key]).map((k) => (
+                      <span key={k.key} className="economy__tip-row"><i className={`eco-kind--${k.key}`} />{k.label}<b>{fmt(c.kinds[k.key])}</b></span>
+                    ))}
+                  </>} />
+              ))}
+            </div>
+            <details className="economy__details">
+              <summary>Show as a table{ranked.length > LEADERBOARD_BARS && `, all ${fmt(ranked.length)} contributors`}</summary>
+              <div className="economy__table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Character</th><th>Handed In</th><th>Share</th><th>Hand-ins</th>
+                      {FOOD_KINDS.map((k) => <th key={k.key}>{k.label}</th>)}
+                      <th>Latest (UTC)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ranked.map((c, i) => (
+                      <tr key={c.pcid}>
+                        <td>{i + 1}. {c.name}</td>
+                        <td>{fmt(c.amount)}</td>
+                        <td>{share(c.amount, handedIn)}</td>
+                        <td>{fmt(c.handins)}</td>
+                        {FOOD_KINDS.map((k) => <td key={k.key}>{c.kinds[k.key] ? fmt(c.kinds[k.key]) : "–"}</td>)}
+                        <td>{timeLabel(c.last).replace(" UTC", "")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </div>
+
+          <div className="economy__card">
+            <h4>Latest Hand-ins</h4>
+            <details className="economy__details">
+              <summary>Show the latest {fmt(recent.length)}</summary>
+              <div className="economy__table-wrap">
+                <table>
+                  <thead>
+                    <tr><th>When (UTC)</th><th className="economy__cell-left">Character</th><th>Handed In</th><th className="economy__cell-left">What</th></tr>
+                  </thead>
+                  <tbody>
+                    {recent.map(([t, i, amount, kinds], n) => (
+                      <tr key={n}>
+                        <td>{timeLabel(t).replace(" UTC", "")}</td>
+                        <td className="economy__cell-left">{characters[i].name}</td>
+                        <td>{fmt(amount)}</td>
+                        <td className="economy__cell-left">{kindsText(kinds)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 interface EconomyPageProps {
   authToken: string;
 }
@@ -722,6 +889,7 @@ interface EconomyPageProps {
 function EconomyPage({ authToken }: EconomyPageProps) {
   const [days, setDays] = useState(30);
   const [data, setData] = useState<Record<string, History>>({});
+  const [contributors, setContributors] = useState<Contributions | null>(null);
   // When the data came in (unix seconds), for the spending's last 7 days.
   const [fetchedAt, setFetchedAt] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -739,25 +907,29 @@ function EconomyPage({ authToken }: EconomyPageProps) {
 
   useEffect(() => {
     let current = true;
-    // A wkserver from before the average gold and the spending answers 404
-    // for them, and the page shows the rest.
-    const get = (resource: string, d: number, optional = false) =>
-      fetch(`${import.meta.env.VITE_API_URL}/economy/${resource}?days=${d}`, {
+    // A wkserver from before the average gold, the spending, and the
+    // contributors answers 404 for them, and the page shows the rest.
+    const get = <T,>(path: string, d: number, optional = false) =>
+      fetch(`${import.meta.env.VITE_API_URL}/economy/${path}?days=${d}`, {
         cache: "no-store",
         headers: { Authorization: `Bearer ${authToken}` },
       }).then((res) => {
         if (optional && res.status === 404) return null;
         if (!res.ok) throw new Error(`Server error (${res.status}).`);
-        return res.json() as Promise<History>;
+        return res.json() as Promise<T>;
       });
     Promise.all([
-      ...RESOURCES.map((c) => get(c.resource, days)),
-      get("gold_average", days ? Math.max(days, 31) : 0, true),
-      get("gold_spent", days, true),
+      Promise.all([
+        ...RESOURCES.map((c) => get<History>(c.resource, days)),
+        get<History>("gold_average", days ? Math.max(days, 31) : 0, true),
+        get<History>("gold_spent", days, true),
+      ]),
+      get<Contributions>("food/contributors", days, true),
     ])
-      .then((results) => {
+      .then(([results, contributed]) => {
         if (!current) return;
         setData(Object.fromEntries(results.filter((r): r is History => r !== null).map((r) => [r.resource, r])));
+        setContributors(contributed);
         setFetchedAt(Date.now() / 1000);
         setLoading(false);
       })
@@ -783,7 +955,10 @@ function EconomyPage({ authToken }: EconomyPageProps) {
       {loading && <p role="status">Loading...</p>}
       {error && <p role="alert" style={{ color: "#c0323a" }}>Error: {error}</p>}
       {!loading && !error && RESOURCES.map((c) => data[c.resource] && (
-        <ResourceSection key={c.resource} config={c} history={data[c.resource]} />
+        <Fragment key={c.resource}>
+          <ResourceSection config={c} history={data[c.resource]} />
+          {c.resource === "food" && contributors && <ContributorsSection data={contributors} />}
+        </Fragment>
       ))}
       {!loading && !error && data.gold_average && <AverageGoldSection history={data.gold_average} rangeDays={days} />}
       {!loading && !error && data.gold_spent && <SpendingSection history={data.gold_spent} now={fetchedAt} />}

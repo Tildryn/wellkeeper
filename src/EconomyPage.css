@@ -238,3 +238,15 @@
 .eco-seg--clothing  { background: var(--eco-magenta); }
 .eco-seg--crow      { background: var(--eco-green); }
 .eco-seg--other     { background: var(--eco-other); }
+
+/* The kinds of Foodstock on the contributors leaderboard. Fish, meat, and
+   wheat take the colours of fishing, livestock, and farming in the food
+   chart; the two from foraging take two more. */
+.eco-kind--fish      { background: var(--eco-violet); }
+.eco-kind--berries   { background: var(--eco-magenta); }
+.eco-kind--mushrooms { background: var(--eco-aqua); }
+.eco-kind--meat      { background: var(--eco-gold); }
+.eco-kind--wheat     { background: var(--eco-brown); }
+
+/* Names and descriptions in a table of figures read from the left. */
+.economy__table-wrap .economy__cell-left { text-align: left; }
