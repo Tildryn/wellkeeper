@@ -1,0 +1,306 @@
+/* The Location window: a character's position on a map of their area, and
+   teleporting them. Built on the ban modal's frame (BanModal.css), wider. */
+
+.location-modal {
+  max-width: 720px;
+  max-height: calc(100vh - 48px);
+  box-sizing: border-box;
+  text-align: left;
+  gap: 12px;
+  overflow-y: auto;
+
+  /* The tallest the map is drawn. Its width follows from the area's shape
+     (see the inline style), so a tall area is narrow rather than cut off. */
+  --location-map-max-height: min(52vh, 560px);
+
+  /* Restated, since the max-width above outranks .ban-modal's own phone
+     rule by coming later. */
+  @media (max-width: 600px) {
+    max-width: calc(100% - 24px);
+    max-height: calc(100vh - 24px);
+    --location-map-max-height: 46vh;
+  }
+}
+
+.location-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.location-modal__name {
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+
+.location-modal__badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.location-modal__badge {
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.location-modal__status,
+.location-modal__target {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-h);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 1.45em;
+  font-variant-numeric: tabular-nums;
+}
+
+.location-modal__target {
+  color: var(--text);
+}
+
+/* The game's pin sprite is 14px of pixel art, so it is never smoothed. */
+.location-modal__legend-pin {
+  width: 14px;
+  height: 14px;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
+
+.location-modal__muted {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.location-modal__error {
+  margin: 0;
+  font-size: 14px;
+  color: var(--danger);
+}
+
+.location-modal__ok {
+  margin: 0;
+  font-size: 14px;
+  color: var(--accent);
+}
+
+.location-modal__viewing {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.location-modal__link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.location-modal__actions {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.location-modal__teleport {
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  padding: 7px 16px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.location-modal__teleport:hover:not(:disabled) {
+  background: rgba(212, 168, 67, 0.28);
+  border-color: var(--accent);
+}
+
+.location-modal__teleport:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Map ─────────────────────────────────────────────────────────────────── */
+
+.location-modal__map-frame {
+  display: flex;
+  justify-content: center;
+}
+
+.location-map {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #18181c;
+  cursor: crosshair;
+  user-select: none;
+  outline: none;
+}
+
+.location-map:focus-visible {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 2px var(--accent-bg);
+}
+
+.location-map__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* A small area's map is a few hundred pixels blown up several times over:
+   kept as the pixel art it is rather than smeared. */
+.location-map--small .location-map__image {
+  image-rendering: pixelated;
+}
+
+.location-map__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, #2c2c34 1px, transparent 1px),
+    linear-gradient(to bottom, #2c2c34 1px, transparent 1px);
+}
+
+.location-map__pin {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  transform: translate(-50%, -50%);
+  image-rendering: pixelated;
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.9));
+  transition: left 0.4s ease, top 0.4s ease;
+}
+
+/* Placed by a click: it should be where the click was at once, not glide there. */
+.location-map__pin--target {
+  transition: none;
+  z-index: 1;
+}
+
+.location-map__other {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: #7fd4ff;
+  border: 1px solid rgba(0, 0, 0, 0.8);
+  transition: left 0.4s ease, top 0.4s ease;
+}
+
+.location-map__other--dm {
+  background: #c79bff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .location-map__pin,
+  .location-map__other {
+    transition: none;
+  }
+}
+
+/* ── Area picker ─────────────────────────────────────────────────────────── */
+
+.location-picker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.location-picker__list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  margin: 4px 0 0;
+  padding: 4px;
+  list-style: none;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.location-picker__option {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 5px;
+  font-size: 14px;
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.location-picker__option--active {
+  background: var(--accent-bg);
+}
+
+.location-picker__name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.location-picker__players {
+  font-size: 12px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.location-picker__resref {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+
+  @media (max-width: 600px) {
+    display: none;
+  }
+}
+
+.location-picker__note {
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.location-picker__note[role="alert"] {
+  color: var(--danger);
+  font-style: normal;
+}

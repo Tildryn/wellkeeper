@@ -32,11 +32,12 @@ interface PlayerListItemProps {
   onUnban: () => void;
   onDescription?: () => void;
   onInnerWorld?: () => void;
+  onLocation?: () => void;
   isBanned: boolean;
   expandGen: ExpandGen | null;
 }
 
-function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_address, logged_on_at, inner_world, onBan, onUnban, onDescription, onInnerWorld, isBanned, expandGen }: PlayerListItemProps) {
+function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_address, logged_on_at, inner_world, onBan, onUnban, onDescription, onInnerWorld, onLocation, isBanned, expandGen }: PlayerListItemProps) {
   const [confirming, setConfirming] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const confirmYesRef = useRef<HTMLButtonElement | null>(null);
@@ -73,7 +74,7 @@ function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_
         <code className="player-card__ip">{ip_address}</code>
         <span className="player-card__timestamp">{new Date(logged_on_at).toLocaleString()}</span>
         <div className="player-card__action-group">
-          <CharacterButtons name={character_name} innerWorld={inner_world} onDescription={onDescription} onInnerWorld={onInnerWorld} />
+          <CharacterButtons name={character_name} innerWorld={inner_world} onDescription={onDescription} onInnerWorld={onInnerWorld} onLocation={onLocation} />
         </div>
         <div className="player-card__ban-area">
           <BootSpinner visible={isBanned} />

@@ -1,4 +1,4 @@
-import { IconScroll, IconGlobe } from "./Icons";
+import { IconScroll, IconGlobe, IconMapPin } from "./Icons";
 import type { InnerWorldState } from "./types";
 
 // The Description and Inner World buttons, on the online list and on each
@@ -7,6 +7,9 @@ import type { InnerWorldState } from "./types";
 // written nothing there, and glows when there is something this DM has not
 // read -- a page they have never opened, or one changed since they last did.
 // The tooltips are the game's.
+//
+// Location is only on the online list: it shows where the character is
+// standing now, and there is nowhere to show for one who is not in the game.
 
 interface CharacterButtonsProps {
   name: string;
@@ -16,6 +19,8 @@ interface CharacterButtonsProps {
   // Absent when there is no character to show (the dummy data).
   onDescription?: () => void;
   onInnerWorld?: () => void;
+  // Absent where the characters listed may not be online (the player search).
+  onLocation?: () => void;
 }
 
 function innerWorldTitle(name: string, state: InnerWorldState | undefined): string {
@@ -27,7 +32,7 @@ function innerWorldTitle(name: string, state: InnerWorldState | undefined): stri
   return read;
 }
 
-function CharacterButtons({ name, innerWorld, withText = false, onDescription, onInnerWorld }: CharacterButtonsProps) {
+function CharacterButtons({ name, innerWorld, withText = false, onDescription, onInnerWorld, onLocation }: CharacterButtonsProps) {
   const innerOff = !onInnerWorld || innerWorld === "empty";
   const innerNew = !innerOff && (innerWorld === "unread" || innerWorld === "changed");
   const btn = `player-card__action-btn${withText ? " player-card__action-btn--with-text" : ""}`;
@@ -55,6 +60,16 @@ function CharacterButtons({ name, innerWorld, withText = false, onDescription, o
         <IconGlobe />{withText && " Inner World"}
         {withText && innerNew && <span className="sr-only">{innerWorld === "unread" ? " (unread)" : " (changed)"}</span>}
       </button>
+      {onLocation && (
+        <button
+          className={btn}
+          aria-label={withText ? undefined : "Location"}
+          title="See where this character is, and teleport them"
+          onClick={(e) => { e.preventDefault(); onLocation(); }}
+        >
+          <IconMapPin />{withText && " Location"}
+        </button>
+      )}
     </>
   );
 }

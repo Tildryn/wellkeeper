@@ -12,6 +12,7 @@ import LoginPage from "./LoginPage";
 import MyCDKeysPage from "./MyCDKeysPage";
 import BanModal from "./BanModal";
 import CharacterTextModal from "./CharacterTextModal";
+import LocationModal from "./LocationModal";
 import RegisterPage from "./RegisterPage";
 import PrivacyPage from "./PrivacyPage";
 import ForgotPasswordPage from "./ForgotPasswordPage";
@@ -22,7 +23,7 @@ import DemographicsPage from "./DemographicsPage";
 import MetricsPage from "./MetricsPage";
 import { IconRefresh } from "./Icons";
 import { PAGES, PAGE_TITLES, type Page } from "./pages";
-import type { OnlinePlayer, Ban, BanBase, BanDetails, PlayerData, PlayerSession, CdKey, BanTarget, BanPayload, BanEditFields, ExpandGen, CharacterView, InnerWorldState } from "./types";
+import type { OnlinePlayer, Ban, BanBase, BanDetails, PlayerData, PlayerSession, CdKey, BanTarget, BanPayload, BanEditFields, ExpandGen, CharacterView, InnerWorldState, LocationView } from "./types";
 import "./App.css";
 
 type AuthView = "login" | "register" | "reset_password" | "forgot_password" | "privacy";
@@ -69,6 +70,7 @@ function App() {
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [banTarget, setBanTarget] = useState<BanTarget | null>(null);
   const [characterView, setCharacterView] = useState<CharacterView | null>(null);
+  const [locationView, setLocationView] = useState<LocationView | null>(null);
   const [expandGen, setExpandGen] = useState<ExpandGen>({ v: 0, expanded: null });
   const [onlineExpandGen, setOnlineExpandGen] = useState<ExpandGen>({ v: 0, expanded: null });
   const [actionError, setActionError] = useState<string | null>(null);
@@ -551,6 +553,7 @@ function App() {
                     onUnban={() => unbanPlayer(cdKeyToBanId[player.public_cd_key])}
                     onDescription={player.pcid ? () => setCharacterView({ kind: "description", pcid: player.pcid!, name: player.character_name }) : undefined}
                     onInnerWorld={player.pcid ? () => setCharacterView({ kind: "inner_world", pcid: player.pcid!, name: player.character_name }) : undefined}
+                    onLocation={player.pcid ? () => setLocationView({ pcid: player.pcid!, name: player.character_name }) : undefined}
                     expandGen={onlineExpandGen}
                   />
                 ))}
@@ -714,6 +717,13 @@ function App() {
           authToken={authToken}
           onClose={() => setCharacterView(null)}
           onInnerWorldState={setInnerWorldState}
+        />
+      )}
+      {locationView && (
+        <LocationModal
+          view={locationView}
+          authToken={authToken}
+          onClose={() => setLocationView(null)}
         />
       )}
     </div>

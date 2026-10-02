@@ -42,6 +42,45 @@ export interface CharacterDescription {
   vault: boolean;
 }
 
+// An area in the running game. `id` tells one instance of an area from
+// another; `resref` is the area file they share. `width` and `height` are in
+// tiles of 10m, and `map` is the area's image under /maps, or null.
+export interface GameArea {
+  id: string;
+  resref: string;
+  name: string;
+  tag: string;
+  width: number;
+  height: number;
+  instance: number;
+  players?: number;
+  map: string | null;
+}
+
+// A point in an area, in metres from its south-west corner.
+export interface MapPoint {
+  x: number;
+  y: number;
+}
+
+// Where an online character is. `area` is null while they are between areas.
+// `driving` names the creature they are possessing, whose position this then
+// is. `others` are the other characters in the same area.
+export type CharacterLocation =
+  | { online: false }
+  | {
+      online: true;
+      name: string;
+      dead: boolean;
+      driving: string | null;
+      area: GameArea | null;
+      x?: number;
+      y?: number;
+      z?: number;
+      facing?: number;
+      others?: (MapPoint & { name: string, dm: boolean })[];
+    };
+
 export interface BanBase {
   ban_id: number;
   ban_reason: string | null;
@@ -115,6 +154,12 @@ export interface ExpandGen {
 // A character's Description or Inner World, open in the viewer.
 export interface CharacterView {
   kind: "description" | "inner_world";
+  pcid: string;
+  name: string;
+}
+
+// An online character whose Location is open.
+export interface LocationView {
   pcid: string;
   name: string;
 }

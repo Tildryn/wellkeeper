@@ -129,4 +129,16 @@ describe('PlayerListItem', () => {
     render(<PlayerListItem {...defaultProps} inner_world="seen" onInnerWorld={vi.fn()} />)
     expect(screen.getByRole('button', { name: 'Inner World' })).not.toHaveClass('player-card__action-btn--new')
   })
+
+  it('opens the Location window, and has no Location button without a character to find', async () => {
+    const onLocation = vi.fn()
+    const user = userEvent.setup()
+    const { unmount } = render(<PlayerListItem {...defaultProps} onLocation={onLocation} />)
+    await user.click(screen.getByRole('button', { name: 'Location' }))
+    expect(onLocation).toHaveBeenCalled()
+    unmount()
+
+    render(<PlayerListItem {...defaultProps} />)
+    expect(screen.queryByRole('button', { name: 'Location' })).not.toBeInTheDocument()
+  })
 })
