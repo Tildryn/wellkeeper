@@ -223,3 +223,18 @@
   color: var(--text-h);
   font-weight: 600;
 }
+
+/* The median drawn over the average gold. */
+.economy__line--second { stroke: var(--eco-yellow); }
+.economy__dot--second { fill: var(--eco-yellow); }
+
+/* The groups of the gold spent, in the colours of their series. */
+.eco-seg--food      { background: var(--eco-orange); }
+.eco-seg--alchemist { background: var(--eco-violet); }
+.eco-seg--healer    { background: var(--eco-aqua); }
+.eco-seg--gadgets   { background: var(--eco-yellow); }
+.eco-seg--scrolls   { background: var(--eco-blue); }
+.eco-seg--arms      { background: var(--eco-brown); }
+.eco-seg--clothing  { background: var(--eco-magenta); }
+.eco-seg--crow      { background: var(--eco-green); }
+.eco-seg--other     { background: var(--eco-other); }
