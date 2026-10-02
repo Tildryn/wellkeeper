@@ -27,8 +27,26 @@ const GOLD = {
   latest: { t: T, value: 4800000, detail: { characters: 2400, median: 900, top10pct_share: 0.61 } },
 }
 
-function mockEconomy(requested: string[] = []) {
+// Foodstock hand-ins as wkserver sends them: [unix seconds, character,
+// amount, kinds], oldest first.
+const CONTRIBUTORS = {
+  contributions: [
+    [T - 7200, 0, 12, { fish: 10, berries: 2 }],
+    [T - 3600, 1, 30, { meat: 30 }],
+    [T - 60, 0, 3, { mushrooms: 3 }],
+  ],
+  characters: [{ pcid: 'pc-a', name: 'Ada Fenwick' }, { pcid: 'pc-b', name: 'Bram Stoker' }],
+  total: 3,
+  first: T - 7200,
+  now: T,
+}
+
+// Without `contributors`, the contributors answer 404, as a wkserver from
+// before them does.
+function mockEconomy(requested: string[] = [], contributors: object | null = null) {
   server.use(
+    http.get(`${API}/economy/food/contributors`, () =>
+      contributors ? HttpResponse.json(contributors) : new HttpResponse(null, { status: 404 })),
     http.get(`${API}/economy/:resource`, ({ params, request }) => {
       requested.push(new URL(request.url).search)
       return HttpResponse.json(params.resource === 'food' ? FOOD : GOLD)
@@ -74,6 +92,25 @@ describe('EconomyPage', () => {
     await screen.findByRole('region', { name: 'Food Stores' })
     expect(requested).toContain('?days=30')
     expect(requested).toContain('?days=7')
+  })
+
+  it('ranks the Foodstock contributors by how much they handed in', async () => {
+    mockEconomy([], CONTRIBUTORS)
+    render(<EconomyPage authToken="test-token" />)
+    const section = await screen.findByRole('region', { name: 'Foodstock Contributors' })
+    // The bars, then the same ranking again in the table under them.
+    expect(within(section).getAllByText(/^\d+\. /).map((e) => e.textContent))
+      .toEqual(['1. Bram Stoker', '2. Ada Fenwick', '1. Bram Stoker', '2. Ada Fenwick'])
+    // Bram's 30 of the 45 handed in, as the top contributor and in the table.
+    expect(within(section).getByText('45')).toBeInTheDocument()
+    expect(within(section).getAllByText('67%')).toHaveLength(2)
+  })
+
+  it('leaves the contributors out for a wkserver without them', async () => {
+    mockEconomy()
+    render(<EconomyPage authToken="test-token" />)
+    await screen.findByRole('region', { name: 'Food Stores' })
+    expect(screen.queryByRole('region', { name: 'Foodstock Contributors' })).not.toBeInTheDocument()
   })
 
   it('shows an error when the server refuses', async () => {
