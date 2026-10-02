@@ -10,7 +10,9 @@ import "./DemographicsPage.css";
 // reason, signed amount, events], summed per hour and reason. The average
 // gold's levels carry a third element, the sample's detail.
 
-type AverageDetail = { characters: number; median: number; total: number };
+// compared and change: the characters active in both this sample and the one
+// before, and the sum of their change in gold (absent where nothing came before).
+type AverageDetail = { characters: number; median: number; total: number; compared?: number; change?: number };
 type Level = [number, number, (AverageDetail | null)?];
 type Flow = [number, string, number, number];
 type Latest = { t: number; value: number; detail: Record<string, number | string> | null } | null;
@@ -160,7 +162,7 @@ function foldFlows(flows: Flow[], config: ResourceConfig): DayFlows[] {
 // average gold. `note` adds a line to the tooltip.
 type SecondLine = { label: string; mainLabel: string; of: (l: Level) => number; note?: (l: Level) => string };
 
-function LevelChart({ levels, refs, title, second }: { levels: Level[]; refs?: [number, string][]; title: string; second?: SecondLine }) {
+function LevelChart({ levels, refs, title, second, format = fmt }: { levels: Level[]; refs?: [number, string][]; title: string; second?: SecondLine; format?: (n: number) => string }) {
   const [box, W] = useWidth<HTMLDivElement>();
   const [hover, setHover] = useState<number | null>(null);
   if (levels.length === 0) return <p className="economy__empty">No samples yet.</p>;
@@ -169,9 +171,16 @@ function LevelChart({ levels, refs, title, second }: { levels: Level[]; refs?: [
   const H = narrow ? 240 : 300;
   const m = { l: 64, r: 16, t: 16, b: 28 };
   const t0 = levels[0][0], t1 = Math.max(levels[levels.length - 1][0], t0 + 3600);
-  const vMax = niceMax(Math.max(...levels.map((l) => Math.max(l[1], second ? second.of(l) : 0))) * 1.05);
+  const highest = Math.max(...levels.map((l) => Math.max(l[1], second ? second.of(l) : 0)));
+  // Zero is the floor unless a value falls below it (the gold gained per
+  // character can be a loss). Then the ticks keep one step either side of
+  // zero, so a small dip gets one tick below the line, not a crowd of them.
+  const lowest = Math.min(0, ...levels.map((l) => Math.min(l[1], second ? second.of(l) : 0)));
+  const tickStep = lowest < 0 ? niceMax(Math.max(highest, -lowest) * 1.05) / 4 : 0;
+  const vMax = lowest < 0 ? Math.max(tickStep, Math.ceil((highest * 1.05) / tickStep) * tickStep) : niceMax(highest * 1.05);
+  const vMin = lowest < 0 ? -Math.ceil((-lowest * 1.05) / tickStep) * tickStep : 0;
   const x = (t: number) => m.l + ((t - t0) / (t1 - t0)) * (W - m.l - m.r);
-  const y = (v: number) => m.t + (1 - v / vMax) * (H - m.t - m.b);
+  const y = (v: number) => m.t + ((vMax - v) / (vMax - vMin)) * (H - m.t - m.b);
 
   const steps = (of: (l: Level) => number) => {
     let p = `M${x(levels[0][0]).toFixed(1)},${y(of(levels[0])).toFixed(1)}`;
@@ -181,7 +190,9 @@ function LevelChart({ levels, refs, title, second }: { levels: Level[]; refs?: [
   const d = steps((l) => l[1]);
   const last = levels[levels.length - 1];
 
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => f * vMax);
+  const ticks = vMin < 0
+    ? Array.from({ length: Math.round((vMax - vMin) / tickStep) + 1 }, (_, i) => vMin + i * tickStep)
+    : [0, 0.25, 0.5, 0.75, 1].map((f) => f * vMax);
   const span = t1 - t0;
   const step = span > 60 * 86400 ? 14 : span > 20 * 86400 ? 7 : span > 8 * 86400 ? 2 : 1;
   const dayTicks: number[] = [];
@@ -199,7 +210,7 @@ function LevelChart({ levels, refs, title, second }: { levels: Level[]; refs?: [
     <div className="economy__chart" ref={box}>
       <svg
         viewBox={`0 0 ${W} ${H}`} height={H} role="img" tabIndex={0}
-        aria-label={`${title} over time, from ${fmt(levels[0][1])} on ${dayLabel(t0)} to ${fmt(last[1])} on ${dayLabel(last[0])}. Use the left and right arrow keys to step through time.`}
+        aria-label={`${title} over time, from ${format(levels[0][1])} on ${dayLabel(t0)} to ${format(last[1])} on ${dayLabel(last[0])}. Use the left and right arrow keys to step through time.`}
         onPointerMove={(e) => {
           const r = e.currentTarget.getBoundingClientRect();
           const px = ((e.clientX - r.left) * W) / r.width;
@@ -219,7 +230,7 @@ function LevelChart({ levels, refs, title, second }: { levels: Level[]; refs?: [
         {ticks.map((v) => (
           <g key={v}>
             <line x1={m.l} x2={W - m.r} y1={y(v)} y2={y(v)} className={v === 0 ? "economy__axis" : "economy__grid"} />
-            <text x={m.l - 8} y={y(v) + 4} textAnchor="end" className="economy__tick">{fmt(v)}</text>
+            <text x={m.l - 8} y={y(v) + 4} textAnchor="end" className="economy__tick">{format(v)}</text>
           </g>
         ))}
         {dayTicks.map((t) => (
@@ -243,7 +254,7 @@ function LevelChart({ levels, refs, title, second }: { levels: Level[]; refs?: [
         {second && <circle cx={x(last[0])} cy={y(second.of(last))} r={4.5} className="economy__dot economy__dot--second" />}
         {hv && (
           <>
-            <line x1={x(hv[0])} x2={x(hv[0])} y1={m.t} y2={y(0)} className="economy__hair" />
+            <line x1={x(hv[0])} x2={x(hv[0])} y1={m.t} y2={y(vMin)} className="economy__hair" />
             <circle cx={x(hv[0])} cy={y(hv[1])} r={4.5} className="economy__dot" />
             {second && <circle cx={x(hv[0])} cy={y(second.of(hv))} r={4.5} className="economy__dot economy__dot--second" />}
           </>
@@ -251,7 +262,7 @@ function LevelChart({ levels, refs, title, second }: { levels: Level[]; refs?: [
       </svg>
       {hv && !second && (
         <div className="economy__tip" style={{ left: Math.min((x(hv[0]) / W) * 100, 70) + "%", top: 8 }}>
-          <strong>{fmt(hv[1])}</strong>
+          <strong>{format(hv[1])}</strong>
           <span>{timeLabel(hv[0])}</span>
         </div>
       )}
@@ -470,9 +481,37 @@ function trendPerWeek(levels: Level[], from: number, to: number): number | null 
   return stt ? (stv / stt) * 7 * 86400 : null;
 }
 
+// What a character active throughout gained between each scan and the one
+// before: [unix seconds, gold, seconds since the scan before]. Each sample's
+// detail carries the change in gold of the characters active in both scans
+// (wkserver's compareActiveGold), so characters starting or stopping play
+// never move it. The first sample after wkserver restarts has nothing to
+// compare with and is left out, so its interval counts as unknown rather than
+// as no change.
+type Step = [number, number, number];
+
+function perCharacterSteps(levels: Level[]): Step[] {
+  const steps: Step[] = [];
+  for (let i = 1; i < levels.length; i++) {
+    const d = levels[i][2];
+    if (!d?.compared || d.change === undefined) continue;
+    steps.push([levels[i][0], d.change / d.compared, levels[i][0] - levels[i - 1][0]]);
+  }
+  return steps;
+}
+
+// The steps in (from, to] as gold a week, or null when they cover less than
+// most of that span.
+function perCharacterPerWeek(steps: Step[], from: number, to: number): number | null {
+  const inside = steps.filter((s) => s[0] > from && s[0] <= to);
+  const covered = inside.reduce((s, x) => s + x[2], 0);
+  if (covered < (to - from) * 0.8) return null;
+  return (inside.reduce((s, x) => s + x[1], 0) / covered) * 7 * 86400;
+}
+
 // The gold an active character holds. The history comes with at least a
-// month behind it whatever the range, for the 30-day trend, and the chart is
-// cut to the range.
+// month behind it whatever the range, for the 30-day figures, and the charts
+// are cut to the range.
 function AverageGoldSection({ history, rangeDays }: { history: History; rangeDays: number }) {
   const { latest } = history;
   const now = latest?.t ?? 0;
@@ -480,15 +519,26 @@ function AverageGoldSection({ history, rangeDays }: { history: History; rangeDay
     () => rangeDays ? history.levels.filter((l) => l[0] >= now - rangeDays * 86400) : history.levels,
     [history, rangeDays, now]
   );
+  const steps = useMemo(() => perCharacterSteps(history.levels), [history]);
+  // The steps added up from the start of the range.
+  const gained = useMemo((): Level[] => {
+    if (levels.length === 0) return [];
+    const start = levels[0][0];
+    let total = 0;
+    return [[start, 0], ...steps.filter((s) => s[0] > start).map((s): Level => [s[0], (total += s[1])])];
+  }, [levels, steps]);
   const detail = latest?.detail;
-  const trends = ([[7, "Last 7 Days"], [30, "Last 30 Days"]] as const).map(([d, label]) =>
-    ({ d, label, perWeek: trendPerWeek(history.levels, now - d * 86400, now) }));
+  const trends = ([[7, "Last 7 Days"], [30, "Last 30 Days"]] as const).map(([d, label]) => ({
+    d, label,
+    perWeek: trendPerWeek(history.levels, now - d * 86400, now),
+    perCharacter: perCharacterPerWeek(steps, now - d * 86400, now),
+  }));
 
   return (
     <section className="economy__section" aria-labelledby="eco-gold_average">
       <h3 id="eco-gold_average">Gold per Active Character</h3>
       <p className="economy__sub">
-        The gold an active character carries: one played in the last {ACTIVE_DAYS} days (the server saves a character only while it is logged in), and above level {MIN_LEVEL - 1}, the level every new character starts at. A few rich characters pull the average up, so the median, the character in the middle, is the more typical figure. Growth is the slope of the average's trend line, so characters starting or stopping play move it as well as gold earned and spent.
+        The gold an active character carries: one played in the last {ACTIVE_DAYS} days (the server saves a character only while it is logged in), and above level {MIN_LEVEL - 1}, the level every new character starts at. A few rich characters pull the average up, so the median, the character in the middle, is the more typical figure. The average moves when characters start or stop playing as well as when gold is earned and spent: newcomers with less than the average pull it down even while everyone else gets richer. The per-character figures leave that out. Each scan compares only the characters active in it and the one before, so they are what a character playing throughout gained.
       </p>
 
       <div className="economy__stats">
@@ -502,15 +552,15 @@ function AverageGoldSection({ history, rangeDays }: { history: History; rangeDay
           <span className="economy__stat-value">{detail ? fmt(Number(detail.median)) : "–"}</span>
           <span className="economy__stat-note">{detail ? "Half of them carry less than this" : "Not sampled yet"}</span>
         </div>
-        {trends.map(({ d, label, perWeek }) => (
+        {trends.map(({ d, label, perWeek, perCharacter }) => (
           <div className="economy__stat" key={d}>
-            <span className="economy__stat-label">Growth, {label}</span>
-            <span className={`economy__stat-value${perWeek === null ? "" : perWeek >= 0 ? " economy__pos" : " economy__neg"}`}>
-              {perWeek === null ? "–" : `${signed(perWeek)}`}
+            <span className="economy__stat-label">Per Character, {label}</span>
+            <span className={`economy__stat-value${perCharacter === null ? "" : perCharacter >= 0 ? " economy__pos" : " economy__neg"}`}>
+              {perCharacter === null ? "–" : signed(perCharacter)}
             </span>
             <span className="economy__stat-note">
-              {perWeek === null ? `Needs ${d} days of samples`
-                : `A week, on average${latest?.value ? ` (${signed((perWeek / latest.value) * 100)}%)` : ""}`}
+              {perCharacter === null ? `Needs ${d} days of samples` : "A week, playing throughout"}
+              {perWeek !== null && ` · the average's trend ${signed(perWeek)}`}
             </span>
           </div>
         ))}
@@ -527,6 +577,14 @@ function AverageGoldSection({ history, rangeDays }: { history: History; rangeDay
             label: "Median", mainLabel: "Average", of: (l) => l[2]?.median ?? 0,
             note: (l) => l[2] ? `${fmt(l[2].characters)} active characters` : "",
           }} />
+      </div>
+
+      <div className="economy__card">
+        <h4>Gold Gained per Character</h4>
+        <p className="demo-note">What a character playing throughout gained, added up from the start of the range.</p>
+        {gained.length > 1
+          ? <LevelChart levels={gained} title="Gold gained per character" format={signed} />
+          : <p className="economy__empty">No comparisons yet: each needs two scans in a row.</p>}
       </div>
     </section>
   );
