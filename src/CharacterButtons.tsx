@@ -1,12 +1,18 @@
-import { IconScroll, IconGlobe, IconMapPin } from "./Icons";
-import type { InnerWorldState } from "./types";
+import { IconScroll, IconGlobe, IconNotepad, IconMapPin } from "./Icons";
+import type { InnerWorldState, NoteCounts } from "./types";
 
-// The Description and Inner World buttons, on the online list and on each
-// character in the player search. They behave as the in-game Player List's
-// do: Description always opens; Inner World is greyed when the character has
-// written nothing there, and glows when there is something this DM has not
-// read -- a page they have never opened, or one changed since they last did.
-// The tooltips are the game's.
+// The Description, Inner World, and Notes buttons, on the online list and on
+// each character in the player search. They behave as the in-game Player
+// List's do: Description always opens; Inner World is greyed when the
+// character has written nothing there, and glows when there is something this
+// DM has not read -- a page they have never opened, or one changed since they
+// last did. The tooltips are the game's.
+//
+// Notes is lit while there are any DM notes on the character or its account,
+// as in game, so a DM reading down the list sees who has history. It is lit
+// steadily rather than pulsing like an unread Inner World: a note is not news.
+// Unlike the game's it is greyed when there are none, since notes are only
+// read here -- they are written in game, from the DM Player List.
 //
 // Location is only on the online list: it shows where the character is
 // standing now, and there is nowhere to show for one who is not in the game.
@@ -14,11 +20,15 @@ import type { InnerWorldState } from "./types";
 interface CharacterButtonsProps {
   name: string;
   innerWorld: InnerWorldState | undefined;
+  // Undefined from an older API that does not count them, when Notes opens
+  // regardless.
+  notes?: NoteCounts;
   // Labelled buttons where there is room, icon-only on the online list.
   withText?: boolean;
   // Absent when there is no character to show (the dummy data).
   onDescription?: () => void;
   onInnerWorld?: () => void;
+  onNotes?: () => void;
   // Absent where the characters listed may not be online (the player search).
   onLocation?: () => void;
 }
@@ -32,9 +42,20 @@ function innerWorldTitle(name: string, state: InnerWorldState | undefined): stri
   return read;
 }
 
-function CharacterButtons({ name, innerWorld, withText = false, onDescription, onInnerWorld, onLocation }: CharacterButtonsProps) {
+const plural = (n: number) => `${n} note${n === 1 ? "" : "s"}`;
+
+function notesTitle(name: string, notes: NoteCounts | undefined): string {
+  if (notes === undefined) return "Read the DM notes on this character and their account";
+  if (notes.character + notes.account === 0) return `No DM has written a note on ${name || "this character"} or their account`;
+  return `DM notes: ${plural(notes.character)} on this character, ${plural(notes.account)} on the account`;
+}
+
+function CharacterButtons({ name, innerWorld, notes, withText = false, onDescription, onInnerWorld, onNotes, onLocation }: CharacterButtonsProps) {
   const innerOff = !onInnerWorld || innerWorld === "empty";
   const innerNew = !innerOff && (innerWorld === "unread" || innerWorld === "changed");
+  const noteCount = notes ? notes.character + notes.account : undefined;
+  const notesOff = !onNotes || noteCount === 0;
+  const notesLit = !notesOff && noteCount !== undefined;
   const btn = `player-card__action-btn${withText ? " player-card__action-btn--with-text" : ""}`;
 
   // aria-disabled rather than disabled, as before, so the greyed button still
@@ -59,6 +80,16 @@ function CharacterButtons({ name, innerWorld, withText = false, onDescription, o
       >
         <IconGlobe />{withText && " Inner World"}
         {withText && innerNew && <span className="sr-only">{innerWorld === "unread" ? " (unread)" : " (changed)"}</span>}
+      </button>
+      <button
+        className={`${btn}${notesLit ? " player-card__action-btn--lit" : ""}`}
+        aria-label={withText ? undefined : `DM Notes${notesLit ? `, ${noteCount}` : ""}`}
+        aria-disabled={notesOff}
+        title={notesTitle(name, notes)}
+        onClick={(e) => { e.preventDefault(); if (!notesOff) onNotes?.(); }}
+      >
+        <IconNotepad />{withText && " Notes"}
+        {withText && notesLit && <span className="sr-only">{` (${noteCount})`}</span>}
       </button>
       {onLocation && (
         <button

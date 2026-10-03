@@ -321,6 +321,14 @@
   }
 }
 
+/* Notes on a character or its account: the same colours, held steady, since
+   a note is history rather than something new to read. */
+.player-card__action-btn--lit {
+  color: var(--accent);
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
 /* ── Ban / unban buttons ─────────────────────────────────────────────────── */
 
 .player-card__ban-btn,

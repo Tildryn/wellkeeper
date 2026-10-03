@@ -1,0 +1,38 @@
+/* The DM notes viewer. Built on the Description viewer's frame
+   (CharacterTextModal.css); this only adds the note lists. */
+
+.notes-modal__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.notes-modal__note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+
+  & + & {
+    border-top: 1px solid var(--border);
+  }
+}
+
+.notes-modal__meta {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.notes-modal__author {
+  font-weight: 600;
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}

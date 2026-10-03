@@ -4,7 +4,7 @@ import "./PlayerListItem.css";
 import "./BannedPlayerItem.css";
 import CharacterButtons from "./CharacterButtons";
 import BannedPlayerItem from "./BannedPlayerItem";
-import type { Character, Ban, PlayerSession, BanEditFields, ExpandGen, CharacterView } from "./types";
+import type { Character, Ban, PlayerSession, BanEditFields, ExpandGen, CharacterView, NotesView } from "./types";
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -26,14 +26,17 @@ function TagList({ items }: TagListProps) {
 
 interface CharacterListProps {
   characters: Character[];
+  // The key the characters are listed under, whose account notes Notes shows.
+  cdKey: string;
   onView: (view: CharacterView) => void;
+  onNotes?: (view: NotesView) => void;
 }
 
-function CharacterList({ characters, onView }: CharacterListProps) {
+function CharacterList({ characters, cdKey, onView, onNotes }: CharacterListProps) {
   if (!characters || characters.length === 0) return <span className="search-card__empty">—</span>;
   return (
     <div className="search-card__character-list">
-      {characters.map(({ pcid, character_name, inner_world }) => (
+      {characters.map(({ pcid, character_name, inner_world, notes }) => (
         <div key={pcid} className="search-card__character">
           <span className="search-card__char-name">{character_name || "Unknown"}</span>
           <code className="search-card__pcid">{pcid}</code>
@@ -42,8 +45,10 @@ function CharacterList({ characters, onView }: CharacterListProps) {
               withText
               name={character_name}
               innerWorld={inner_world}
+              notes={notes}
               onDescription={() => onView({ kind: "description", pcid, name: character_name })}
               onInnerWorld={() => onView({ kind: "inner_world", pcid, name: character_name })}
+              onNotes={onNotes && (() => onNotes({ pcid, name: character_name, cdKey }))}
             />
           </div>
         </div>
@@ -94,10 +99,11 @@ interface PlayerSearchItemProps {
   onExpungeById: (banId: number) => void;
   onEditBanById: (banId: number, fields: BanEditFields) => Promise<void>;
   onView: (view: CharacterView) => void;
+  onNotes?: (view: NotesView) => void;
   expandGen: ExpandGen | null;
 }
 
-function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, characters, onBan, onUnban, isBanned, session, playerBans, onUnbanById, onExpungeById, onEditBanById, onView, expandGen }: PlayerSearchItemProps) {
+function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, characters, onBan, onUnban, isBanned, session, playerBans, onUnbanById, onExpungeById, onEditBanById, onView, onNotes, expandGen }: PlayerSearchItemProps) {
   const [selectedBan, setSelectedBan] = useState<Ban | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [charsExpanded, setCharsExpanded] = useState(() => window.innerWidth > 600);
@@ -194,7 +200,7 @@ function PlayerSearchItem({ public_cd_key, player_names, ip_addresses, character
           <span className="search-card__collapsible-chevron" aria-hidden="true">{charsExpanded ? "▴" : "▾"}</span>
         </button>
         <div id={charsId}>
-          <CharacterList characters={characters} onView={onView} />
+          <CharacterList characters={characters} cdKey={public_cd_key} onView={onView} onNotes={onNotes} />
         </div>
       </div>
       <div className="search-card__row search-card__row--session">

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import "./PlayerListItem.css";
 import "./BannedPlayerItem.css";
 import CharacterButtons from "./CharacterButtons";
-import type { ExpandGen, InnerWorldState } from "./types";
+import type { ExpandGen, InnerWorldState, NoteCounts } from "./types";
 
 interface BootSpinnerProps {
   visible: boolean;
@@ -28,16 +28,18 @@ interface PlayerListItemProps {
   ip_address: string;
   logged_on_at: string;
   inner_world?: InnerWorldState;
+  notes?: NoteCounts;
   onBan: () => void;
   onUnban: () => void;
   onDescription?: () => void;
   onInnerWorld?: () => void;
+  onNotes?: () => void;
   onLocation?: () => void;
   isBanned: boolean;
   expandGen: ExpandGen | null;
 }
 
-function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_address, logged_on_at, inner_world, onBan, onUnban, onDescription, onInnerWorld, onLocation, isBanned, expandGen }: PlayerListItemProps) {
+function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_address, logged_on_at, inner_world, notes, onBan, onUnban, onDescription, onInnerWorld, onNotes, onLocation, isBanned, expandGen }: PlayerListItemProps) {
   const [confirming, setConfirming] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const confirmYesRef = useRef<HTMLButtonElement | null>(null);
@@ -74,7 +76,7 @@ function PlayerListItem({ online_player_name, character_name, public_cd_key, ip_
         <code className="player-card__ip">{ip_address}</code>
         <span className="player-card__timestamp">{new Date(logged_on_at).toLocaleString()}</span>
         <div className="player-card__action-group">
-          <CharacterButtons name={character_name} innerWorld={inner_world} onDescription={onDescription} onInnerWorld={onInnerWorld} onLocation={onLocation} />
+          <CharacterButtons name={character_name} innerWorld={inner_world} notes={notes} onDescription={onDescription} onInnerWorld={onInnerWorld} onNotes={onNotes} onLocation={onLocation} />
         </div>
         <div className="player-card__ban-area">
           <BootSpinner visible={isBanned} />

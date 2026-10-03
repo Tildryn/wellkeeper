@@ -6,6 +6,13 @@
 // make the button glow.
 export type InnerWorldState = "empty" | "seen" | "unread" | "changed";
 
+// How many DM notes there are on a character, and on the account it is logged
+// in on (or listed under, in the player search). Absent from an older API.
+export interface NoteCounts {
+  character: number;
+  account: number;
+}
+
 export interface OnlinePlayer {
   // Optional only because the dummy data has neither.
   pcid?: string;
@@ -15,12 +22,29 @@ export interface OnlinePlayer {
   ip_address: string;
   logged_on_at: string;
   inner_world?: InnerWorldState;
+  notes?: NoteCounts;
 }
 
 export interface Character {
   pcid: string;
   character_name: string;
   inner_world: InnerWorldState;
+  notes?: NoteCounts;
+}
+
+// One DM note, as written in game from the DM Player List. `updated` is null
+// for a note never edited.
+export interface DMNote {
+  id: number;
+  author: string;
+  body: string;
+  created: string;
+  updated: string | null;
+}
+
+export interface DMNotes {
+  character: DMNote[];
+  account: DMNote[];
 }
 
 export interface Bond {
@@ -156,6 +180,14 @@ export interface CharacterView {
   kind: "description" | "inner_world";
   pcid: string;
   name: string;
+}
+
+// A character's DM notes, open in the notes viewer, with the account whose
+// notes are shown beside them.
+export interface NotesView {
+  pcid: string;
+  name: string;
+  cdKey: string;
 }
 
 // An online character whose Location is open.

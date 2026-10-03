@@ -130,6 +130,38 @@ describe('PlayerListItem', () => {
     expect(screen.getByRole('button', { name: 'Inner World' })).not.toHaveClass('player-card__action-btn--new')
   })
 
+  it('lights Notes while there are any, and counts them in its tooltip', async () => {
+    const onNotes = vi.fn()
+    const user = userEvent.setup()
+    render(<PlayerListItem {...defaultProps} notes={{ character: 2, account: 1 }} onNotes={onNotes} />)
+    const notes = screen.getByRole('button', { name: 'DM Notes, 3' })
+    expect(notes).toHaveClass('player-card__action-btn--lit')
+    expect(notes).toHaveAttribute('title', 'DM notes: 2 notes on this character, 1 note on the account')
+    await user.click(notes)
+    expect(onNotes).toHaveBeenCalled()
+  })
+
+  it('greys Notes when there are none, and does not open it', async () => {
+    const onNotes = vi.fn()
+    const user = userEvent.setup()
+    render(<PlayerListItem {...defaultProps} notes={{ character: 0, account: 0 }} onNotes={onNotes} />)
+    const notes = screen.getByRole('button', { name: 'DM Notes' })
+    expect(notes).toHaveAttribute('aria-disabled', 'true')
+    expect(notes).toHaveAttribute('title', 'No DM has written a note on Thorin or their account')
+    await user.click(notes)
+    expect(onNotes).not.toHaveBeenCalled()
+  })
+
+  it('opens Notes unlit when an older API sends no counts', async () => {
+    const onNotes = vi.fn()
+    const user = userEvent.setup()
+    render(<PlayerListItem {...defaultProps} onNotes={onNotes} />)
+    const notes = screen.getByRole('button', { name: 'DM Notes' })
+    expect(notes).not.toHaveClass('player-card__action-btn--lit')
+    await user.click(notes)
+    expect(onNotes).toHaveBeenCalled()
+  })
+
   it('opens the Location window, and has no Location button without a character to find', async () => {
     const onLocation = vi.fn()
     const user = userEvent.setup()
