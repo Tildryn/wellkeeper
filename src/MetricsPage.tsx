@@ -69,6 +69,10 @@ const RANGES: [number, string][] = [[7, "7 Days"], [30, "30 Days"], [0, "All"]];
 // A row resting on fewer player runs than this is greyed out: too few to go on.
 const MIN_SAMPLES = 3;
 
+// Risenholm's level cap, and so the last choice in the level filters.
+const MAX_LEVEL = 10;
+const LEVELS = Array.from({ length: MAX_LEVEL }, (_, i) => i + 1);
+
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 // A rate: whole numbers once it is big enough for the fraction not to matter,
@@ -1023,8 +1027,6 @@ function MetricsPage({ authToken }: MetricsPageProps) {
     return () => { current = false; };
   }, [days, authToken, reloads]);
 
-  const topLevel = data ? Math.max(20, ...data.participants.map((p) => p.level)) : 20;
-  const levels = Array.from({ length: topLevel }, (_, i) => i + 1);
   const rows = useMemo(() => (data ? data.participants.filter((p) =>
     p.level >= minLevel && (!maxLevel || p.level <= maxLevel) && (!finishedOnly || p.success)) : []),
   [data, minLevel, maxLevel, finishedOnly]);
@@ -1049,11 +1051,11 @@ function MetricsPage({ authToken }: MetricsPageProps) {
         <label className="demo-date">
           <span>Levels</span>
           <select aria-label="Lowest level" value={minLevel} onChange={(e) => setMinLevel(Number(e.target.value))}>
-            {levels.map((l) => <option key={l} value={l}>{l}</option>)}
+            {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
           </select>
           <span aria-hidden="true">to</span>
           <select aria-label="Highest level" value={maxLevel} onChange={(e) => setMaxLevel(Number(e.target.value))}>
-            {levels.filter((l) => l >= minLevel).map((l) => <option key={l} value={l}>{l}</option>)}
+            {LEVELS.filter((l) => l >= minLevel).map((l) => <option key={l} value={l}>{l}</option>)}
             <option value={0}>Any</option>
           </select>
         </label>
