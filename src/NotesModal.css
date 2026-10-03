@@ -1,5 +1,12 @@
-/* The DM notes viewer. Built on the Description viewer's frame
-   (CharacterTextModal.css); this only adds the note lists. */
+/* The DM notes window. Built on the Description viewer's frame
+   (CharacterTextModal.css); this adds the note lists and the editor. */
+
+.notes-modal__list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
 
 .notes-modal__list {
   list-style: none;
@@ -23,9 +30,9 @@
 }
 
 .notes-modal__meta {
-  margin: 0;
   display: flex;
   flex-wrap: wrap;
+  align-items: baseline;
   gap: 2px 10px;
   font-size: 12px;
   color: var(--text-muted);
@@ -35,4 +42,86 @@
   font-weight: 600;
   color: var(--accent);
   overflow-wrap: anywhere;
+}
+
+/* Edit / Delete, pushed to the right of the byline. */
+.notes-modal__note-actions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.notes-modal__confirm-label {
+  color: var(--text-h);
+}
+
+.notes-modal__link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.notes-modal__link:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.notes-modal__link--danger {
+  color: #e05560;
+}
+
+.notes-modal__editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notes-modal__textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 7.5em;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.notes-modal__editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.notes-modal__count {
+  margin-right: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.notes-modal__save {
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  padding: 7px 16px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.notes-modal__save:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.notes-modal__save:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }

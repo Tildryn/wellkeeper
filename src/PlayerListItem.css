@@ -300,8 +300,8 @@
   cursor: default;
 }
 
-/* An Inner World with something this DM has not read: the in-game Player
-   List's "encouraged" glow. */
+/* An Inner World or DM notes with something this DM has not read: the
+   in-game Player List's "encouraged" glow. */
 .player-card__action-btn--new {
   color: var(--accent);
   border-color: var(--accent-border);
@@ -319,14 +319,6 @@
     animation: none;
     box-shadow: 0 0 6px 1px rgba(212, 168, 67, 0.4);
   }
-}
-
-/* Notes on a character or its account: the same colours, held steady, since
-   a note is history rather than something new to read. */
-.player-card__action-btn--lit {
-  color: var(--accent);
-  border-color: var(--accent-border);
-  background: var(--accent-bg);
 }
 
 /* ── Ban / unban buttons ─────────────────────────────────────────────────── */

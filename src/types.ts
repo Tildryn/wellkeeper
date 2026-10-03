@@ -6,11 +6,19 @@
 // make the button glow.
 export type InnerWorldState = "empty" | "seen" | "unread" | "changed";
 
+// The state of a character's Notes button for the DM looking, as the Inner
+// World's: no notes on the character or its account, all read as they stand,
+// some this DM has never opened, or some changed since they last did (added,
+// edited, or deleted, here or in game). The last two make the button glow.
+export type NotesState = "empty" | "seen" | "unread" | "changed";
+
 // How many DM notes there are on a character, and on the account it is logged
-// in on (or listed under, in the player search). Absent from an older API.
+// in on (or listed under, in the player search), and the button's state.
+// Absent from an older API, and `state` from one older still.
 export interface NoteCounts {
   character: number;
   account: number;
+  state?: NotesState;
 }
 
 export interface OnlinePlayer {
@@ -32,19 +40,24 @@ export interface Character {
   notes?: NoteCounts;
 }
 
-// One DM note, as written in game from the DM Player List. `updated` is null
-// for a note never edited.
+// One DM note, written here or in game from the DM Player List. `updated` is
+// null for a note never edited; `mine` says this DM wrote it, and so may
+// change or delete it.
 export interface DMNote {
   id: number;
   author: string;
   body: string;
   created: string;
   updated: string | null;
+  mine?: boolean;
 }
 
+// `fingerprints` is each list as sent, null when empty, which the page sends
+// back once the DM has been shown them, to stop the button glowing.
 export interface DMNotes {
   character: DMNote[];
   account: DMNote[];
+  fingerprints?: { character: string | null; account: string | null };
 }
 
 export interface Bond {

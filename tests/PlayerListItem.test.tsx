@@ -130,34 +130,32 @@ describe('PlayerListItem', () => {
     expect(screen.getByRole('button', { name: 'Inner World' })).not.toHaveClass('player-card__action-btn--new')
   })
 
-  it('lights Notes while there are any, and counts them in its tooltip', async () => {
+  it('glows Notes while there are notes this DM has not read, and says why', async () => {
     const onNotes = vi.fn()
     const user = userEvent.setup()
-    render(<PlayerListItem {...defaultProps} notes={{ character: 2, account: 1 }} onNotes={onNotes} />)
-    const notes = screen.getByRole('button', { name: 'DM Notes, 3' })
-    expect(notes).toHaveClass('player-card__action-btn--lit')
-    expect(notes).toHaveAttribute('title', 'DM notes: 2 notes on this character, 1 note on the account')
+    render(<PlayerListItem {...defaultProps} notes={{ character: 2, account: 1, state: 'changed' }} onNotes={onNotes} />)
+    const notes = screen.getByRole('button', { name: 'DM Notes, changed' })
+    expect(notes).toHaveClass('player-card__action-btn--new')
+    expect(notes).toHaveAttribute('title',
+      'DM notes: 2 notes on this character, 1 note on the account\nThey have changed since you last read them.')
     await user.click(notes)
     expect(onNotes).toHaveBeenCalled()
   })
 
-  it('greys Notes when there are none, and does not open it', async () => {
-    const onNotes = vi.fn()
-    const user = userEvent.setup()
-    render(<PlayerListItem {...defaultProps} notes={{ character: 0, account: 0 }} onNotes={onNotes} />)
+  it('does not glow Notes already read', () => {
+    render(<PlayerListItem {...defaultProps} notes={{ character: 1, account: 0, state: 'seen' }} onNotes={vi.fn()} />)
     const notes = screen.getByRole('button', { name: 'DM Notes' })
-    expect(notes).toHaveAttribute('aria-disabled', 'true')
-    expect(notes).toHaveAttribute('title', 'No DM has written a note on Thorin or their account')
-    await user.click(notes)
-    expect(onNotes).not.toHaveBeenCalled()
+    expect(notes).not.toHaveClass('player-card__action-btn--new')
+    expect(notes).toHaveAttribute('title', 'DM notes: 1 note on this character, 0 notes on the account')
   })
 
-  it('opens Notes unlit when an older API sends no counts', async () => {
+  it('opens Notes when there are none, to write the first', async () => {
     const onNotes = vi.fn()
     const user = userEvent.setup()
-    render(<PlayerListItem {...defaultProps} onNotes={onNotes} />)
+    render(<PlayerListItem {...defaultProps} notes={{ character: 0, account: 0, state: 'empty' }} onNotes={onNotes} />)
     const notes = screen.getByRole('button', { name: 'DM Notes' })
-    expect(notes).not.toHaveClass('player-card__action-btn--lit')
+    expect(notes).not.toHaveAttribute('aria-disabled', 'true')
+    expect(notes).toHaveAttribute('title', expect.stringMatching(/No DM has written a note on Thorin or their account yet/))
     await user.click(notes)
     expect(onNotes).toHaveBeenCalled()
   })

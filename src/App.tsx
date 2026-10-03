@@ -24,7 +24,7 @@ import DemographicsPage from "./DemographicsPage";
 import MetricsPage from "./MetricsPage";
 import { IconRefresh } from "./Icons";
 import { PAGES, PAGE_TITLES, type Page } from "./pages";
-import type { OnlinePlayer, Ban, BanBase, BanDetails, PlayerData, PlayerSession, CdKey, BanTarget, BanPayload, BanEditFields, ExpandGen, CharacterView, InnerWorldState, LocationView, NotesView } from "./types";
+import type { OnlinePlayer, Ban, BanBase, BanDetails, PlayerData, PlayerSession, CdKey, BanTarget, BanPayload, BanEditFields, ExpandGen, CharacterView, InnerWorldState, LocationView, NotesView, NoteCounts } from "./types";
 import "./App.css";
 
 type AuthView = "login" | "register" | "reset_password" | "forgot_password" | "privacy";
@@ -178,6 +178,24 @@ function App() {
     setPlayerSearchData((prev) => prev.map((entry) =>
       entry.characters.some((c) => c.pcid === pcid)
         ? { ...entry, characters: entry.characters.map((c) => (c.pcid === pcid ? { ...c, inner_world: state } : c)) }
+        : entry
+    ));
+  }
+
+  // Likewise for the Notes button, once a DM has been shown a character's
+  // notes or changed them. The account's count is shared by every character
+  // on that key, so theirs is updated too; their state is left for the next
+  // fetch, since it also hangs on notes this window did not show.
+  function setNotesState(pcid: string, cdKey: string, notes: NoteCounts) {
+    const update = (current: NoteCounts | undefined, isThis: boolean, sameKey: boolean): NoteCounts | undefined =>
+      isThis ? notes : sameKey && current ? { ...current, account: notes.account } : current;
+    setPlayers((prev) => prev.map((p) => {
+      const next = update(p.notes, p.pcid === pcid, p.public_cd_key === cdKey);
+      return next === p.notes ? p : { ...p, notes: next };
+    }));
+    setPlayerSearchData((prev) => prev.map((entry) =>
+      entry.public_cd_key === cdKey || entry.characters.some((c) => c.pcid === pcid)
+        ? { ...entry, characters: entry.characters.map((c) => ({ ...c, notes: update(c.notes, c.pcid === pcid, entry.public_cd_key === cdKey) })) }
         : entry
     ));
   }
@@ -728,6 +746,7 @@ function App() {
           view={notesView}
           authToken={authToken}
           onClose={() => setNotesView(null)}
+          onNotesState={setNotesState}
         />
       )}
       {locationView && (
