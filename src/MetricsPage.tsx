@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { IconRefresh } from "./Icons";
 import { BarRow } from "./BarRow";
 import { useWidth } from "./chart";
@@ -9,7 +9,12 @@ import "./MetricsPage.css";
 // How the Scars are played, from wkserver's /metrics/scars: every run the game
 // recorded (pw_inc_scarmetr in the module), and a row per player who came out
 // of one. The rows arrive nearly raw, and everything here is worked out from
-// them, so the level and outcome filters need no second request.
+// them, so the level, outcome, and party filters need no second request.
+//
+// The party filter goes by the run's party_size, the players sent in
+// together, so a player who stayed behind still counts toward it. It narrows
+// the runs as well as the players in them; the level and outcome filters,
+// which are about a player, leave the runs alone.
 //
 // Rates are per player-minute: a player's figure over the minutes they spent
 // on the run, which stop when the boss dies (or when they walked out, for a
@@ -20,8 +25,9 @@ import "./MetricsPage.css";
 // Below the Scars come the intrusions, from /metrics/invasions (see
 // Invasions): how each Intruder's landing ended and what it did to the party,
 // to tell whether the Intruders need strengthening. Then the letters sent by
-// Crow, from /metrics/letters (see Letters): a count per day. The level and
-// outcome filters leave both alone.
+// Crow, from /metrics/letters (see Letters): a count per day. The level,
+// outcome, and party filters leave both alone; the intrusions break their own
+// figures down by party.
 //
 // Shares the Demographics page's bar lists and columns, and the Economy
 // page's tiles, cards, and tables.
@@ -176,7 +182,8 @@ function RunsSection({ data, runs }: { data: Metrics; runs: Run[] }) {
       <h3 id="metrics-runs">Runs</h3>
       <p className="economy__sub">
         Every Scar a party was sent into. A run is completed when its boss dies, and given up on if its
-        instance expires first, two hours after the start. The level and outcome filters do not apply here.
+        instance expires first, two hours after the start. The party filter applies here; the level and outcome
+        filters do not.
         {data.bounces && data.bounces.players > 0 && (
           <>
             {" "}Players who walked straight back out, inside a minute and without dealing any damage, are left
@@ -412,7 +419,7 @@ function DamageSection({ data, rows }: { data: Metrics; rows: Participant[] }) {
       <p className="economy__sub">
         Damage dealt to the Scar's creatures, counting the player's summons and companions, and stopping at the hit
         points each target had left. A multiclassed character is filed under their highest class. Damage varies
-        with level and party, so narrow the levels in the toolbar to compare like with like.
+        with level and party, so narrow the levels and party sizes in the toolbar to compare like with like.
       </p>
       <div className="economy__card">
         <div className="demo-card-head">
@@ -591,7 +598,7 @@ function LettersSection({ letters, days }: { letters: Letters; days: number }) {
         {letters.first === null
           ? "None has been counted yet."
           : `The count begins on ${began}, and says nothing of who wrote to whom.`}
-        {" "}The level and outcome filters do not apply here.
+        {" "}The level, outcome, and party filters do not apply here.
       </p>
       <div className="economy__stats">
         <div className="economy__stat">
@@ -799,7 +806,8 @@ function InvasionsSection({ data }: { data: Invasions }) {
         {data.first === null ? "None has been recorded yet." : `The count begins on ${began}.`}{" "}
         An Intruder wins by wiping the party out or driving it from the Scar, and loses by being killed, by fleeing,
         or by the party completing the Scar around it. Defenders count as killed by every Intruder within 40m when
-        they die, the reach its kill XP is paid within. The level and outcome filters do not apply here.
+        they die, the reach its kill XP is paid within. The level, outcome, and party filters do not apply here;
+        the win rate is broken down by party size below.
       </p>
       {data.invasions.length === 0 ? (
         <p className="economy__empty">No Intruder has landed in this range.</p>
@@ -987,6 +995,8 @@ function MetricsPage({ authToken }: MetricsPageProps) {
   const [days, setDays] = useState(30);
   const [minLevel, setMinLevel] = useState(1);
   const [maxLevel, setMaxLevel] = useState(0);   // 0: no upper limit
+  const [minParty, setMinParty] = useState(1);
+  const [maxParty, setMaxParty] = useState(0);   // likewise
   const [finishedOnly, setFinishedOnly] = useState(true);
   const [data, setData] = useState<Metrics | null>(null);
   const [letters, setLetters] = useState<Letters | string | null>(null);   // a string: why they did not load
@@ -1027,9 +1037,16 @@ function MetricsPage({ authToken }: MetricsPageProps) {
     return () => { current = false; };
   }, [days, authToken, reloads]);
 
+  const inParty = useCallback((r: Run) => r.party_size >= minParty && (!maxParty || r.party_size <= maxParty),
+    [minParty, maxParty]);
+  const runs = useMemo(() => (data ? data.runs.filter(inParty) : []), [data, inParty]);
   const rows = useMemo(() => (data ? data.participants.filter((p) =>
-    p.level >= minLevel && (!maxLevel || p.level <= maxLevel) && (!finishedOnly || p.success)) : []),
-  [data, minLevel, maxLevel, finishedOnly]);
+    p.level >= minLevel && (!maxLevel || p.level <= maxLevel) && (!finishedOnly || p.success) && inParty(data.runs[p.run])) : []),
+  [data, minLevel, maxLevel, finishedOnly, inParty]);
+  // The party sizes to choose from: up to the largest in the range, or the
+  // one chosen, should a shorter range have none that big.
+  const partySizes = Array.from(
+    { length: Math.max(1, minParty, maxParty, ...(data?.runs.map((r) => r.party_size) ?? [])) }, (_, i) => i + 1);
 
   return (
     <div className="economy demographics metrics">
@@ -1059,6 +1076,21 @@ function MetricsPage({ authToken }: MetricsPageProps) {
             <option value={0}>Any</option>
           </select>
         </label>
+        <label className="demo-date">
+          <span>Party</span>
+          <select aria-label="Smallest party" value={minParty} onChange={(e) => {
+            const n = Number(e.target.value);
+            setMinParty(n);
+            if (maxParty && maxParty < n) setMaxParty(n);
+          }}>
+            {partySizes.map((n) => <option key={n} value={n}>{n === 1 ? "Solo" : n}</option>)}
+          </select>
+          <span aria-hidden="true">to</span>
+          <select aria-label="Largest party" value={maxParty} onChange={(e) => setMaxParty(Number(e.target.value))}>
+            {partySizes.filter((n) => n >= minParty).map((n) => <option key={n} value={n}>{n === 1 ? "Solo" : n}</option>)}
+            <option value={0}>Any</option>
+          </select>
+        </label>
         <button className="refresh-btn refresh-btn--refresh" aria-label="Refresh" onClick={() => reload()}>
           <IconRefresh /><span className="refresh-btn__label" aria-hidden="true"> Refresh</span>
         </button>
@@ -1073,12 +1105,17 @@ function MetricsPage({ authToken }: MetricsPageProps) {
         </p>
       )}
 
-      {!loading && !error && data && data.runs.length > 0 && (
+      {!loading && !error && data && data.runs.length > 0 && runs.length === 0 && (
+        <p className="economy__empty">No Scar runs had a party of that size. Try widening the party sizes.</p>
+      )}
+
+      {!loading && !error && data && runs.length > 0 && (
         <>
-          <RunsSection data={data} runs={data.runs} />
+          <RunsSection data={data} runs={runs} />
           {rows.length === 0 ? (
             <p className="economy__empty">
-              No player runs match the filters. {finishedOnly ? "Try Every Attempt, or " : "Try "}widening the levels.
+              No player runs match the filters. {finishedOnly ? "Try Every Attempt, or " : "Try "}widening the levels
+              or party sizes.
             </p>
           ) : (
             <>

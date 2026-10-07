@@ -159,6 +159,32 @@ describe('MetricsPage', () => {
     expect(bars('Damage by Archetype')).toEqual(['Vanquisher 300', 'Rogue (no archetype) 120'])
   })
 
+  it('narrows the runs and the players by party size', async () => {
+    mockMetrics()
+    await renderPage()
+    await userEvent.click(screen.getByRole('button', { name: 'Every Attempt' }))
+    // The parties run up to the largest in the data, three.
+    expect(within(screen.getByRole('combobox', { name: 'Smallest party' })).getAllByRole('option').map((o) => o.textContent))
+      .toEqual(['Solo', '2', '3'])
+
+    // Solo: the level 5 Vanquisher's run alone, 1,000 damage over 10 minutes.
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Largest party' }), 'Solo')
+    expect(within(stat('Runs Started')).getByText('1')).toBeInTheDocument()
+    expect(bars('Runs')).toEqual(['The Forge 1'])
+    expect(bars('Damage by Archetype')).toEqual(['Vanquisher 100'])
+
+    // Raising the smallest past the largest raises the largest with it.
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Smallest party' }), '2')
+    expect(screen.getByRole('combobox', { name: 'Largest party' })).toHaveValue('2')
+    expect(bars('Damage by Archetype')).toEqual(['Vanquisher 300', 'Rogue (no archetype) 120'])
+
+    // The Dog Scar's party of three has nobody out yet.
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Smallest party' }), '3')
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Largest party' }), 'Any')
+    expect(bars('Runs')).toEqual(['Dog Scar 1'])
+    expect(screen.getByText(/No player runs match the filters/)).toBeInTheDocument()
+  })
+
   it('says when nothing has been recorded', async () => {
     mockMetrics([], { ...METRICS, runs: [], participants: [], scars: {} })
     render(<MetricsPage authToken="test-token" />)
