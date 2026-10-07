@@ -59,6 +59,8 @@ export const handlers = [
     ])
   ),
 
+  http.get(`${API}/online_dms`, () => HttpResponse.json([])),
+
   http.get(`${API}/active_bans`, () =>
     HttpResponse.json([])
   ),

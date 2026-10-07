@@ -33,6 +33,14 @@ export interface OnlinePlayer {
   notes?: NoteCounts;
 }
 
+// A DM logged in to the game. `character_name` is the DM avatar's name.
+export interface OnlineDM {
+  public_cd_key: string;
+  online_player_name: string;
+  character_name: string;
+  logged_on_at: string;
+}
+
 export interface Character {
   pcid: string;
   character_name: string;

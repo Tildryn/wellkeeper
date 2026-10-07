@@ -346,6 +346,42 @@ describe('App — online players page states', () => {
     expect(await screen.findByText('1 player online')).toBeInTheDocument()
   })
 
+  it('lists online DMs in a section of their own, apart from the players', async () => {
+    server.use(
+      http.get('http://localhost:3001/online_dms', () =>
+        HttpResponse.json([
+          { public_cd_key: 'DMKEY001', online_player_name: 'Gamemaster', character_name: 'The Narrator', logged_on_at: '2026-07-12 08:00:00' },
+        ])
+      ),
+    )
+    const user = userEvent.setup()
+    await loginAsDM(user)
+    const section = await screen.findByRole('region', { name: 'Online DMs' })
+    expect(within(section).getByText('Gamemaster')).toBeInTheDocument()
+    expect(within(section).getByText('The Narrator')).toBeInTheDocument()
+    expect(within(section).getByText('1 DM online')).toBeInTheDocument()
+    expect(within(section).queryByRole('button', { name: /ban/i })).not.toBeInTheDocument()
+    // The players' count is still of players only.
+    expect(screen.getByText('1 player online')).toBeInTheDocument()
+  })
+
+  it('says so when no DMs are online', async () => {
+    const user = userEvent.setup()
+    await loginAsDM(user)
+    const section = await screen.findByRole('region', { name: 'Online DMs' })
+    expect(within(section).getByText(/no dms are currently online/i)).toBeInTheDocument()
+  })
+
+  it('leaves the DM section out for a wkserver without /online_dms', async () => {
+    server.use(
+      http.get('http://localhost:3001/online_dms', () => HttpResponse.json({}, { status: 404 })),
+    )
+    const user = userEvent.setup()
+    await loginAsDM(user)
+    await screen.findByText('Adventurer')
+    expect(screen.queryByRole('region', { name: 'Online DMs' })).not.toBeInTheDocument()
+  })
+
   it('shows an error alert when the online players fetch fails', async () => {
     server.use(
       http.get('http://localhost:3001/online_players', () =>

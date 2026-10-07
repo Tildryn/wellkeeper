@@ -186,6 +186,17 @@
   padding-left: 16px;
 }
 
+/* DMs online, in a section of their own under the player list. */
+.online-dms {
+  margin-top: 28px;
+}
+
+.online-dms__title {
+  margin: 0;
+  font-size: 20px;
+  color: var(--text-h);
+}
+
 .counter {
   font-size: 16px;
   padding: 5px 10px;

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import EditLockContext from "./EditLockContext";
 import dummy_data from "./players.json";
 import PlayerListItem from "./PlayerListItem";
+import DMListItem from "./DMListItem";
 import BannedPlayerItem from "./BannedPlayerItem";
 import PlayerSearchItem from "./PlayerSearchItem";
 import "./BannedPlayerItem.css";
@@ -24,15 +25,15 @@ import DemographicsPage from "./DemographicsPage";
 import MetricsPage from "./MetricsPage";
 import { IconRefresh } from "./Icons";
 import { PAGES, PAGE_TITLES, type Page } from "./pages";
-import type { OnlinePlayer, Ban, BanBase, BanDetails, PlayerData, PlayerSession, CdKey, BanTarget, BanPayload, BanEditFields, ExpandGen, CharacterView, InnerWorldState, LocationView, NotesView, NoteCounts } from "./types";
+import type { OnlinePlayer, OnlineDM, Ban, BanBase, BanDetails, PlayerData, PlayerSession, CdKey, BanTarget, BanPayload, BanEditFields, ExpandGen, CharacterView, InnerWorldState, LocationView, NotesView, NoteCounts } from "./types";
 import "./App.css";
 
 type AuthView = "login" | "register" | "reset_password" | "forgot_password" | "privacy";
 
-function sortPlayers(players: OnlinePlayer[], key: string, dir: string): OnlinePlayer[] {
+function sortPlayers<T extends OnlinePlayer | OnlineDM>(players: T[], key: string, dir: string): T[] {
   return [...players].sort((a, b) => {
-    const av = a[key as keyof OnlinePlayer] as string;
-    const bv = b[key as keyof OnlinePlayer] as string;
+    const av = a[key as keyof T] as string;
+    const bv = b[key as keyof T] as string;
     const cmp = av < bv ? -1 : av > bv ? 1 : 0;
     return dir === "asc" ? cmp : -cmp;
   });
@@ -49,6 +50,9 @@ function App() {
   const [sortKey, setSortKey] = useState("logged_on_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [players, setPlayers] = useState<OnlinePlayer[]>([]);
+  // null while the API has no /online_dms (an older wkserver, or a game that
+  // has not created the table yet), which leaves the DM section out.
+  const [dms, setDMs] = useState<OnlineDM[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeBansData, setActiveBansData] = useState<Ban[]>([]);
@@ -148,8 +152,10 @@ function App() {
   function fetchPlayers(silent = false) {
     if (useDummyData) {
       setPlayers(dummy_data as OnlinePlayer[]);
+      setDMs([]);
       return;
     }
+    fetchDMs();
     if (!silent) { setLoading(true); setError(null); }
     const getJson = (url: string) =>
       fetch(url, { cache: "no-store", headers: authHeaders() }).then((res) => {
@@ -164,6 +170,18 @@ function App() {
       .catch((err) => {
         if (!silent) { setError(err.message); setLoading(false); }
       });
+  }
+
+  // Quietly, and apart from the players: a failure here keeps whatever DMs
+  // were shown last rather than take the player list down with it.
+  function fetchDMs() {
+    fetch(`${import.meta.env.VITE_API_URL}/online_dms`, { cache: "no-store", headers: authHeaders() })
+      .then((res) => {
+        if (res.status === 404) { setDMs(null); return; }
+        if (!res.ok) return;
+        return (res.json() as Promise<OnlineDM[]>).then((data) => setDMs(Array.isArray(data) ? data : null));
+      })
+      .catch(() => {});
   }
 
   function openBanModal(cdKeys: string[], playerNames: string[], ipAddresses: string[]) {
@@ -405,6 +423,11 @@ function App() {
     [players, sortKey, sortDir]
   );
 
+  const onlineDMs = useMemo(
+    () => (dms ? sortPlayers(dms, sortKey, sortDir) : null),
+    [dms, sortKey, sortDir]
+  );
+
   const bannedKeySet = useMemo(
     () => new Set(activeBansData.flatMap((b) => b.cd_keys ?? [])),
     [activeBansData]
@@ -579,6 +602,29 @@ function App() {
                   />
                 ))}
               </div>
+            )}
+            {!loading && !error && onlineDMs && (
+              <section className="online-dms" aria-labelledby="online-dms-title">
+                <h3 id="online-dms-title" className="online-dms__title">Online DMs</h3>
+                {onlineDMs.length === 0 ? (
+                  <p className="result-count">No DMs are currently online.</p>
+                ) : (
+                  <>
+                    <span className="result-count" aria-live="polite" aria-atomic="true">
+                      {onlineDMs.length} DM{onlineDMs.length !== 1 ? "s" : ""} online
+                    </span>
+                    <div className="player-list">
+                      <div className="player-list__header">
+                        <span>Player</span><span>Avatar</span><span>CD Key</span>
+                        <span></span><span>Logged On</span><span></span><span></span>
+                      </div>
+                      {onlineDMs.map((dm) => (
+                        <DMListItem key={dm.public_cd_key} {...dm} expandGen={onlineExpandGen} />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </section>
             )}
           </>
         )}
