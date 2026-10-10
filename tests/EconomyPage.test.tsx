@@ -41,15 +41,48 @@ const CONTRIBUTORS = {
   now: T,
 }
 
+// The food model's resources, as a wkserver sampling a running model sends
+// them: each larder's stock and share, food lost to full stores, and the
+// villagers by ration group, with deaths as their flows.
+const MODEL = {
+  food_dredgers: {
+    resource: 'food_dredgers', levels: [[T, 420]], flows: [[T - 3600, 'kept', 420, 9]],
+    latest: { t: T, value: 420, detail: { stock: { fish: 420 }, share: 60 } },
+  },
+  food_millers: {
+    resource: 'food_millers', levels: [[T, 0]], flows: [],
+    latest: { t: T, value: 0, detail: { stock: {}, share: 100 } },
+  },
+  food_lost: { resource: 'food_lost', levels: [], flows: [[T - 3600, 'fishing', -70, 2]], latest: null },
+  villagers: {
+    resource: 'villagers',
+    levels: [[T - 86400, 407], [T, 403]],
+    flows: [[T - 3600, 'died_elders', -3, 1], [T - 3600, 'died_infants', -1, 1]],
+    latest: {
+      t: T, value: 403,
+      detail: {
+        groups: {
+          labourers: { people: 72, ration: 13, fed: 0.722, loss: 0.161, morale: 40, output: 0.48 },
+          elders:    { people: 77, ration: 11, fed: 1, loss: 0, morale: 90, output: 1 },
+        },
+        work: { fishing: [30, 32] },
+        shares: { dredgers: 60, millers: 100 },
+      },
+    },
+  },
+}
+
 // Without `contributors`, the contributors answer 404, as a wkserver from
-// before them does.
-function mockEconomy(requested: string[] = [], contributors: object | null = null) {
+// before them does, and so do the food model's resources without `model`.
+function mockEconomy(requested: string[] = [], contributors: object | null = null, model: Record<string, object> = {}) {
   server.use(
     http.get(`${API}/economy/food/contributors`, () =>
       contributors ? HttpResponse.json(contributors) : new HttpResponse(null, { status: 404 })),
     http.get(`${API}/economy/:resource`, ({ params, request }) => {
       requested.push(new URL(request.url).search)
-      return HttpResponse.json(params.resource === 'food' ? FOOD : GOLD)
+      const resource = String(params.resource)
+      if (resource in MODEL) return model[resource] ? HttpResponse.json(model[resource]) : new HttpResponse(null, { status: 404 })
+      return HttpResponse.json(resource === 'food' ? FOOD : GOLD)
     })
   )
 }
@@ -72,7 +105,16 @@ describe('EconomyPage', () => {
     const food = await screen.findByRole('region', { name: 'Food Stores' })
     const table = within(food).getByRole('table')
     expect(within(table).getByRole('columnheader', { name: 'Meals bought (3 each)' })).toBeInTheDocument()
-    expect(within(table).getByRole('columnheader', { name: 'dm' })).toBeInTheDocument()
+    expect(within(table).getByRole('columnheader', { name: 'DM changes' })).toBeInTheDocument()
+  })
+
+  it('shows a retired series in the legend only while the range has some of it', async () => {
+    mockEconomy()
+    render(<EconomyPage authToken="test-token" />)
+    const food = await screen.findByRole('region', { name: 'Food Stores' })
+    expect(within(food).getByText('Passive decay (200 a day, before the baselines)', { selector: 'span' })).toBeInTheDocument()
+    expect(within(food).queryByText('Grey Soup (retired)')).not.toBeInTheDocument()
+    expect(within(food).getByText('Rations: Labourers', { selector: 'span' })).toBeInTheDocument()
   })
 
   it('shows an empty state for a resource with no flows yet', async () => {
@@ -111,6 +153,36 @@ describe('EconomyPage', () => {
     render(<EconomyPage authToken="test-token" />)
     await screen.findByRole('region', { name: 'Food Stores' })
     expect(screen.queryByRole('region', { name: 'Foodstock Contributors' })).not.toBeInTheDocument()
+  })
+
+  it('shows the larders, food lost, and the villagers once the food model is running', async () => {
+    mockEconomy([], null, MODEL)
+    render(<EconomyPage authToken="test-token" />)
+
+    const food = await screen.findByRole('region', { name: 'Food Stores' })
+    expect(within(food).getByText('Lost to Full Stores')).toBeInTheDocument()
+
+    const dredgers = screen.getByRole('region', { name: "The Dredgers' Larder" })
+    expect(within(dredgers).getByText('60%')).toBeInTheDocument()
+    expect(within(dredgers).getByText('420 / 4,000')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: "The Millers' Larder" })).toBeInTheDocument()
+
+    const villagers = screen.getByRole('region', { name: 'Villagers' })
+    expect(within(villagers).getByText('403')).toBeInTheDocument()
+    expect(within(villagers).getByText('Over the range shown, 1 of them infants')).toBeInTheDocument()
+    const groups = within(villagers).getAllByRole('table')[0]
+    const labourers = within(groups).getByRole('row', { name: /^Labourers/ })
+    expect(within(labourers).getByText('Underweight')).toBeInTheDocument()
+    expect(within(labourers).getByText('16.1%')).toBeInTheDocument()
+  })
+
+  it('leaves the larders and villagers out until the food model is running', async () => {
+    mockEconomy()
+    render(<EconomyPage authToken="test-token" />)
+    const food = await screen.findByRole('region', { name: 'Food Stores' })
+    expect(within(food).queryByText('Lost to Full Stores')).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Villagers' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: "The Dredgers' Larder" })).not.toBeInTheDocument()
   })
 
   it('shows an error when the server refuses', async () => {

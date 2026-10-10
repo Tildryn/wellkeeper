@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { IconRefresh } from "./Icons";
 import { BarRow } from "./BarRow";
 import { niceMax, useWidth } from "./chart";
@@ -15,11 +15,13 @@ import "./DemographicsPage.css";
 type AverageDetail = { characters: number; median: number; total: number; compared?: number; change?: number };
 type Level = [number, number, (AverageDetail | null)?];
 type Flow = [number, string, number, number];
-type Latest = { t: number; value: number; detail: Record<string, number | string> | null } | null;
+type Latest = { t: number; value: number; detail: Record<string, unknown> | null } | null;
 type History = { resource: string; levels: Level[]; flows: Flow[]; latest: Latest };
 
 // reasonLabels names each reason in the table when one series claims several.
-type Series = { key: string; label: string; color: string; reasons: string[]; reasonLabels?: Record<string, string> };
+// A retired series holds history only, and is in the legend only while the
+// range shown has some of it.
+type Series = { key: string; label: string; color: string; reasons: string[]; reasonLabels?: Record<string, string>; retired?: boolean };
 
 type ResourceConfig = {
   resource: string;
@@ -31,6 +33,8 @@ type ResourceConfig = {
   gains: Series[];
   losses: Series[];
   refs?: [number, string][];
+  // Names in the table for reasons no series claims, which chart as Other.
+  otherLabels?: Record<string, string>;
   // What the per-day chart calls its total, and the chart itself, when it is
   // not a net of gains and losses.
   totalLabel?: string;
@@ -43,22 +47,30 @@ const RESOURCES: ResourceConfig[] = [
   {
     resource: "food",
     title: "Food Stores",
-    description: "The town's food stores. Fishing (2,100 to 2,500 a day, varying by the day), farming (925 a day of wheat), livestock (125 a day), Foodstock hand-ins, and the Millers' Grey Soup (one for each Scar Fragment handed in) add to them; the villagers (420, each eating three meals and a snack, 4,200 a day), snacks, meals, thrown food, and rot take from them. Everyone eats a mix, by diet: fish 47%, wheat 17%, meat 7%, berries 16%, and mushrooms 13%, and more of the rest when one runs short. Nobody eats Grey Soup by choice: it joins the diet once the proper food runs below 2,000, is the last resort when the stores are empty, and otherwise rots. Whatever is left rots at its own rate: Grey Soup within the day, berries next, then fish and mushrooms, then meat, and wheat barely at all. Before the baselines, a flat decay of 200 a day stood in for all of that.",
+    // The figures are the Food & Labour model's starting values
+    // (pw_inc_foodmodel in the module): its workplaces, output per worker,
+    // and ration baselines, and pw_inc_foodstore's diet, caps, and rot.
+    description: "The town's stores, not counting the factions' larders. The Dredgers' boats and the Millers' fields bring food in every hour, at the pace the Labourers can work: at full strength about 3,040 a day of fish, more or less with the day's sea (75–135% most days, next to nothing in a storm one day in twenty), and 660 from the farms, 88% of it wheat and the rest meat, of which the Blight takes up to half when Blight control is short-handed. Each faction sends the town the share its office holder sets and keeps the rest in its own larder, which it can release to the town later. Foodstock handed in adds to the stores too. The 407 villagers eat in seven ration groups, at the rations set in the Town Food Ledger: 5,120 a day at the baselines, of which the Labourers eat 1,296, the other workers (Tradespeople and Skilled Workers) 1,494, and the dependants (Free Labour, Mothers, Elders, and Children) 2,330. Snacks, meals, thrown food, and rot take from the stores as well. Everyone eats a mix, by diet: fish 57%, berries 15%, mushrooms 12%, wheat 10%, and meat 6%, and more of the rest when one runs short. Each kind has room for so much (wheat 50,000, fish 20,000, meat 4,000, and berries and mushrooms 3,000 each), and what is left rots at its own rate: half the berries in two days, fish and mushrooms in three, meat in four, and wheat barely at all.",
+    // Grouped as the Town Food Ledger's chart groups them in game
+    // (GetFoodChartCategory in pw_inc_foodui), with the ration groups in its
+    // three bands. Retired series hold history from before the model.
     gains: [
-      { key: "fishing", label: "Fishing (2,100–2,500 a day)", color: "var(--eco-violet)", reasons: ["fishing"] },
-      { key: "farming", label: "Farming (925 a day)", color: "var(--eco-brown)", reasons: ["farming"] },
-      { key: "livestock", label: "Livestock (125 a day)", color: "var(--eco-gold)", reasons: ["livestock"] },
-      { key: "handin", label: "Foodstock handed in", color: "var(--eco-blue)", reasons: ["handin"] },
-      { key: "greysoup", label: "Grey Soup (1 per Scar Fragment)", color: "var(--eco-greysoup)", reasons: ["greysoup"] },
+      { key: "farming", label: "Farming (the Millers' share)", color: "var(--eco-brown)", reasons: ["farming", "livestock"], reasonLabels: { farming: "Farming: wheat", livestock: "Farming: livestock" } },
+      { key: "fishing", label: "Fishing (the Dredgers' share)", color: "var(--eco-violet)", reasons: ["fishing"] },
+      { key: "release", label: "Released from the larders", color: "var(--eco-olive)", reasons: ["release_dredgers", "release_millers"], reasonLabels: { release_dredgers: "Released: the Dredgers' larder", release_millers: "Released: the Millers' larder" } },
+      { key: "handin", label: "Foodstock handed in", color: "var(--eco-green)", reasons: ["handin"] },
+      { key: "greysoup", label: "Grey Soup (retired)", color: "var(--eco-gold)", reasons: ["greysoup"], retired: true },
     ],
     losses: [
-      { key: "villagers", label: "Eaten by villagers (4,200 a day)", color: "var(--eco-orange)", reasons: ["villagers", "villagers_soup"], reasonLabels: { villagers: "Eaten by villagers", villagers_soup: "Grey Soup eaten by villagers" } },
-      { key: "purchase", label: "Bought before Sep 23 (snack or meal)", color: "var(--eco-magenta)", reasons: ["purchase"] },
-      { key: "snack", label: "Snacks bought", color: "var(--eco-green)", reasons: ["snack"] },
-      { key: "meal", label: "Meals bought (3 each)", color: "var(--eco-yellow)", reasons: ["meal"] },
-      { key: "decay", label: "Passive decay (200 a day, before the baselines)", color: "var(--eco-aqua)", reasons: ["decay"] },
+      { key: "labourers", label: "Rations: Labourers", color: "var(--eco-vermilion)", reasons: ["ration_labourers"] },
+      { key: "workers", label: "Rations: other workers", color: "var(--eco-blue)", reasons: ["ration_tradespeople", "ration_skilled"], reasonLabels: { ration_tradespeople: "Rations: Tradespeople", ration_skilled: "Rations: Skilled Workers" } },
+      { key: "dependants", label: "Rations: dependants", color: "var(--eco-magenta)", reasons: ["ration_free", "ration_mothers", "ration_elders", "ration_children"], reasonLabels: { ration_free: "Rations: Free Labour", ration_mothers: "Rations: Mothers", ration_elders: "Rations: Elders", ration_children: "Rations: Children" } },
+      { key: "villagers", label: "Eaten by villagers (before the ration groups)", color: "var(--eco-aqua)", reasons: ["villagers", "villagers_soup"], reasonLabels: { villagers: "Eaten by villagers", villagers_soup: "Grey Soup eaten by villagers" }, retired: true },
+      { key: "meals", label: "Meals and snacks", color: "var(--eco-yellow)", reasons: ["meal", "snack", "thrown", "purchase"], reasonLabels: { meal: "Meals bought (3 each)", snack: "Snacks bought", thrown: "Thrown from the food baskets", purchase: "Bought before Sep 23 (snack or meal)" } },
+      { key: "decay", label: "Passive decay (200 a day, before the baselines)", color: "var(--eco-lavender)", reasons: ["decay"], retired: true },
       { key: "rot", label: "Rotted", color: "var(--eco-rot)", reasons: ["rot_greysoup", "rot_berries", "rot_fish", "rot_mushrooms", "rot_meat", "rot_wheat"], reasonLabels: { rot_greysoup: "Rotted: Grey Soup", rot_berries: "Rotted: berries", rot_fish: "Rotted: fish", rot_mushrooms: "Rotted: mushrooms", rot_meat: "Rotted: meat", rot_wheat: "Rotted: wheat" } },
     ],
+    otherLabels: { dm: "DM changes" },
     refs: [[2500, "2,500 · snack markup 0% above this"], [2000, "2,000 · meal markup 0% above this"]],
   },
   {
@@ -291,8 +303,11 @@ function FlowChart({ days, config }: { days: DayFlows[]; config: ResourceConfig 
   const losses = twoSided ? [{ key: "other_loss", label: "Other", color: OTHER, reasons: [] }, ...config.losses] : [];
   const up = (d: DayFlows) => gains.reduce((s, g) => s + Math.max(0, d.bySeries[g.key] ?? 0), 0);
   const down = (d: DayFlows) => losses.reduce((s, g) => s + Math.max(0, -(d.bySeries[g.key] ?? 0)), 0);
-  const vTop = niceMax(Math.max(...days.map(up), 1));
-  const vBot = twoSided ? niceMax(Math.max(...days.map(down), 1)) : 0;
+  // A small scale (the deaths from hunger) is kept even, so the tick halfway
+  // up is a whole number rather than a half rounded to the wrong label.
+  const even = (v: number) => (v < 10 ? Math.max(2, Math.ceil(v / 2) * 2) : v);
+  const vTop = even(niceMax(Math.max(...days.map(up), 1)));
+  const vBot = twoSided ? even(niceMax(Math.max(...days.map(down), 1))) : 0;
 
   const H = 280;
   const m = { l: 64, r: 10, t: 12, b: 28 };
@@ -365,7 +380,8 @@ function FlowChart({ days, config }: { days: DayFlows[]; config: ResourceConfig 
   );
 }
 
-function ResourceSection({ config, history }: { config: ResourceConfig; history: History }) {
+// `stats` adds tiles to the row of figures, and `children` cards under it.
+function ResourceSection({ config, history, stats, children }: { config: ResourceConfig; history: History; stats?: ReactNode; children?: ReactNode }) {
   const days = useMemo(() => foldFlows(history.flows, config), [history, config]);
   const { levels, latest } = history;
 
@@ -378,8 +394,10 @@ function ResourceSection({ config, history }: { config: ResourceConfig; history:
   const reasons = [...new Set(history.flows.map((f) => f[1]))];
   const labelOf = (reason: string) => {
     const s = [...config.gains, ...config.losses].find((s) => s.reasons.includes(reason));
-    return s?.reasonLabels?.[reason] ?? s?.label ?? reason.replace(/_/g, " ");
+    return s?.reasonLabels?.[reason] ?? s?.label ?? config.otherLabels?.[reason] ?? reason.replace(/_/g, " ");
   };
+  const charted = new Set(days.flatMap((d) => Object.keys(d.bySeries)));
+  const legend = [...config.gains, ...config.losses].filter((s) => !s.retired || charted.has(s.key));
   const detail = latest?.detail;
 
   return (
@@ -421,7 +439,10 @@ function ResourceSection({ config, history }: { config: ResourceConfig; history:
             </span>
           </div>
         )}
+        {stats}
       </div>
+
+      {children}
 
       <div className="economy__card">
         <h4>Over Time</h4>
@@ -431,7 +452,7 @@ function ResourceSection({ config, history }: { config: ResourceConfig; history:
       <div className="economy__card">
         <h4>Added and Removed per Day</h4>
         <div className="economy__legend" aria-hidden="true">
-          {[...config.gains, ...config.losses].map((s) => <span key={s.key}><i style={{ background: s.color }} />{s.label}</span>)}
+          {legend.map((s) => <span key={s.key}><i style={{ background: s.color }} />{s.label}</span>)}
           <span><i style={{ background: OTHER }} />Other</span>
         </div>
         <FlowChart days={days} config={config} />
@@ -882,6 +903,277 @@ function ContributorsSection({ data }: { data: Contributions }) {
   );
 }
 
+// --- The Food & Labour model ------------------------------------------------
+//
+// The figures below are the module's (pw_inc_foodstore and pw_inc_foodmodel):
+// keep them in step with it.
+
+// The kinds of food as the stores keep them, with the town's room for each
+// (GetFoodTypeStoreCap) and the real days it takes half of it to rot
+// (GetFoodTypeHalfLifeDays). A larder has room for a fifth of the town's.
+const STOCK_KINDS: { key: string; label: string; cap: number; halfLife: number }[] = [
+  { key: "fish", label: "Fish", cap: 20000, halfLife: 3 },
+  { key: "wheat", label: "Wheat", cap: 50000, halfLife: 180 },
+  { key: "meat", label: "Meat", cap: 4000, halfLife: 4 },
+  { key: "berries", label: "Berries", cap: 3000, halfLife: 2 },
+  { key: "mushrooms", label: "Mushrooms", cap: 3000, halfLife: 3 },
+];
+const LARDER_CAP_DIVISOR = 5;
+
+// How full each kind is, against its room, from a level's detail.stock.
+function StockCard({ stock, divisor = 1, title }: { stock: Record<string, number>; divisor?: number; title: string }) {
+  const total = Object.values(stock).reduce((s, n) => s + n, 0);
+  return (
+    <div className="economy__card">
+      <h4>{title}</h4>
+      <div className="demo-bars">
+        {STOCK_KINDS.map((k) => {
+          const n = stock[k.key] ?? 0, cap = k.cap / divisor;
+          return (
+            <BarRow key={k.key} label={k.label} value={`${fmt(n)} / ${fmt(cap)}`} max={cap}
+              segments={[{ n, className: `eco-kind--${k.key}` }]}
+              tip={<>
+                <strong>{k.label}</strong>
+                <span>{fmt(n)} of the room for {fmt(cap)}, {share(n, cap)} full · {share(n, total)} of the food in store</span>
+                <span>{k.halfLife >= 100 ? "Barely rots" : `Half of it rots in ${k.halfLife} days`}</span>
+              </>} />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Each figure's daily average over the last 7 days, or as many as there are.
+function perDayOverWeek(flows: Flow[], now: number) {
+  const week = flows.filter((f) => f[0] >= now - 7 * 86400);
+  const days = Math.max(1, Math.min(7, (now - (week[0]?.[0] ?? now)) / 86400));
+  return { week, days, perDay: (of: (f: Flow) => number) => week.reduce((s, f) => s + of(f), 0) / days };
+}
+
+// Food the farms and the boats brought in with no room for it, in the town's
+// stores or the producing faction's larder (food_lost: flows alone, negative,
+// by what produced it).
+function FoodLostStat({ history, now }: { history: History; now: number }) {
+  const { week, days, perDay } = perDayOverWeek(history.flows, now);
+  const by = (reason: string) => -week.filter((f) => f[1] === reason).reduce((s, f) => s + f[2], 0) / days;
+  return (
+    <div className="economy__stat">
+      <span className="economy__stat-label">Lost to Full Stores</span>
+      <span className="economy__stat-value">{week.length ? fmt(-perDay((f) => f[2])) : "0"}</span>
+      <span className="economy__stat-note">
+        {week.length
+          ? `A day, with no room in store or larder: fish ${fmt(by("fishing"))}, wheat ${fmt(by("farming"))}, meat ${fmt(by("livestock"))}`
+          : "None in the last 7 days"}
+      </span>
+    </div>
+  );
+}
+
+const FACTION_LARDERS: { faction: string; config: ResourceConfig }[] = [
+  ["dredgers", "The Dredgers' Larder", "the fish the Dredgers land", "the holder of a Dredger Trustee's Badge"],
+  ["millers", "The Millers' Larder", "the wheat and meat the Millers' farms bring in", "the holder of a Miller Logistics Badge"],
+].map(([faction, title, produce, office]) => ({
+  faction,
+  config: {
+    resource: `food_${faction}`,
+    title,
+    description: `What the faction keeps back of ${produce}: everything its share does not send to the town's stores, a share set by ${office}. It has room for a fifth of what the town can keep of each kind, and rots as the town's stores do, until it is released to the town.`,
+    gains: [{ key: "kept", label: "Kept back", color: "var(--eco-green)", reasons: ["kept"] }],
+    losses: [
+      { key: "rot", label: "Rotted", color: "var(--eco-rot)", reasons: ["rot_berries", "rot_fish", "rot_mushrooms", "rot_meat", "rot_wheat"], reasonLabels: { rot_berries: "Rotted: berries", rot_fish: "Rotted: fish", rot_mushrooms: "Rotted: mushrooms", rot_meat: "Rotted: meat", rot_wheat: "Rotted: wheat" } },
+      { key: "released", label: "Released to the town", color: "var(--eco-olive)", reasons: ["released"] },
+    ],
+    otherLabels: { dm: "DM changes" },
+  },
+}));
+
+// The ration groups in the game's order, with the Foodstock a day that keeps
+// one of each comfortable at full output (GetFoodGroupBaseline).
+const RATION_GROUPS: { key: string; label: string; baseline: number }[] = [
+  { key: "labourers", label: "Labourers", baseline: 18 },
+  { key: "tradespeople", label: "Tradespeople", baseline: 14 },
+  { key: "skilled", label: "Skilled Workers", baseline: 11 },
+  { key: "free", label: "Free Labour", baseline: 11 },
+  { key: "mothers", label: "Mothers", baseline: 14 },
+  { key: "elders", label: "Elders", baseline: 11 },
+  { key: "children", label: "Children", baseline: 9 },
+];
+
+const WORKPLACES: [string, string, string][] = [
+  ["fishing", "Fishing", "Labourers"], ["farmland", "Farmland", "Labourers"], ["blight", "Blight Control", "Labourers"],
+  ["building", "Building", "Labourers"], ["forestry", "Forestry", "Labourers"], ["reeves", "Reeves", "Tradespeople"],
+  ["millers", "Millers", "Tradespeople"], ["crafts", "Crafts & Trades", "Tradespeople"],
+  ["fishproc", "Fish Processing", "Tradespeople"], ["skilled", "Skilled Roles", "Skilled Workers"],
+];
+
+// Weight lost as the game names it (GetFoodReserveState).
+const reserves = (loss: number) =>
+  loss >= 0.25 ? "Exhausted" : loss >= 0.15 ? "Underweight" : loss >= 0.05 ? "Thin" : "Healthy";
+
+type RationGroup = { people: number; ration: number; fed: number; loss: number; morale: number; output: number };
+type VillagersDetail = { groups: Record<string, RationGroup>; work: Record<string, [number, number]>; shares: Record<string, number> };
+
+// Deaths from hunger (the villagers' flows, negative), charted upwards in the
+// same three bands as the rations, and the infants lost to under-fed Mothers.
+const DEATHS: ResourceConfig = {
+  resource: "villagers",
+  title: "Deaths from Hunger",
+  description: "",
+  gains: [
+    { key: "labourers", label: "Labourers", color: "var(--eco-vermilion)", reasons: ["died_labourers"] },
+    { key: "workers", label: "Other workers", color: "var(--eco-blue)", reasons: ["died_tradespeople", "died_skilled"], reasonLabels: { died_tradespeople: "Tradespeople", died_skilled: "Skilled Workers" } },
+    { key: "dependants", label: "Dependants", color: "var(--eco-magenta)", reasons: ["died_free", "died_mothers", "died_elders", "died_children"], reasonLabels: { died_free: "Free Labour", died_mothers: "Mothers", died_elders: "Elders", died_children: "Children" } },
+    { key: "infants", label: "Infants", color: "var(--eco-yellow)", reasons: ["died_infants"] },
+  ],
+  losses: [],
+  totalLabel: "Died",
+  flowsLabel: "Deaths from hunger per day",
+};
+
+const pct = (f: number) => `${Math.round(f * 100)}%`;
+
+function VillagersSection({ history }: { history: History }) {
+  const { levels, latest } = history;
+  const detail = latest?.detail as VillagersDetail | null | undefined;
+  const deaths = useMemo(() => history.flows.map(([t, r, a, e]): Flow => [t, r, -a, e]), [history]);
+  const days = useMemo(() => foldFlows(deaths, DEATHS), [deaths]);
+  const died = deaths.reduce((s, f) => s + f[2], 0);
+  const infants = deaths.filter((f) => f[1] === "died_infants").reduce((s, f) => s + f[2], 0);
+  const groups = RATION_GROUPS.map((g) => ({ ...g, ...(detail?.groups[g.key] ?? { people: 0, ration: 0, fed: 1, loss: 0, morale: 100, output: 1 }) }));
+  const people = groups.reduce((s, g) => s + g.people, 0);
+  const morale = people ? groups.reduce((s, g) => s + g.morale * g.people, 0) / people : 0;
+  const lowest = groups.filter((g) => g.people > 0).sort((a, b) => a.morale - b.morale)[0];
+  const labourers = groups[0];
+  const start = levels[0];
+  const labelOf = (reason: string) => {
+    const s = DEATHS.gains.find((s) => s.reasons.includes(reason));
+    return s?.reasonLabels?.[reason] ?? s?.label ?? reason.replace(/_/g, " ");
+  };
+
+  return (
+    <section className="economy__section" aria-labelledby="eco-villagers">
+      <h3 id="eco-villagers">Villagers</h3>
+      <p className="economy__sub">
+        The town's people as the food model last saved them: how well each ration group is fed, and what hunger has cost. A group given less than its baseline works more slowly at once, then loses weight, and once Underweight or Exhausted it starts to die, the Elders and Children first; under-fed Mothers lose infants. Need falls as people lose weight, so a moderate shortfall settles thin but stable. The Labourers' output is the pace the boats and farms work at, so starving them starves everyone.
+      </p>
+
+      <div className="economy__stats">
+        <div className="economy__stat">
+          <span className="economy__stat-label">Population</span>
+          <span className="economy__stat-value economy__stat-value--hero">{latest ? fmt(latest.value) : "–"}</span>
+          <span className="economy__stat-note">
+            {start && latest && start[1] !== latest.value ? `From ${fmt(start[1])} on ${dayLabel(start[0])}` : latest ? timeLabel(latest.t) : "Not sampled yet"}
+          </span>
+        </div>
+        <div className="economy__stat">
+          <span className="economy__stat-label">Died of Hunger</span>
+          <span className={`economy__stat-value${died ? " economy__neg" : ""}`}>{fmt(died)}</span>
+          <span className="economy__stat-note">{died ? `Over the range shown${infants ? `, ${fmt(infants)} of them infants` : ""}` : "None in the range shown"}</span>
+        </div>
+        <div className="economy__stat">
+          <span className="economy__stat-label">Morale</span>
+          <span className="economy__stat-value">{detail ? fmt(morale) : "–"}</span>
+          <span className="economy__stat-note">{detail && lowest ? `Out of 100, by head · lowest ${lowest.label} at ${fmt(lowest.morale)}` : "Out of 100"}</span>
+        </div>
+        <div className="economy__stat">
+          <span className="economy__stat-label">Labourers' Output</span>
+          <span className={`economy__stat-value${detail && labourers.output < 1 ? " economy__neg" : ""}`}>{detail ? pct(labourers.output) : "–"}</span>
+          <span className="economy__stat-note">The pace the boats and farms work at</span>
+        </div>
+      </div>
+
+      {detail && (
+        <div className="economy__card">
+          <h4>Ration Groups</h4>
+          <p className="demo-note">Rations are Foodstock a head a day, set in the Town Food Ledger. Fed is the last hour's food against the group's baseline.</p>
+          <div className="economy__table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th className="economy__cell-left">Group</th><th>People</th><th>Ration</th><th>Baseline</th><th>Fed</th>
+                  <th>Weight Lost</th><th className="economy__cell-left">Reserves</th><th>Morale</th><th>Output</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groups.map((g) => (
+                  <tr key={g.key}>
+                    <td className="economy__cell-left">{g.label}</td>
+                    <td>{fmt(g.people)}</td>
+                    <td>{fmt(g.ration)}</td>
+                    <td>{fmt(g.baseline)}</td>
+                    <td className={g.fed < 0.995 ? "economy__neg" : undefined}>{pct(g.fed)}</td>
+                    <td>{g.loss > 0 ? `${(g.loss * 100).toFixed(1)}%` : "–"}</td>
+                    <td className={`economy__cell-left${g.loss >= 0.15 ? " economy__neg" : ""}`}>{reserves(g.loss)}</td>
+                    <td>{fmt(g.morale)}</td>
+                    <td>{pct(g.output)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <details className="economy__details">
+            <summary>Show the workplaces</summary>
+            <div className="economy__table-wrap">
+              <table>
+                <thead>
+                  <tr><th className="economy__cell-left">Workplace</th><th className="economy__cell-left">Group</th><th>Workers</th><th>Slots</th></tr>
+                </thead>
+                <tbody>
+                  {WORKPLACES.map(([key, label, group]) => (
+                    <tr key={key}>
+                      <td className="economy__cell-left">{label}</td>
+                      <td className="economy__cell-left">{group}</td>
+                      <td>{fmt(detail.work[key]?.[0] ?? 0)}</td>
+                      <td>{fmt(detail.work[key]?.[1] ?? 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+      )}
+
+      <div className="economy__card">
+        <h4>Population Over Time</h4>
+        <LevelChart levels={levels} title="The town's population" />
+      </div>
+
+      <div className="economy__card">
+        <h4>Deaths from Hunger per Day</h4>
+        {died === 0 ? <p className="economy__empty">No deaths from hunger in this range.</p> : (
+          <>
+            <div className="economy__legend" aria-hidden="true">
+              {DEATHS.gains.map((s) => <span key={s.key}><i style={{ background: s.color }} />{s.label}</span>)}
+            </div>
+            <FlowChart days={days} config={DEATHS} />
+            <details className="economy__details">
+              <summary>Show as a table</summary>
+              <div className="economy__table-wrap">
+                <table>
+                  <thead>
+                    <tr><th>Day (UTC)</th>{[...new Set(deaths.map((f) => f[1]))].map((r) => <th key={r}>{labelOf(r)}</th>)}<th>Died</th></tr>
+                  </thead>
+                  <tbody>
+                    {[...days].reverse().map((d) => (
+                      <tr key={d.t}>
+                        <td>{dayLabel(d.t)}</td>
+                        {[...new Set(deaths.map((f) => f[1]))].map((r) => <td key={r}>{d.byReason[r] ? fmt(d.byReason[r].amount) : "–"}</td>)}
+                        <td>{fmt(d.net)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
 interface EconomyPageProps {
   authToken: string;
 }
@@ -923,6 +1215,7 @@ function EconomyPage({ authToken }: EconomyPageProps) {
         ...RESOURCES.map((c) => get<History>(c.resource, days)),
         get<History>("gold_average", days ? Math.max(days, 31) : 0, true),
         get<History>("gold_spent", days, true),
+        ...["food_dredgers", "food_millers", "food_lost", "villagers"].map((r) => get<History>(r, days, true)),
       ]),
       get<Contributions>("food/contributors", days, true),
     ])
@@ -936,6 +1229,11 @@ function EconomyPage({ authToken }: EconomyPageProps) {
       .catch((err) => { if (current) { setError(err.message); setLoading(false); } });
     return () => { current = false; };
   }, [days, authToken, reloads]);
+
+  // The larders and the villagers are sampled once the game's food model has
+  // saved itself; before that (or from an older wkserver) they are left out.
+  const modelRunning = !!data.villagers?.latest;
+  const stockOf = (h: History) => (h.latest?.detail?.stock ?? null) as Record<string, number> | null;
 
   return (
     <div className="economy">
@@ -955,10 +1253,28 @@ function EconomyPage({ authToken }: EconomyPageProps) {
       {loading && <p role="status">Loading...</p>}
       {error && <p role="alert" style={{ color: "#c0323a" }}>Error: {error}</p>}
       {!loading && !error && RESOURCES.map((c) => data[c.resource] && (
-        <Fragment key={c.resource}>
-          <ResourceSection config={c} history={data[c.resource]} />
-          {c.resource === "food" && contributors && <ContributorsSection data={contributors} />}
-        </Fragment>
+        c.resource === "food" ? (
+          <Fragment key={c.resource}>
+            <ResourceSection config={c} history={data.food}
+              stats={modelRunning && data.food_lost && <FoodLostStat history={data.food_lost} now={fetchedAt} />}>
+              {stockOf(data.food) && <StockCard stock={stockOf(data.food)!} title="In Store Now, by Kind" />}
+            </ResourceSection>
+            {contributors && <ContributorsSection data={contributors} />}
+            {modelRunning && FACTION_LARDERS.map(({ faction, config }) => data[config.resource] && (
+              <ResourceSection key={faction} config={config} history={data[config.resource]}
+                stats={
+                  <div className="economy__stat">
+                    <span className="economy__stat-label">Sent to the Town</span>
+                    <span className="economy__stat-value">{Number(data[config.resource].latest?.detail?.share ?? 100)}%</span>
+                    <span className="economy__stat-note">Of what it produces; it keeps the rest</span>
+                  </div>
+                }>
+                <StockCard stock={stockOf(data[config.resource]) ?? {}} divisor={LARDER_CAP_DIVISOR} title="In the Larder Now, by Kind" />
+              </ResourceSection>
+            ))}
+            {modelRunning && <VillagersSection history={data.villagers} />}
+          </Fragment>
+        ) : <ResourceSection key={c.resource} config={c} history={data[c.resource]} />
       ))}
       {!loading && !error && data.gold_average && <AverageGoldSection history={data.gold_average} rangeDays={days} />}
       {!loading && !error && data.gold_spent && <SpendingSection history={data.gold_spent} now={fetchedAt} />}

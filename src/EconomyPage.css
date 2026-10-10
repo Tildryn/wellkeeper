@@ -10,8 +10,10 @@
   --eco-violet: #8b6fe0;
   --eco-brown: #a4642c;
   --eco-gold: #e0b13c;
-  --eco-greysoup: #9aab5a;
+  --eco-olive: #9aab5a;
   --eco-orange: #e8702a;
+  --eco-vermilion: #d95926;
+  --eco-lavender: #9085e9;
   --eco-rot: #c0504d;
   --eco-other: #9a9ca6;
   --eco-ref: #d9b36a;
@@ -195,7 +197,9 @@
   color: var(--text-h);
 }
 
+/* Tables are set like those folded into .economy__details, open or not. */
 .economy__table-wrap {
+  font-size: 13.5px;
   overflow-x: auto;
   margin-top: 8px;
 }
