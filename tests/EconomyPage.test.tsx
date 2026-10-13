@@ -62,26 +62,76 @@ const MODEL = {
       t: T, value: 403,
       detail: {
         groups: {
-          labourers: { people: 72, ration: 13, fed: 0.722, loss: 0.161, morale: 40, output: 0.48 },
-          elders:    { people: 77, ration: 11, fed: 1, loss: 0, morale: 90, output: 1 },
+          labourers: { people: 72, ration: 13, baseline: 18, fed: 0.722, loss: 0.161, morale: 40, output: 0.48 },
+          elders:    { people: 77, ration: 11, baseline: 11, fed: 1, loss: 0, morale: 90, output: 1 },
         },
-        work: { fishing: [30, 32] },
+        work: { fishing: [30, 32, 'labourers'], blight: [10, 10, 'tradespeople'] },
         shares: { dredgers: 60, millers: 100 },
       },
     },
   },
 }
 
+// The Treasury's resources, as a wkserver sampling an open Treasury sends
+// them, with the payroll and the journal.
+const TREASURY = {
+  treasury: {
+    resource: 'treasury', levels: [[T - 3600, 100000], [T, 99411]],
+    flows: [[T - 3600, 'hearth_tax', 78, 1], [T - 3600, 'npc_wages', -238, 1], [T - 3600, 'alloc_reeves', -97, 1], [T - 3600, 'adjust', 50, 1]],
+    latest: { t: T, value: 99411, detail: null },
+  },
+  treasury_purse: {
+    resource: 'treasury_purse', levels: [[T, 41000]], flows: [[T - 3600, 'dredgers_alloc', 166, 1], [T - 3600, 'dredgers_members', -40, 1]],
+    latest: { t: T, value: 41000, detail: { purses: { dredgers: -1000, millers: 18000, reeves: 24000 }, morale: { dredgers: 82, millers: 100 } } },
+  },
+  treasury_villagers: {
+    resource: 'treasury_villagers', levels: [[T, 704]], flows: [[T - 3600, 'wages', 782, 4], [T - 3600, 'hearth', -78, 1]],
+    latest: { t: T, value: 704, detail: null },
+  },
+  treasury_tax: {
+    resource: 'treasury_tax', levels: [[T, 52]], flows: [[T - 3600, 'ephedra', 40, 2], [T - 3600, 'kelosnack', 12, 3]],
+    latest: { t: T, value: 52, detail: { boxes: { ephedra: 40, kelosnack: 12 } } },
+  },
+  treasury_fines: { resource: 'treasury_fines', levels: [[T, 0]], flows: [], latest: { t: T, value: 0, detail: null } },
+  gold_paid: {
+    resource: 'gold_paid', levels: [], latest: null,
+    flows: [[T - 3600, 'store_scrap', 900, 12], [T - 3600, 'fragments', 300, 3], [T - 3600, 'wages_dredgers', 40, 1]],
+  },
+}
+
+const PAYROLL = {
+  members: [
+    { pcid: 'pc-a', name: 'Ada Fenwick', faction: 'council', badge: 'PW_IT_BDGEMPLOY', active: true, wage: 25, owed: 0, joined: T - 86400, seen: T },
+    { pcid: 'pc-c', name: 'Cole', faction: 'dredgers', badge: 'PW_IT_BDGDREDGE', active: false, wage: 40, owed: 79, joined: T - 86400, seen: T - 3600 },
+    { pcid: 'pc-b', name: 'Bram Stoker', faction: 'reeves', badge: 'PW_IT_BDGREEVSGT', active: true, wage: 120, owed: 240, joined: T - 86400, seen: T },
+  ],
+  now: T,
+}
+
+const JOURNAL = {
+  entries: [
+    [T - 60, 'Bram Stoker', 'member_paid', 'purse_reeves', 240, 'collected 240 in wages'],
+    [T - 3600, 'Ada Fenwick', 'withdraw', 'ephedra', 40, 'took 40 from the Tax Box at Ephedra'],
+  ],
+  now: T,
+}
+
 // Without `contributors`, the contributors answer 404, as a wkserver from
-// before them does, and so do the food model's resources without `model`.
-function mockEconomy(requested: string[] = [], contributors: object | null = null, model: Record<string, object> = {}) {
+// before them does, and so do the food model's resources without `model`
+// and the Treasury's without `treasury`.
+function mockEconomy(requested: string[] = [], contributors: object | null = null, model: Record<string, object> = {}, treasury = false) {
   server.use(
     http.get(`${API}/economy/food/contributors`, () =>
       contributors ? HttpResponse.json(contributors) : new HttpResponse(null, { status: 404 })),
+    http.get(`${API}/economy/treasury/members`, () =>
+      treasury ? HttpResponse.json(PAYROLL) : new HttpResponse(null, { status: 404 })),
+    http.get(`${API}/economy/treasury/journal`, () =>
+      treasury ? HttpResponse.json(JOURNAL) : new HttpResponse(null, { status: 404 })),
     http.get(`${API}/economy/:resource`, ({ params, request }) => {
       requested.push(new URL(request.url).search)
       const resource = String(params.resource)
       if (resource in MODEL) return model[resource] ? HttpResponse.json(model[resource]) : new HttpResponse(null, { status: 404 })
+      if (resource in TREASURY) return treasury ? HttpResponse.json(TREASURY[resource as keyof typeof TREASURY]) : new HttpResponse(null, { status: 404 })
       return HttpResponse.json(resource === 'food' ? FOOD : GOLD)
     })
   )
@@ -164,7 +214,8 @@ describe('EconomyPage', () => {
 
     const dredgers = screen.getByRole('region', { name: "The Dredgers' Larder" })
     expect(within(dredgers).getByText('60%')).toBeInTheDocument()
-    expect(within(dredgers).getByText('420 / 4,000')).toBeInTheDocument()
+    // 420 fish at 0.15 litres each, in a larder of 8 m³.
+    expect(within(dredgers).getByText('63 L / 8 m³')).toBeInTheDocument()
     expect(screen.getByRole('region', { name: "The Millers' Larder" })).toBeInTheDocument()
 
     const villagers = screen.getByRole('region', { name: 'Villagers' })
@@ -174,6 +225,68 @@ describe('EconomyPage', () => {
     const labourers = within(groups).getByRole('row', { name: /^Labourers/ })
     expect(within(labourers).getByText('Underweight')).toBeInTheDocument()
     expect(within(labourers).getByText('16.1%')).toBeInTheDocument()
+    expect(within(labourers).getByText('18')).toBeInTheDocument()
+    // Each workplace's group is the game's, sent with the sample.
+    const workplaces = within(villagers).getAllByRole('table')[1]
+    expect(within(within(workplaces).getByRole('row', { name: /^Blight Control/ })).getByText('Tradespeople')).toBeInTheDocument()
+    expect(within(within(workplaces).getByRole('row', { name: /^Farmland/ })).getByText('–')).toBeInTheDocument()
+  })
+
+  it('counts stock saved as wheat with the potatoes', async () => {
+    mockEconomy()
+    server.use(http.get(`${API}/economy/food`, () => HttpResponse.json({
+      ...FOOD, latest: { t: T, value: 1100, detail: { stock: { wheat: 1000, potatoes: 100 } } },
+    })))
+    render(<EconomyPage authToken="test-token" />)
+    const food = await screen.findByRole('region', { name: 'Food Stores' })
+    const potatoes = within(food).getByText('Potatoes', { selector: '.demo-bar__label' }).parentElement!
+    expect(within(potatoes).getByText('1,100')).toBeInTheDocument()
+    expect(within(food).getByText('462 L / 60 m³')).toBeInTheDocument()
+  })
+
+  it('shows the Treasury once the game has opened it', async () => {
+    mockEconomy([], null, {}, true)
+    render(<EconomyPage authToken="test-token" />)
+
+    const council = await screen.findByRole('region', { name: "The Council's Treasury" })
+    expect(within(council).getByText('99,411')).toBeInTheDocument()
+    const table = within(council).getByRole('table')
+    expect(within(table).getByRole('columnheader', { name: 'Allocation: the Reeves' })).toBeInTheDocument()
+    expect(within(table).getByRole('columnheader', { name: 'DM adjustments' })).toBeInTheDocument()
+
+    const purses = screen.getByRole('region', { name: "The Factions' Treasuries" })
+    const dredgers = within(purses).getByText('The Dredgers', { selector: '.economy__stat-label' }).parentElement!
+    expect(dredgers).toHaveTextContent('−1,000')
+    expect(dredgers).toHaveTextContent('Morale 82 out of 100 · in debt')
+    expect(within(purses).getByText('The Reeves', { selector: '.economy__stat-label' }).parentElement!).toHaveTextContent('Morale not set yet')
+
+    expect(screen.getByRole('region', { name: "The Villagers' Purse" })).toHaveTextContent('704')
+    const tax = screen.getByRole('region', { name: 'Sales Tax' })
+    expect(within(tax).getByText('Ephedra, Alchemist')).toBeInTheDocument()
+    expect(within(tax).getByText('Kelo, Snacks')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'The Fines Chest' })).toBeInTheDocument()
+
+    const payroll = screen.getByRole('region', { name: "Members' Wages" })
+    expect(within(payroll).getByText('The Reeves', { selector: '.economy__stat-label' }).parentElement!)
+      .toHaveTextContent('A day, to 1 member · 240 waiting with the Reeve Provisioner')
+    const bram = within(payroll).getByRole('row', { name: /^Bram Stoker/ })
+    expect(within(bram).getByText("Reeve Sergeant's Badge")).toBeInTheDocument()
+    expect(within(payroll).getByRole('row', { name: /^Cole \(left\)/ })).toBeInTheDocument()
+
+    const journal = screen.getByRole('region', { name: 'Treasury Journal' })
+    expect(within(journal).getByText('took 40 from the Tax Box at Ephedra')).toBeInTheDocument()
+
+    const paid = screen.getByRole('region', { name: 'Gold Paid to Characters' })
+    expect(within(paid).getByText('Sold to store scrap')).toBeInTheDocument()
+  })
+
+  it('leaves the Treasury out until the game has opened it', async () => {
+    mockEconomy()
+    render(<EconomyPage authToken="test-token" />)
+    await screen.findByRole('region', { name: 'Food Stores' })
+    expect(screen.queryByRole('region', { name: "The Council's Treasury" })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: "Members' Wages" })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Gold Paid to Characters' })).not.toBeInTheDocument()
   })
 
   it('leaves the larders and villagers out until the food model is running', async () => {

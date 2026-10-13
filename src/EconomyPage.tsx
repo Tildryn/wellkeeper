@@ -20,8 +20,10 @@ type History = { resource: string; levels: Level[]; flows: Flow[]; latest: Lates
 
 // reasonLabels names each reason in the table when one series claims several.
 // A retired series holds history only, and is in the legend only while the
-// range shown has some of it.
-type Series = { key: string; label: string; color: string; reasons: string[]; reasonLabels?: Record<string, string>; retired?: boolean };
+// range shown has some of it. `prefixes` claims every reason starting with
+// one of them, for reasons the game makes up as it goes (a store's
+// "store_" and its tag), where a reason named outright still wins.
+type Series = { key: string; label: string; color: string; reasons: string[]; reasonLabels?: Record<string, string>; retired?: boolean; prefixes?: string[] };
 
 type ResourceConfig = {
   resource: string;
@@ -43,19 +45,30 @@ type ResourceConfig = {
 
 const OTHER = "var(--eco-other)";
 
+// Rot by kind of food, as the game records it ("rot_" and the kind). Wheat
+// and Grey Soup are history: the farms' wheat became potatoes on Oct 12, and
+// Grey Soup was taken out on Oct 10.
+const ROT_REASONS = ["rot_berries", "rot_fish", "rot_mushrooms", "rot_meat", "rot_potatoes", "rot_wheat", "rot_greysoup"];
+const ROT_LABELS: Record<string, string> = {
+  rot_berries: "Rotted: berries", rot_fish: "Rotted: fish", rot_mushrooms: "Rotted: mushrooms", rot_meat: "Rotted: meat",
+  rot_potatoes: "Rotted: potatoes", rot_wheat: "Rotted: wheat (before Oct 12)", rot_greysoup: "Rotted: Grey Soup",
+};
+
 const RESOURCES: ResourceConfig[] = [
   {
     resource: "food",
     title: "Food Stores",
     // The figures are the Food & Labour model's starting values
     // (pw_inc_foodmodel in the module): its workplaces, output per worker,
-    // and ration baselines, and pw_inc_foodstore's diet, caps, and rot.
-    description: "The town's stores, not counting the factions' larders. The Dredgers' boats and the Millers' fields bring food in every hour, at the pace the Labourers can work: at full strength about 3,040 a day of fish, more or less with the day's sea (75–135% most days, next to nothing in a storm one day in twenty), and 660 from the farms, 88% of it wheat and the rest meat, of which the Blight takes up to half when Blight control is short-handed. Each faction sends the town the share its office holder sets and keeps the rest in its own larder, which it can release to the town later. Foodstock handed in adds to the stores too. The 407 villagers eat in seven ration groups, at the rations set in the Town Food Ledger: 5,120 a day at the baselines, of which the Labourers eat 1,296, the other workers (Tradespeople and Skilled Workers) 1,494, and the dependants (Free Labour, Mothers, Elders, and Children) 2,330. Snacks, meals, thrown food, and rot take from the stores as well. Everyone eats a mix, by diet: fish 57%, berries 15%, mushrooms 12%, wheat 10%, and meat 6%, and more of the rest when one runs short. Each kind has room for so much (wheat 50,000, fish 20,000, meat 4,000, and berries and mushrooms 3,000 each), and what is left rots at its own rate: half the berries in two days, fish and mushrooms in three, meat in four, and wheat barely at all.",
+    // and ration baselines, and pw_inc_foodstore's diet, room, and rot.
+    // Building has no workers while there is nothing to build with, so its
+    // ten are Free Labour.
+    description: "The town's stores, not counting the factions' larders. The Dredgers' boats and the Millers' fields bring food in every hour, at the pace the Labourers can work: at full strength about 3,040 a day of fish, more or less with the day's sea (75–135% most days, next to nothing in a storm one day in twenty), and 660 from the farms, 88% of it potatoes and the rest meat, of which the Blight takes up to half when Blight Control is short-handed. Each faction sends the town the share its office holder sets and keeps the rest in its own larder, which it can release to the town later. Foodstock handed in adds to the stores too. The 407 villagers eat in seven ration groups, at the rations set in the Town Food Ledger: 5,050 a day at the baselines, of which the Labourers eat 1,116, the other workers (Tradespeople and Skilled Workers) 1,494, and the dependants (Free Labour, Mothers, Elders, and Children) 2,440. Snacks, meals, thrown food, and rot take from the stores as well. Everyone eats a mix, by diet: fish 57%, berries 15%, mushrooms 12%, potatoes 10%, and meat 6%, and more of the rest when one runs short. The stores are one space of 60 m³ that every kind shares by the room it takes packed for keeping, from a tenth of a litre for meat to nearly two for mushrooms, and food that does not fit is turned away. What is in them rots at its own rate: half the berries in two days, fish and mushrooms in three, meat in four, and potatoes over months.",
     // Grouped as the Town Food Ledger's chart groups them in game
     // (GetFoodChartCategory in pw_inc_foodui), with the ration groups in its
     // three bands. Retired series hold history from before the model.
     gains: [
-      { key: "farming", label: "Farming (the Millers' share)", color: "var(--eco-brown)", reasons: ["farming", "livestock"], reasonLabels: { farming: "Farming: wheat", livestock: "Farming: livestock" } },
+      { key: "farming", label: "Farming (the Millers' share)", color: "var(--eco-brown)", reasons: ["farming", "livestock"], reasonLabels: { farming: "Farming: potatoes", livestock: "Farming: livestock" } },
       { key: "fishing", label: "Fishing (the Dredgers' share)", color: "var(--eco-violet)", reasons: ["fishing"] },
       { key: "release", label: "Released from the larders", color: "var(--eco-olive)", reasons: ["release_dredgers", "release_millers"], reasonLabels: { release_dredgers: "Released: the Dredgers' larder", release_millers: "Released: the Millers' larder" } },
       { key: "handin", label: "Foodstock handed in", color: "var(--eco-green)", reasons: ["handin"] },
@@ -68,7 +81,7 @@ const RESOURCES: ResourceConfig[] = [
       { key: "villagers", label: "Eaten by villagers (before the ration groups)", color: "var(--eco-aqua)", reasons: ["villagers", "villagers_soup"], reasonLabels: { villagers: "Eaten by villagers", villagers_soup: "Grey Soup eaten by villagers" }, retired: true },
       { key: "meals", label: "Meals and snacks", color: "var(--eco-yellow)", reasons: ["meal", "snack", "thrown", "purchase"], reasonLabels: { meal: "Meals bought (3 each)", snack: "Snacks bought", thrown: "Thrown from the food baskets", purchase: "Bought before Sep 23 (snack or meal)" } },
       { key: "decay", label: "Passive decay (200 a day, before the baselines)", color: "var(--eco-lavender)", reasons: ["decay"], retired: true },
-      { key: "rot", label: "Rotted", color: "var(--eco-rot)", reasons: ["rot_greysoup", "rot_berries", "rot_fish", "rot_mushrooms", "rot_meat", "rot_wheat"], reasonLabels: { rot_greysoup: "Rotted: Grey Soup", rot_berries: "Rotted: berries", rot_fish: "Rotted: fish", rot_mushrooms: "Rotted: mushrooms", rot_meat: "Rotted: meat", rot_wheat: "Rotted: wheat" } },
+      { key: "rot", label: "Rotted", color: "var(--eco-rot)", reasons: ROT_REASONS, reasonLabels: ROT_LABELS },
     ],
     otherLabels: { dm: "DM changes" },
     refs: [[2500, "2,500 · snack markup 0% above this"], [2000, "2,000 · meal markup 0% above this"]],
@@ -105,7 +118,13 @@ const SPENDING: ResourceConfig = {
   title: "Where Gold Is Spent",
   description: "The gold players pay out, recorded by the game as it is spent: every store purchase, under the store it was made at, and the tailor's fee, the Crow's letters, and its announcements. Purchases by DMs are left out, and so are gold handed between players and gold earned by selling to a store.",
   gains: [
-    { key: "food", label: "Food", color: "var(--eco-orange)", reasons: ["store_foodmealrh", "store_foodsnackrh", "store_foodgreyrh"], reasonLabels: { store_foodmealrh: "Meals", store_foodsnackrh: "Snacks", store_foodgreyrh: "Grey Soup" } },
+    { key: "food", label: "Food", color: "var(--eco-orange)",
+      reasons: ["store_foodmealrh", "store_foodsnackrh", "store_foodgreyrh", "store_foodmealdr", "store_foodsnackdr", "store_foodmealml", "store_foodsnackml", "store_foodgreyml"],
+      reasonLabels: {
+        store_foodmealrh: "Meals at the Refuge", store_foodsnackrh: "Snacks at the Refuge", store_foodgreyrh: "Grey Soup at the Refuge",
+        store_foodmealdr: "Meals from Kelo", store_foodsnackdr: "Snacks from Kelo",
+        store_foodmealml: "Meals from the Provisioner", store_foodsnackml: "Snacks from the Provisioner", store_foodgreyml: "Grey Soup from the Provisioner",
+      } },
     { key: "alchemist", label: "Alchemist (Ephedra)", color: "var(--eco-violet)", reasons: ["store_ephedra"] },
     { key: "healer", label: "Healing (Fabella Tarsus)", color: "var(--eco-aqua)", reasons: ["store_tarsus"] },
     { key: "gadgets", label: "Gadgets and tools (Mireva)", color: "var(--eco-yellow)", reasons: ["store_mireva"] },
@@ -125,7 +144,8 @@ const OTHER_SPEND_LABELS: Record<string, string> = {
   store_hrotheld: "Hackett Rotheld's wares",
   store_nfnick: "Nine Fingered Nick",
   store_fbazal: "Fitz Bazalgate",
-  store_dredgebartender: "The Dredge bartender",
+  store_dredgebartender: "Kelo, the Dredgers' bar",
+  store_reeveprov: "The Reeve Provisioner",
   store_normmerch: "Trustworthy Shopkeep",
   dialogue: "Other payments in conversation",
 };
@@ -134,6 +154,48 @@ const spendLabel = (reason: string) => {
   const s = SPENDING.gains.find((s) => s.reasons.includes(reason));
   return s?.reasonLabels?.[reason] ?? s?.label ?? OTHER_SPEND_LABELS[reason]
     ?? (reason.startsWith("store_") ? `Store ${reason.slice(6)}` : reason.replace(/_/g, " "));
+};
+
+// The gold the game pays characters (gold_paid), by what it paid for:
+// "store_" and the store's tag for an item sold, the way gold_spent names a
+// purchase, and a reason of its own for each kind of reward. The Hand-In
+// Bounty is the Treasury's, and is in its section below.
+const PAID: ResourceConfig = {
+  resource: "gold_paid",
+  title: "Gold Paid to Characters",
+  description: "The gold the game pays players, recorded as it is paid: items sold to a store, under the store; Scar fragments and scrap traded in; patrol and survey rewards; experience traded for gold; and the wage packets faction members and the Council's employees collect from their paymasters. DMs are left out, and so is gold handed between players or picked up as loot.",
+  gains: [
+    { key: "sales", label: "Sold to stores", color: "var(--eco-blue)", reasons: [], prefixes: ["store_"] },
+    { key: "fragments", label: "Scar fragments", color: "var(--eco-violet)", reasons: ["fragments"] },
+    { key: "scrap", label: "Scrap", color: "var(--eco-brown)", reasons: ["scrap_nick", "scrap_merchant"], reasonLabels: { scrap_nick: "Scrap to Nine Fingered Nick", scrap_merchant: "Scrap to a merchant" } },
+    { key: "work", label: "Patrols and surveys", color: "var(--eco-green)", reasons: ["patrol", "survey"], reasonLabels: { patrol: "Patrols", survey: "Surveys" } },
+    { key: "xp", label: "Experience traded for gold", color: "var(--eco-yellow)", reasons: ["xp_for_gold"] },
+    { key: "wages", label: "Wage packets", color: "var(--eco-magenta)", reasons: ["wages_council", "wages_dredgers", "wages_millers", "wages_reeves"], reasonLabels: { wages_council: "Wages: the Council", wages_dredgers: "Wages: the Dredgers", wages_millers: "Wages: the Millers", wages_reeves: "Wages: the Reeves" } },
+  ],
+  losses: [],
+  totalLabel: "Paid",
+  flowsLabel: "Gold paid per day",
+};
+
+const paidLabel = (reason: string) => {
+  const s = seriesOf(PAID, reason);
+  return s?.reasonLabels?.[reason]
+    ?? (reason.startsWith("store_") ? `Sold to ${spendLabel(reason).replace(/^Store /, "store ")}` : s?.label ?? reason.replace(/_/g, " "));
+};
+
+// The words a payments section uses, spending or paying.
+type PaymentWords = {
+  done: string; perDayNote: string; mostLabel: string; byTitle: string; of: string; column: string; recordSign: 1 | -1;
+};
+const SPEND_WORDS: PaymentWords = {
+  done: "Spent", perDayNote: "Purchases and fees", mostLabel: "Most Spent On", byTitle: "By Store and Service",
+  of: "of the gold spent", column: "Store or Service",
+  // The game records a payment as the negative change it makes.
+  recordSign: -1,
+};
+const PAID_WORDS: PaymentWords = {
+  done: "Paid", perDayNote: "Sales and rewards", mostLabel: "Most Paid For", byTitle: "By What It Was Paid For",
+  of: "of the gold paid", column: "Paid For", recordSign: 1,
 };
 
 const RANGES: [number, string][] = [[7, "7 Days"], [30, "30 Days"], [0, "All"]];
@@ -148,19 +210,25 @@ const timeLabel = (t: number) => {
   return `${dayLabel(t)}, ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} UTC`;
 };
 
+// The series that claims a reason, by its name or else by a prefix.
+function seriesOf(config: ResourceConfig, reason: string): Series | undefined {
+  const all = [...config.gains, ...config.losses];
+  return all.find((s) => s.reasons.includes(reason)) ?? all.find((s) => s.prefixes?.some((p) => reason.startsWith(p)));
+}
+
 // Everything a resource's flows fold into: one bucket per series, plus
 // "other" for any reason no series claims (DM adjustments, thrown food, ...).
 type DayFlows = { t: number; bySeries: Record<string, number>; byReason: Record<string, { amount: number; events: number }>; net: number };
 
 function foldFlows(flows: Flow[], config: ResourceConfig): DayFlows[] {
-  const owner: Record<string, string> = {};
-  for (const s of [...config.gains, ...config.losses]) for (const r of s.reasons) owner[r] = s.key;
+  const owner = new Map<string, string | undefined>();
   const days = new Map<number, DayFlows>();
   for (const [t, reason, amount, events] of flows) {
     const k = dayKey(t);
     let d = days.get(k);
     if (!d) { d = { t: k, bySeries: {}, byReason: {}, net: 0 }; days.set(k, d); }
-    const key = owner[reason] ?? (amount >= 0 ? "other_gain" : "other_loss");
+    if (!owner.has(reason)) owner.set(reason, seriesOf(config, reason)?.key);
+    const key = owner.get(reason) ?? (amount >= 0 ? "other_gain" : "other_loss");
     d.bySeries[key] = (d.bySeries[key] ?? 0) + amount;
     const r = (d.byReason[reason] ??= { amount: 0, events: 0 });
     r.amount += amount;
@@ -393,7 +461,7 @@ function ResourceSection({ config, history, stats, children }: { config: Resourc
   const removed = weekFlows.reduce((s, f) => s + Math.max(0, -f[2]), 0) / weekDays;
   const reasons = [...new Set(history.flows.map((f) => f[1]))];
   const labelOf = (reason: string) => {
-    const s = [...config.gains, ...config.losses].find((s) => s.reasons.includes(reason));
+    const s = seriesOf(config, reason);
     return s?.reasonLabels?.[reason] ?? s?.label ?? config.otherLabels?.[reason] ?? reason.replace(/_/g, " ");
   };
   const charted = new Set(days.flatMap((d) => Object.keys(d.bySeries)));
@@ -611,12 +679,11 @@ function AverageGoldSection({ history, rangeDays }: { history: History; rangeDay
   );
 }
 
-// Where gold is spent, from the payments the game records.
-function SpendingSection({ history, now }: { history: History; now: number }) {
-  // The game records a payment as the negative change it makes, so it is
-  // turned around here to chart the gold spent upwards.
-  const flows = useMemo(() => history.flows.map(([t, r, a, e]): Flow => [t, r, -a, e]), [history]);
-  const days = useMemo(() => foldFlows(flows, SPENDING), [flows]);
+// Where gold is spent, or where the game pays it out, from the payments the
+// game records, charted upwards either way.
+function PaymentsSection({ history, now, config, words, nameOf }: { history: History; now: number; config: ResourceConfig; words: PaymentWords; nameOf: (reason: string) => string }) {
+  const flows = useMemo(() => history.flows.map(([t, r, a, e]): Flow => [t, r, words.recordSign * a, e]), [history, words]);
+  const days = useMemo(() => foldFlows(flows, config), [flows, config]);
 
   const weekFlows = flows.filter((f) => f[0] >= now - 7 * 86400);
   const weekDays = Math.max(1, Math.min(7, (now - (weekFlows[0]?.[0] ?? now)) / 86400));
@@ -632,11 +699,11 @@ function SpendingSection({ history, now }: { history: History; now: number }) {
     byReason.set(r, x);
   }
   const total = [...byReason.values()].reduce((s, x) => s + x.amount, 0);
-  const claimed = new Set(SPENDING.gains.flatMap((g) => g.reasons));
-  const groups = [...SPENDING.gains, { key: "other", label: "Other", color: OTHER, reasons: [] as string[] }]
+  const groupKey = (r: string) => seriesOf(config, r)?.key ?? "other";
+  const groups = [...config.gains, { key: "other", label: "Other", color: OTHER, reasons: [] as string[] }]
     .map((g) => {
       const members = [...byReason]
-        .filter(([r]) => g.key === "other" ? !claimed.has(r) : g.reasons.includes(r))
+        .filter(([r]) => groupKey(r) === g.key)
         .map(([reason, x]) => ({ reason, ...x }))
         .sort((a, b) => b.amount - a.amount);
       return { ...g, members, amount: members.reduce((s, x) => s + x.amount, 0), events: members.reduce((s, x) => s + x.events, 0) };
@@ -645,19 +712,19 @@ function SpendingSection({ history, now }: { history: History; now: number }) {
   // Largest first, with Other always last.
   const ranked = [...groups.filter((g) => g.key !== "other").sort((a, b) => b.amount - a.amount), ...groups.filter((g) => g.key === "other")];
   const top = ranked[0]?.key === "other" ? null : ranked[0];
-  const groupOf = (reason: string) => SPENDING.gains.find((g) => g.reasons.includes(reason))?.label ?? "Other";
+  const groupOf = (reason: string) => seriesOf(config, reason)?.label ?? "Other";
   const rows = [...byReason].map(([reason, x]) => ({ reason, ...x })).sort((a, b) => b.amount - a.amount);
 
   return (
-    <section className="economy__section" aria-labelledby="eco-gold_spent">
-      <h3 id="eco-gold_spent">{SPENDING.title}</h3>
-      <p className="economy__sub">{SPENDING.description}</p>
+    <section className="economy__section" aria-labelledby={`eco-${config.resource}`}>
+      <h3 id={`eco-${config.resource}`}>{config.title}</h3>
+      <p className="economy__sub">{config.description}</p>
 
       {flows.length === 0 ? <p className="economy__empty">Nothing recorded in this range yet.</p> : (
         <>
           <div className="economy__stats">
             <div className="economy__stat">
-              <span className="economy__stat-label">Spent per Day</span>
+              <span className="economy__stat-label">{words.done} per Day</span>
               <span className="economy__stat-value economy__stat-value--hero">{weekFlows.length ? fmt(perDay) : "–"}</span>
               <span className="economy__stat-note">
                 {!weekFlows.length ? "Nothing in the last 7 days" : `Average over the last ${weekDays >= 6.9 ? "7 days" : `${weekDays.toFixed(1)} days`}`}
@@ -666,16 +733,16 @@ function SpendingSection({ history, now }: { history: History; now: number }) {
             <div className="economy__stat">
               <span className="economy__stat-label">Payments per Day</span>
               <span className="economy__stat-value">{weekFlows.length ? fmt(paymentsPerDay) : "–"}</span>
-              <span className="economy__stat-note">{weekFlows.length ? "Purchases and fees, over the same days" : "Nothing in the last 7 days"}</span>
+              <span className="economy__stat-note">{weekFlows.length ? `${words.perDayNote}, over the same days` : "Nothing in the last 7 days"}</span>
             </div>
             <div className="economy__stat">
-              <span className="economy__stat-label">Spent in Range</span>
+              <span className="economy__stat-label">{words.done} in Range</span>
               <span className="economy__stat-value">{fmt(total)}</span>
               <span className="economy__stat-note">{fmt(rows.reduce((s, x) => s + x.events, 0))} payments</span>
             </div>
             {top && (
               <div className="economy__stat">
-                <span className="economy__stat-label">Most Spent On</span>
+                <span className="economy__stat-label">{words.mostLabel}</span>
                 <span className="economy__stat-value">{share(top.amount, total)}</span>
                 <span className="economy__stat-note">{top.label}, over the range shown</span>
               </div>
@@ -683,7 +750,7 @@ function SpendingSection({ history, now }: { history: History; now: number }) {
           </div>
 
           <div className="economy__card">
-            <h4>By Store and Service</h4>
+            <h4>{words.byTitle}</h4>
             <div className="demo-bars">
               {ranked.map((g) => (
                 <BarRow key={g.key} label={g.label} value={fmt(g.amount)} max={ranked.reduce((m, x) => Math.max(m, x.amount), 0)}
@@ -691,9 +758,9 @@ function SpendingSection({ history, now }: { history: History; now: number }) {
                   segments={[{ n: g.amount, className: `eco-seg--${g.key}` }]}
                   tip={<>
                     <strong>{g.label}</strong>
-                    <span>{share(g.amount, total)} of the gold spent · {fmt(g.events)} payments, {fmt(g.amount / g.events)} each on average</span>
-                    {(g.members.length > 1 || g.key === "other") && g.members.map((x) => (
-                      <span key={x.reason} className="economy__tip-row">{spendLabel(x.reason)}<b>{fmt(x.amount)}</b></span>
+                    <span>{share(g.amount, total)} {words.of} · {fmt(g.events)} payments, {fmt(g.amount / g.events)} each on average</span>
+                    {(g.members.length > 1 || g.key === "other") && g.members.slice(0, 12).map((x) => (
+                      <span key={x.reason} className="economy__tip-row">{nameOf(x.reason)}<b>{fmt(x.amount)}</b></span>
                     ))}
                   </>} />
               ))}
@@ -701,23 +768,23 @@ function SpendingSection({ history, now }: { history: History; now: number }) {
           </div>
 
           <div className="economy__card">
-            <h4>Spent per Day</h4>
+            <h4>{words.done} per Day</h4>
             <div className="economy__legend" aria-hidden="true">
-              {SPENDING.gains.map((s) => <span key={s.key}><i style={{ background: s.color }} />{s.label}</span>)}
+              {config.gains.map((s) => <span key={s.key}><i style={{ background: s.color }} />{s.label}</span>)}
               <span><i style={{ background: OTHER }} />Other</span>
             </div>
-            <FlowChart days={days} config={SPENDING} />
+            <FlowChart days={days} config={config} />
             <details className="economy__details">
               <summary>Show as a table</summary>
               <div className="economy__table-wrap">
                 <table>
                   <thead>
-                    <tr><th>Store or Service</th><th>Group</th><th>Gold</th><th>Payments</th><th>Average</th><th>Share</th></tr>
+                    <tr><th>{words.column}</th><th>Group</th><th>Gold</th><th>Payments</th><th>Average</th><th>Share</th></tr>
                   </thead>
                   <tbody>
                     {rows.map((x) => (
                       <tr key={x.reason}>
-                        <td>{spendLabel(x.reason)}</td>
+                        <td>{nameOf(x.reason)}</td>
                         <td>{groupOf(x.reason)}</td>
                         <td>{fmt(x.amount)}</td>
                         <td>{fmt(x.events)}</td>
@@ -751,20 +818,32 @@ type Contributions = {
 // The kinds of Foodstock, keyed as the game's stores are (GetFoodTypeName in
 // pw_inc_foodstore), in the order the bars stack them. Every Foodstock item
 // is one of the first four; the stores take anything else carrying the tag as
-// wheat, which keeps.
+// potatoes, which keep. Hand-ins from before Oct 12 call those "wheat", and
+// count with them (kindKey).
 const FOOD_KINDS: { key: string; label: string }[] = [
   { key: "fish", label: "Fish" },
   { key: "berries", label: "Berries" },
   { key: "mushrooms", label: "Mushrooms" },
   { key: "meat", label: "Meat" },
-  { key: "wheat", label: "Other provisions" },
+  { key: "potatoes", label: "Other provisions" },
 ];
+
+// The kind a stored or handed-in amount counts as: the game kept the farms'
+// food as "wheat" until it became potatoes on Oct 12.
+const kindKey = (k: string) => (k === "wheat" ? "potatoes" : k);
+const byKind = (kinds: Record<string, number>) => {
+  const out: Record<string, number> = {};
+  for (const [k, n] of Object.entries(kinds)) out[kindKey(k)] = (out[kindKey(k)] ?? 0) + n;
+  return out;
+};
 
 // How many of the leaderboard get a bar; the table under it has everyone.
 const LEADERBOARD_BARS = 20;
 
-const kindsText = (kinds: Record<string, number>) =>
-  FOOD_KINDS.filter((k) => kinds[k.key]).map((k) => `${fmt(kinds[k.key])} ${k.label.toLowerCase()}`).join(", ");
+const kindsText = (raw: Record<string, number>) => {
+  const kinds = byKind(raw);
+  return FOOD_KINDS.filter((k) => kinds[k.key]).map((k) => `${fmt(kinds[k.key])} ${k.label.toLowerCase()}`).join(", ");
+};
 
 // Who hands Foodstock in to the town's stores, ranked by how much over the
 // range shown, and the latest hand-ins.
@@ -779,7 +858,7 @@ function ContributorsSection({ data }: { data: Contributions }) {
       c.handins += 1;
       if (!c.first) c.first = t;
       c.last = t;
-      for (const [k, n] of Object.entries(kinds)) c.kinds[k] = (c.kinds[k] ?? 0) + n;
+      for (const [k, n] of Object.entries(byKind(kinds))) c.kinds[k] = (c.kinds[k] ?? 0) + n;
     }
     // Level pegging goes to whoever got there first.
     return by.sort((a, b) => b.amount - a.amount || a.first - b.first);
@@ -908,34 +987,57 @@ function ContributorsSection({ data }: { data: Contributions }) {
 // The figures below are the module's (pw_inc_foodstore and pw_inc_foodmodel):
 // keep them in step with it.
 
-// The kinds of food as the stores keep them, with the town's room for each
-// (GetFoodTypeStoreCap) and the real days it takes half of it to rot
-// (GetFoodTypeHalfLifeDays). A larder has room for a fifth of the town's.
-const STOCK_KINDS: { key: string; label: string; cap: number; halfLife: number }[] = [
-  { key: "fish", label: "Fish", cap: 20000, halfLife: 3 },
-  { key: "wheat", label: "Wheat", cap: 50000, halfLife: 180 },
-  { key: "meat", label: "Meat", cap: 4000, halfLife: 4 },
-  { key: "berries", label: "Berries", cap: 3000, halfLife: 2 },
-  { key: "mushrooms", label: "Mushrooms", cap: 3000, halfLife: 3 },
+// The kinds of food as the stores keep them, with the litres one Foodstock of
+// each takes up packed for keeping (GetFoodTypeVolume) and the real days it
+// takes half of it to rot (GetFoodTypeHalfLifeDays). A store is one space
+// that every kind shares.
+const STOCK_KINDS: { key: string; label: string; litres: number; halfLife: number }[] = [
+  { key: "fish", label: "Fish", litres: 0.15, halfLife: 3 },
+  { key: "potatoes", label: "Potatoes", litres: 0.42, halfLife: 120 },
+  { key: "meat", label: "Meat", litres: 0.1, halfLife: 4 },
+  { key: "berries", label: "Berries", litres: 0.7, halfLife: 2 },
+  { key: "mushrooms", label: "Mushrooms", litres: 1.9, halfLife: 3 },
 ];
-const LARDER_CAP_DIVISOR = 5;
 
-// How full each kind is, against its room, from a level's detail.stock.
-function StockCard({ stock, divisor = 1, title }: { stock: Record<string, number>; divisor?: number; title: string }) {
+// The room in each store, in litres: the town's (FOOD_TOWN_STORE_LITRES in
+// pw_inc_foodstore) and the factions' larders (FOOD_DREDGERS_LARDER_LITRES
+// and FOOD_MILLERS_LARDER_LITRES in pw_inc_foodmodel).
+const TOWN_STORE_LITRES = 60000;
+const LARDER_LITRES: Record<string, number> = { dredgers: 8000, millers: 12000 };
+
+const volume = (litres: number) =>
+  litres < 1000 ? `${fmt(litres)} L` : `${(litres / 1000).toLocaleString("en-US", { maximumFractionDigits: litres < 10000 ? 1 : 0 })} m³`;
+
+// How much of a store's room each kind takes, from a level's detail.stock.
+function StockCard({ stock: raw, litres, title }: { stock: Record<string, number>; litres: number; title: string }) {
+  const stock = byKind(raw);
   const total = Object.values(stock).reduce((s, n) => s + n, 0);
+  const room = (k: { key: string; litres: number }) => (stock[k.key] ?? 0) * k.litres;
+  const used = STOCK_KINDS.reduce((s, k) => s + room(k), 0);
+  const free = Math.max(0, litres - used);
   return (
     <div className="economy__card">
       <h4>{title}</h4>
+      <p className="demo-note">One space that every kind shares, by the room each takes packed for keeping. Food that does not fit is turned away.</p>
       <div className="demo-bars">
+        <BarRow label="Room Used" value={`${volume(used)} / ${volume(litres)}`} max={litres}
+          segments={STOCK_KINDS.map((k) => ({ n: room(k), className: `eco-kind--${k.key}` }))}
+          tip={<>
+            <strong>{share(used, litres)} full</strong>
+            <span>{fmt(total)} Foodstock in {volume(used)} · room for {fmt(free / 0.15)} more fish, or {fmt(free / 0.42)} potatoes</span>
+            {STOCK_KINDS.filter((k) => stock[k.key]).map((k) => (
+              <span key={k.key} className="economy__tip-row"><i className={`eco-kind--${k.key}`} />{k.label}<b>{volume(room(k))}</b></span>
+            ))}
+          </>} />
         {STOCK_KINDS.map((k) => {
-          const n = stock[k.key] ?? 0, cap = k.cap / divisor;
+          const n = stock[k.key] ?? 0;
           return (
-            <BarRow key={k.key} label={k.label} value={`${fmt(n)} / ${fmt(cap)}`} max={cap}
-              segments={[{ n, className: `eco-kind--${k.key}` }]}
+            <BarRow key={k.key} label={k.label} value={fmt(n)} max={litres}
+              segments={[{ n: room(k), className: `eco-kind--${k.key}` }]}
               tip={<>
                 <strong>{k.label}</strong>
-                <span>{fmt(n)} of the room for {fmt(cap)}, {share(n, cap)} full · {share(n, total)} of the food in store</span>
-                <span>{k.halfLife >= 100 ? "Barely rots" : `Half of it rots in ${k.halfLife} days`}</span>
+                <span>{fmt(n)} Foodstock, {share(n, total)} of the food in store · {volume(room(k))}, {share(room(k), litres)} of the room</span>
+                <span>{k.litres} litres each · {k.halfLife >= 100 ? "Keeps for months" : `Half of it rots in ${k.halfLife} days`}</span>
               </>} />
           );
         })}
@@ -963,7 +1065,7 @@ function FoodLostStat({ history, now }: { history: History; now: number }) {
       <span className="economy__stat-value">{week.length ? fmt(-perDay((f) => f[2])) : "0"}</span>
       <span className="economy__stat-note">
         {week.length
-          ? `A day, with no room in store or larder: fish ${fmt(by("fishing"))}, wheat ${fmt(by("farming"))}, meat ${fmt(by("livestock"))}`
+          ? `A day, with no room in store or larder: fish ${fmt(by("fishing"))}, potatoes ${fmt(by("farming"))}, meat ${fmt(by("livestock"))}`
           : "None in the last 7 days"}
       </span>
     </div>
@@ -971,48 +1073,53 @@ function FoodLostStat({ history, now }: { history: History; now: number }) {
 }
 
 const FACTION_LARDERS: { faction: string; config: ResourceConfig }[] = [
-  ["dredgers", "The Dredgers' Larder", "the fish the Dredgers land", "the holder of a Dredger Trustee's Badge"],
-  ["millers", "The Millers' Larder", "the wheat and meat the Millers' farms bring in", "the holder of a Miller Logistics Badge"],
-].map(([faction, title, produce, office]) => ({
+  ["dredgers", "The Dredgers' Larder", "the fish the Dredgers land", "the holder of a Dredger Trustee's Badge", "the hold of their ship and the barrels at their camp, 8 m³, about 53,000 fish", "Kelo sells snacks and meals from it aboard the ship"],
+  ["millers", "The Millers' Larder", "the potatoes and meat the Millers' farms bring in", "the holder of a Miller Logistics Badge", "the mill's floor and basement, 12 m³, about 28,500 potatoes", "The Provisioner sells snacks and meals from it at the mill"],
+].map(([faction, title, produce, office, room, shop]) => ({
   faction,
   config: {
     resource: `food_${faction}`,
     title,
-    description: `What the faction keeps back of ${produce}: everything its share does not send to the town's stores, a share set by ${office}. It has room for a fifth of what the town can keep of each kind, and rots as the town's stores do, until it is released to the town.`,
+    description: `What the faction keeps back of ${produce}: everything its share does not send to the town's stores, a share set by ${office}. It has room in ${room}, and rots as the town's stores do, until it is released to the town. ${shop}, to feed the faction's members, at the Refuge's prices while it is well stocked and dearer as it runs low.`,
     gains: [{ key: "kept", label: "Kept back", color: "var(--eco-green)", reasons: ["kept"] }],
     losses: [
-      { key: "rot", label: "Rotted", color: "var(--eco-rot)", reasons: ["rot_berries", "rot_fish", "rot_mushrooms", "rot_meat", "rot_wheat"], reasonLabels: { rot_berries: "Rotted: berries", rot_fish: "Rotted: fish", rot_mushrooms: "Rotted: mushrooms", rot_meat: "Rotted: meat", rot_wheat: "Rotted: wheat" } },
+      { key: "rot", label: "Rotted", color: "var(--eco-rot)", reasons: ROT_REASONS, reasonLabels: ROT_LABELS },
+      { key: "meals", label: "Meals and snacks", color: "var(--eco-yellow)", reasons: ["meal", "snack"], reasonLabels: { meal: "Meals bought (3 each)", snack: "Snacks bought" } },
       { key: "released", label: "Released to the town", color: "var(--eco-olive)", reasons: ["released"] },
     ],
     otherLabels: { dm: "DM changes" },
   },
 }));
 
-// The ration groups in the game's order, with the Foodstock a day that keeps
-// one of each comfortable at full output (GetFoodGroupBaseline).
-const RATION_GROUPS: { key: string; label: string; baseline: number }[] = [
-  { key: "labourers", label: "Labourers", baseline: 18 },
-  { key: "tradespeople", label: "Tradespeople", baseline: 14 },
-  { key: "skilled", label: "Skilled Workers", baseline: 11 },
-  { key: "free", label: "Free Labour", baseline: 11 },
-  { key: "mothers", label: "Mothers", baseline: 14 },
-  { key: "elders", label: "Elders", baseline: 11 },
-  { key: "children", label: "Children", baseline: 9 },
+// The ration groups in the game's order. Each one's baseline, the Foodstock a
+// day that keeps one of it comfortable at full output, comes with the sample,
+// from the game (GetFoodGroupBaseline), as does the group each workplace's
+// workers are in (GetFoodWorkGroup): the page keeps only their names.
+const RATION_GROUPS: { key: string; label: string }[] = [
+  { key: "labourers", label: "Labourers" },
+  { key: "tradespeople", label: "Tradespeople" },
+  { key: "skilled", label: "Skilled Workers" },
+  { key: "free", label: "Free Labour" },
+  { key: "mothers", label: "Mothers" },
+  { key: "elders", label: "Elders" },
+  { key: "children", label: "Children" },
 ];
 
-const WORKPLACES: [string, string, string][] = [
-  ["fishing", "Fishing", "Labourers"], ["farmland", "Farmland", "Labourers"], ["blight", "Blight Control", "Labourers"],
-  ["building", "Building", "Labourers"], ["forestry", "Forestry", "Labourers"], ["reeves", "Reeves", "Tradespeople"],
-  ["millers", "Millers", "Tradespeople"], ["crafts", "Crafts & Trades", "Tradespeople"],
-  ["fishproc", "Fish Processing", "Tradespeople"], ["skilled", "Skilled Roles", "Skilled Workers"],
+const WORKPLACES: [string, string][] = [
+  ["fishing", "Fishing"], ["farmland", "Farmland"], ["blight", "Blight Control"], ["building", "Building"],
+  ["forestry", "Forestry"], ["reeves", "Reeves"], ["millers", "Millers"], ["crafts", "Crafts & Trades"],
+  ["fishproc", "Fish Processing"], ["skilled", "Skilled Roles"],
 ];
+const groupLabel = (key: string | undefined) => RATION_GROUPS.find((g) => g.key === key)?.label ?? "–";
 
 // Weight lost as the game names it (GetFoodReserveState).
 const reserves = (loss: number) =>
   loss >= 0.25 ? "Exhausted" : loss >= 0.15 ? "Underweight" : loss >= 0.05 ? "Thin" : "Healthy";
 
-type RationGroup = { people: number; ration: number; fed: number; loss: number; morale: number; output: number };
-type VillagersDetail = { groups: Record<string, RationGroup>; work: Record<string, [number, number]>; shares: Record<string, number> };
+// `baseline` is null in a sample from a model the game saved before it wrote
+// one, and a workplace's group is missing from a wkserver from before then.
+type RationGroup = { people: number; ration: number; baseline?: number | null; fed: number; loss: number; morale: number; output: number };
+type VillagersDetail = { groups: Record<string, RationGroup>; work: Record<string, [number, number, string?]>; shares: Record<string, number> };
 
 // Deaths from hunger (the villagers' flows, negative), charted upwards in the
 // same three bands as the rations, and the infants lost to under-fed Mothers.
@@ -1101,7 +1208,7 @@ function VillagersSection({ history }: { history: History }) {
                     <td className="economy__cell-left">{g.label}</td>
                     <td>{fmt(g.people)}</td>
                     <td>{fmt(g.ration)}</td>
-                    <td>{fmt(g.baseline)}</td>
+                    <td>{g.baseline == null ? "–" : fmt(g.baseline)}</td>
                     <td className={g.fed < 0.995 ? "economy__neg" : undefined}>{pct(g.fed)}</td>
                     <td>{g.loss > 0 ? `${(g.loss * 100).toFixed(1)}%` : "–"}</td>
                     <td className={`economy__cell-left${g.loss >= 0.15 ? " economy__neg" : ""}`}>{reserves(g.loss)}</td>
@@ -1120,10 +1227,10 @@ function VillagersSection({ history }: { history: History }) {
                   <tr><th className="economy__cell-left">Workplace</th><th className="economy__cell-left">Group</th><th>Workers</th><th>Slots</th></tr>
                 </thead>
                 <tbody>
-                  {WORKPLACES.map(([key, label, group]) => (
+                  {WORKPLACES.map(([key, label]) => (
                     <tr key={key}>
                       <td className="economy__cell-left">{label}</td>
-                      <td className="economy__cell-left">{group}</td>
+                      <td className="economy__cell-left">{groupLabel(detail.work[key]?.[2])}</td>
                       <td>{fmt(detail.work[key]?.[0] ?? 0)}</td>
                       <td>{fmt(detail.work[key]?.[1] ?? 0)}</td>
                     </tr>
@@ -1174,6 +1281,286 @@ function VillagersSection({ history }: { history: History }) {
   );
 }
 
+// --- The village Treasury ----------------------------------------------------
+//
+// The Council's Treasury and the coffers around it (pw_inc_treasury in the
+// module), sampled by wkserver once the game has opened it. Gold reaches the
+// Council only as tax: the shops keep their takings, less the sales tax,
+// and the villagers' coin wages pay the Hearth Tax.
+
+const TREASURY_RESOURCES = ["treasury", "treasury_purse", "treasury_villagers", "treasury_tax", "treasury_fines"];
+
+// The factions with a treasury of their own, as the game keys them.
+const PURSE_FACTIONS: [string, string][] = [["dredgers", "The Dredgers"], ["millers", "The Millers"], ["reeves", "The Reeves"]];
+const perFaction = (suffix: string, prefix = "") => PURSE_FACTIONS.map(([f]) => `${prefix}${f}${suffix}`);
+const perFactionLabels = (suffix: string, prefix: string, label: string) =>
+  Object.fromEntries(PURSE_FACTIONS.map(([f, name]) => [`${prefix}${f}${suffix}`, `${label}: ${name.replace("The ", "the ")}`]));
+
+const TREASURY: ResourceConfig = {
+  resource: "treasury",
+  title: "The Council's Treasury",
+  description: "The Council's own chest, run by the holder of the Advisor's Brooch. Sales tax reaches it when a Clerk empties the village's Tax Boxes and pays the takings in; the Hearth Tax takes a share of the coin wages paid to the villagers; and the Refuge pays a fixed Wholesale Price for each Foodstock it serves. Out of it come the coin wages of the workers the Council employs itself, the round sum it allocates each faction a day, the wage packets of its own employees (the Advisor, the Clerks, and the holders of a Village Worker's Badge), the Hand-In Bounty paid for Foodstock, and each new character's starting purse. Nothing else can take gold out of it.",
+  gains: [
+    { key: "deposit", label: "Paid in (taxes and deposits)", color: "var(--eco-blue)", reasons: ["deposit"] },
+    { key: "hearth", label: "Hearth Tax", color: "var(--eco-aqua)", reasons: ["hearth_tax"] },
+    { key: "wholesale", label: "Wholesale food (the Refuge)", color: "var(--eco-orange)", reasons: ["wholesale"] },
+  ],
+  losses: [
+    { key: "wages", label: "Council workers' wages", color: "var(--eco-vermilion)", reasons: ["npc_wages"] },
+    { key: "alloc", label: "Allocations to the factions", color: "var(--eco-violet)", reasons: perFaction("", "alloc_"), reasonLabels: perFactionLabels("", "alloc_", "Allocation") },
+    { key: "members", label: "Employees' wage packets", color: "var(--eco-magenta)", reasons: ["member_wages"] },
+    { key: "bounty", label: "Hand-In Bounty", color: "var(--eco-green)", reasons: ["bounty"] },
+    { key: "purse", label: "New characters' purses", color: "var(--eco-yellow)", reasons: ["starting_purse"] },
+  ],
+  otherLabels: { adjust: "DM adjustments" },
+};
+
+const PURSES: ResourceConfig = {
+  resource: "treasury_purse",
+  title: "The Factions' Treasuries",
+  description: "The Dredgers', the Millers', and the Reeves' treasuries together, each kept by the faction's officer. The Council's allocation comes in every day, with whatever the officer pays in, the faction's own sales tax among it. Out go the coin wages of the faction's workers, the wage packets of its members, which they collect from the faction's paymaster (Kelo, the Provisioner, or the Reeve Provisioner), and whatever the officer takes out. A treasury can go into debt, and a faction in debt loses Morale.",
+  gains: [
+    { key: "alloc", label: "The Council's allocation", color: "var(--eco-violet)", reasons: perFaction("_alloc"), reasonLabels: perFactionLabels("_alloc", "", "Allocation") },
+    { key: "in", label: "Paid in", color: "var(--eco-blue)", reasons: perFaction("_in"), reasonLabels: perFactionLabels("_in", "", "Paid in") },
+  ],
+  losses: [
+    { key: "wages", label: "Workers' coin wages", color: "var(--eco-vermilion)", reasons: perFaction("_wages"), reasonLabels: perFactionLabels("_wages", "", "Workers' wages") },
+    { key: "members", label: "Members' wage packets", color: "var(--eco-magenta)", reasons: perFaction("_members"), reasonLabels: perFactionLabels("_members", "", "Members' wages") },
+    { key: "out", label: "Taken out", color: "var(--eco-yellow)", reasons: perFaction("_out"), reasonLabels: perFactionLabels("_out", "", "Taken out") },
+  ],
+};
+
+const VILLAGERS_PURSE: ResourceConfig = {
+  resource: "treasury_villagers",
+  title: "The Villagers' Purse",
+  description: "The households' savings: the coin wages the Council and the factions pay their workers, and the takings of the shops the villagers run, less the Hearth Tax. Nothing draws on it, so it is where the gold paid to the village comes to rest. The Council does not see it in game.",
+  gains: [
+    { key: "wages", label: "Coin wages", color: "var(--eco-aqua)", reasons: ["wages"] },
+    { key: "trades", label: "Takings of the villagers' shops", color: "var(--eco-orange)", reasons: ["trades"] },
+  ],
+  losses: [
+    { key: "hearth", label: "Hearth Tax", color: "var(--eco-vermilion)", reasons: ["hearth"] },
+  ],
+};
+
+// The shops the Treasury taxes, by the keys the game gives them
+// (GetTreasuryShopKey), named as the Treasury window names them. The last
+// seven are the factions' own, whose tax goes to the faction.
+const TAX_SHOPS: Record<string, string> = {
+  ephedra: "Ephedra, Alchemist", theboy: "The Boy, Scrolls", lockwood: "Dan Lockwood, Smith", logue: "Yasha Logue, Stores",
+  mireva: "Mireva", nick: "Nine-Fingered Nick", bazalgate: "Fitz Bazalgate", crow: "The Talking Crow",
+  hrotheld: "Rotheld's Refuge", snacks: "Refuge, Snacks", meals: "Refuge, Meals", soup: "Refuge, Grey Soup",
+  marian: "Jacq Marian, Tailor", storehouse: "Mushirah Goldgrip", tarsus: "Fabella Tarsus, Healer",
+  kelo: "Kelo, Dredgers' Bar", kelosnack: "Kelo, Snacks", kelomeal: "Kelo, Meals",
+  provsnack: "Provisioner, Snacks", provmeal: "Provisioner, Meals", provgrey: "Provisioner, Grey Soup",
+  reeveprov: "Reeve Provisioner",
+};
+const FACTION_SHOPS = ["kelo", "kelosnack", "kelomeal", "provsnack", "provmeal", "provgrey", "reeveprov"];
+const VILLAGE_SHOPS = Object.keys(TAX_SHOPS).filter((k) => !FACTION_SHOPS.includes(k));
+const shopName = (key: string) => TAX_SHOPS[key] ?? key;
+
+const SALES_TAX: ResourceConfig = {
+  resource: "treasury_tax",
+  title: "Sales Tax",
+  description: "The tax on what players buy, set aside in each shop's Tax Box at the rate its owner sets: the Advisor for the village's shops, a faction's officer for its own. The shopkeeper keeps the rest of the price. A Clerk empties the village's boxes and pays the tax into the Council's Treasury, and an officer the faction's into its treasury. Now is what is waiting in the boxes.",
+  gains: [
+    { key: "village", label: "Taxed at the village's shops", color: "var(--eco-blue)", reasons: VILLAGE_SHOPS, reasonLabels: Object.fromEntries(VILLAGE_SHOPS.map((k) => [k, `Tax: ${shopName(k)}`])) },
+    { key: "factions", label: "Taxed at the factions' shops", color: "var(--eco-violet)", reasons: FACTION_SHOPS, reasonLabels: Object.fromEntries(FACTION_SHOPS.map((k) => [k, `Tax: ${shopName(k)}`])) },
+  ],
+  losses: [
+    { key: "collected", label: "Emptied from the boxes", color: "var(--eco-green)", reasons: ["collected"] },
+  ],
+};
+
+const FINES: ResourceConfig = {
+  resource: "treasury_fines",
+  title: "The Fines Chest",
+  description: "Fines paid into the Fines Chest, and what the Reeves and the Clerks have taken out of it.",
+  gains: [{ key: "paid", label: "Fines paid", color: "var(--eco-blue)", reasons: ["paid"] }],
+  losses: [{ key: "collected", label: "Taken out", color: "var(--eco-yellow)", reasons: ["collected"] }],
+};
+
+// Each faction's treasury and Morale (out of 100), from the latest sample.
+type PurseDetail = { purses: Record<string, number>; morale: Record<string, number> };
+
+function PurseStats({ detail }: { detail: PurseDetail | null | undefined }) {
+  if (!detail) return null;
+  return (
+    <>
+      {PURSE_FACTIONS.map(([f, name]) => {
+        const gold = detail.purses[f] ?? 0, morale = detail.morale[f];
+        return (
+          <div className="economy__stat" key={f}>
+            <span className="economy__stat-label">{name}</span>
+            <span className={`economy__stat-value${gold < 0 ? " economy__neg" : ""}`}>{signed(gold).replace("+", "")}</span>
+            <span className="economy__stat-note">{morale === undefined ? "Morale not set yet" : `Morale ${fmt(morale)} out of 100`}{gold < 0 ? " · in debt" : ""}</span>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+// What waits in each Tax Box now, largest first.
+function TaxBoxesCard({ boxes }: { boxes: Record<string, number> }) {
+  const rows = Object.entries(boxes).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+  const total = rows.reduce((s, [, n]) => s + n, 0);
+  return (
+    <div className="economy__card">
+      <h4>Waiting in the Tax Boxes</h4>
+      {rows.length === 0 ? <p className="economy__empty">Every box is empty.</p> : (
+        <div className="demo-bars">
+          {rows.map(([key, n]) => {
+            const faction = FACTION_SHOPS.includes(key);
+            return (
+              <BarRow key={key} label={shopName(key)} value={fmt(n)} max={rows[0][1]}
+                segments={[{ n, className: faction ? "eco-seg--factions" : "eco-seg--village" }]}
+                tip={<>
+                  <strong>{shopName(key)}</strong>
+                  <span>{fmt(n)} gold, {share(n, total)} of the tax waiting · {faction ? "the faction's, for its officer to empty" : "the village's, for a Clerk to empty"}</span>
+                </>} />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Everyone on the Treasury's payroll, from wkserver's /economy/treasury/members:
+// each faction's members and the Council's own employees, as the game keeps
+// them in faction_members. `wage` is gold a day; `owed` is the wage packets
+// waiting to be collected; `active` is false for one who has left but is
+// still owed.
+type Member = { pcid: string; name: string; faction: string; badge: string; active: boolean; wage: number; owed: number; joined: number; seen: number };
+type Payroll = { members: Member[]; now: number };
+
+const PAYROLL_GROUPS: [string, string, string][] = [
+  ["council", "The Council", "Yasha Logue"],
+  ["dredgers", "The Dredgers", "Kelo"],
+  ["millers", "The Millers", "the Provisioner"],
+  ["reeves", "The Reeves", "the Reeve Provisioner"],
+];
+
+// The badges that make a member, by tag (GetTreasuryFactionBadges).
+const BADGES: Record<string, string> = {
+  PW_IT_BDGDRDTRST: "Dredger Trustee's Badge", PW_IT_BDGDREDGE: "Dredger's Badge",
+  PW_IT_BDGMILLOG: "Miller Logistics Badge", PW_IT_BDGMILRES: "Miller Researcher's Badge",
+  PW_IT_BDGMILASST: "Miller Research Assistant's Badge", PW_IT_BDGMILCPD: "Miller Containment, Procurement, and Defense Badge",
+  PW_IT_BDGMILLER: "Miller's Badge", PW_IT_BDGREEVSGT: "Reeve Sergeant's Badge", PW_IT_BDGREEVE: "Reeve's Badge",
+  PW_IT_BDGADVISOR: "Advisor's Brooch", PW_IT_BDGCLERK: "Clerk's Badge", PW_IT_BDGEMPLOY: "Village Worker's Badge",
+};
+
+function PayrollSection({ data }: { data: Payroll }) {
+  const groups = PAYROLL_GROUPS.map(([key, label, paymaster]) => {
+    const members = data.members.filter((m) => m.faction === key);
+    const active = members.filter((m) => m.active);
+    return {
+      key, label, paymaster, members,
+      count: active.length,
+      perDay: active.reduce((s, m) => s + m.wage, 0),
+      owed: members.reduce((s, m) => s + m.owed, 0),
+    };
+  });
+
+  return (
+    <section className="economy__section" aria-labelledby="eco-payroll">
+      <h3 id="eco-payroll">Members' Wages</h3>
+      <p className="economy__sub">
+        Every character who carries a faction's badge is one of its members, and the holders of the Advisor's Brooch, a Clerk's Badge, or a Village Worker's Badge are the Council's own employees. Each one's wage, gold a day, is set by the faction's officer, or for the Council by the Advisor, starting at the faction's default. It is a wage packet: every day at noon UTC the faction's treasury pays the whole of it into what the member is owed, on top of anything not yet collected, and it waits there until they collect it from the paymaster. A member who gives up the badge gets no more packets, but can still collect what they were owed.
+      </p>
+
+      <div className="economy__stats">
+        {groups.map((g) => (
+          <div className="economy__stat" key={g.key}>
+            <span className="economy__stat-label">{g.label}</span>
+            <span className="economy__stat-value">{fmt(g.perDay)}</span>
+            <span className="economy__stat-note">
+              A day, to {fmt(g.count)} {g.count === 1 ? "member" : "members"}{g.owed ? ` · ${fmt(g.owed)} waiting with ${g.paymaster}` : ""}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {data.members.length === 0 ? <p className="economy__empty">Nobody carries a badge yet.</p> : (
+        <div className="economy__card">
+          <h4>On the Payroll</h4>
+          <div className="economy__table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th className="economy__cell-left">Character</th><th className="economy__cell-left">Paid By</th>
+                  <th className="economy__cell-left">Badge</th><th>Wage a Day</th><th>Waiting</th><th>Last Seen (UTC)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groups.flatMap((g) => g.members.map((m) => (
+                  <tr key={`${m.faction}/${m.pcid}`}>
+                    <td className="economy__cell-left">{m.name}{m.active ? "" : " (left)"}</td>
+                    <td className="economy__cell-left">{g.label}</td>
+                    <td className="economy__cell-left">{BADGES[m.badge] ?? m.badge}</td>
+                    <td>{m.active ? fmt(m.wage) : "–"}</td>
+                    <td>{m.owed ? fmt(m.owed) : "–"}</td>
+                    <td>{timeLabel(m.seen).replace(" UTC", "")}</td>
+                  </tr>
+                )))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// The Treasury's journal, from wkserver's /economy/treasury/journal: newest
+// first, [unix seconds, character, kind, coffer, amount, detail], where the
+// detail is the line the Treasury window shows after the name.
+type JournalEntry = [number, string, string, string, number, string];
+type Journal = { entries: JournalEntry[]; now: number };
+
+// How many entries are shown before "Show all".
+const JOURNAL_ROWS = 50;
+
+function JournalSection({ data }: { data: Journal }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? data.entries : data.entries.slice(0, JOURNAL_ROWS);
+  return (
+    <section className="economy__section" aria-labelledby="eco-treasury_journal">
+      <h3 id="eco-treasury_journal">Treasury Journal</h3>
+      <p className="economy__sub">
+        Every hand that moved the Treasury's gold or changed its settings over the range shown, newest first: who emptied which Tax Box, what was paid into which coffer, who changed a rate, an allocation, or a wage, who collected their wages, and any DM's correction. The Advisor and the Clerks read the same journal in the Treasury window.
+      </p>
+      {data.entries.length === 0 ? <p className="economy__empty">Nothing in this range.</p> : (
+        <div className="economy__card">
+          <div className="economy__table-wrap">
+            <table>
+              <thead>
+                <tr><th>When (UTC)</th><th className="economy__cell-left">Character</th><th className="economy__cell-left">What They Did</th></tr>
+              </thead>
+              <tbody>
+                {shown.map(([t, name, , , , detail], i) => (
+                  <tr key={i}>
+                    <td>{timeLabel(t).replace(" UTC", "")}</td>
+                    <td className="economy__cell-left">{name}</td>
+                    <td className="economy__cell-left">{detail}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {data.entries.length > JOURNAL_ROWS && (
+            <button className="economy__more" onClick={() => setAll(!all)}>
+              {all ? `Show the latest ${JOURNAL_ROWS}` : `Show all ${fmt(data.entries.length)}`}
+            </button>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+
 interface EconomyPageProps {
   authToken: string;
 }
@@ -1182,6 +1569,8 @@ function EconomyPage({ authToken }: EconomyPageProps) {
   const [days, setDays] = useState(30);
   const [data, setData] = useState<Record<string, History>>({});
   const [contributors, setContributors] = useState<Contributions | null>(null);
+  const [payroll, setPayroll] = useState<Payroll | null>(null);
+  const [journal, setJournal] = useState<Journal | null>(null);
   // When the data came in (unix seconds), for the spending's last 7 days.
   const [fetchedAt, setFetchedAt] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -1199,8 +1588,9 @@ function EconomyPage({ authToken }: EconomyPageProps) {
 
   useEffect(() => {
     let current = true;
-    // A wkserver from before the average gold, the spending, and the
-    // contributors answers 404 for them, and the page shows the rest.
+    // A wkserver from before the average gold, the spending, the
+    // contributors, the food model, or the Treasury answers 404 for them, and
+    // the page shows the rest.
     const get = <T,>(path: string, d: number, optional = false) =>
       fetch(`${import.meta.env.VITE_API_URL}/economy/${path}?days=${d}`, {
         cache: "no-store",
@@ -1215,14 +1605,18 @@ function EconomyPage({ authToken }: EconomyPageProps) {
         ...RESOURCES.map((c) => get<History>(c.resource, days)),
         get<History>("gold_average", days ? Math.max(days, 31) : 0, true),
         get<History>("gold_spent", days, true),
-        ...["food_dredgers", "food_millers", "food_lost", "villagers"].map((r) => get<History>(r, days, true)),
+        ...["food_dredgers", "food_millers", "food_lost", "villagers", "gold_paid", ...TREASURY_RESOURCES].map((r) => get<History>(r, days, true)),
       ]),
       get<Contributions>("food/contributors", days, true),
+      get<Payroll>("treasury/members", days, true),
+      get<Journal>("treasury/journal", days, true),
     ])
-      .then(([results, contributed]) => {
+      .then(([results, contributed, members, entries]) => {
         if (!current) return;
         setData(Object.fromEntries(results.filter((r): r is History => r !== null).map((r) => [r.resource, r])));
         setContributors(contributed);
+        setPayroll(members);
+        setJournal(entries);
         setFetchedAt(Date.now() / 1000);
         setLoading(false);
       })
@@ -1233,6 +1627,8 @@ function EconomyPage({ authToken }: EconomyPageProps) {
   // The larders and the villagers are sampled once the game's food model has
   // saved itself; before that (or from an older wkserver) they are left out.
   const modelRunning = !!data.villagers?.latest;
+  // The Treasury likewise, once the game has opened it (PW_TREASURY).
+  const treasuryOpen = !!data.treasury?.latest;
   const stockOf = (h: History) => (h.latest?.detail?.stock ?? null) as Record<string, number> | null;
 
   return (
@@ -1257,7 +1653,7 @@ function EconomyPage({ authToken }: EconomyPageProps) {
           <Fragment key={c.resource}>
             <ResourceSection config={c} history={data.food}
               stats={modelRunning && data.food_lost && <FoodLostStat history={data.food_lost} now={fetchedAt} />}>
-              {stockOf(data.food) && <StockCard stock={stockOf(data.food)!} title="In Store Now, by Kind" />}
+              {stockOf(data.food) && <StockCard stock={stockOf(data.food)!} litres={TOWN_STORE_LITRES} title="In Store Now, by Kind" />}
             </ResourceSection>
             {contributors && <ContributorsSection data={contributors} />}
             {modelRunning && FACTION_LARDERS.map(({ faction, config }) => data[config.resource] && (
@@ -1269,7 +1665,7 @@ function EconomyPage({ authToken }: EconomyPageProps) {
                     <span className="economy__stat-note">Of what it produces; it keeps the rest</span>
                   </div>
                 }>
-                <StockCard stock={stockOf(data[config.resource]) ?? {}} divisor={LARDER_CAP_DIVISOR} title="In the Larder Now, by Kind" />
+                <StockCard stock={stockOf(data[config.resource]) ?? {}} litres={LARDER_LITRES[faction]} title="In the Larder Now, by Kind" />
               </ResourceSection>
             ))}
             {modelRunning && <VillagersSection history={data.villagers} />}
@@ -1277,7 +1673,26 @@ function EconomyPage({ authToken }: EconomyPageProps) {
         ) : <ResourceSection key={c.resource} config={c} history={data[c.resource]} />
       ))}
       {!loading && !error && data.gold_average && <AverageGoldSection history={data.gold_average} rangeDays={days} />}
-      {!loading && !error && data.gold_spent && <SpendingSection history={data.gold_spent} now={fetchedAt} />}
+      {!loading && !error && data.gold_spent && <PaymentsSection history={data.gold_spent} now={fetchedAt} config={SPENDING} words={SPEND_WORDS} nameOf={spendLabel} />}
+      {!loading && !error && data.gold_paid && <PaymentsSection history={data.gold_paid} now={fetchedAt} config={PAID} words={PAID_WORDS} nameOf={paidLabel} />}
+      {!loading && !error && treasuryOpen && (
+        <>
+          <ResourceSection config={TREASURY} history={data.treasury} />
+          {data.treasury_purse && (
+            <ResourceSection config={PURSES} history={data.treasury_purse}
+              stats={<PurseStats detail={data.treasury_purse.latest?.detail as PurseDetail | null | undefined} />} />
+          )}
+          {data.treasury_villagers && <ResourceSection config={VILLAGERS_PURSE} history={data.treasury_villagers} />}
+          {data.treasury_tax && (
+            <ResourceSection config={SALES_TAX} history={data.treasury_tax}>
+              <TaxBoxesCard boxes={(data.treasury_tax.latest?.detail?.boxes ?? {}) as Record<string, number>} />
+            </ResourceSection>
+          )}
+          {data.treasury_fines && <ResourceSection config={FINES} history={data.treasury_fines} />}
+          {payroll && <PayrollSection data={payroll} />}
+          {journal && <JournalSection data={journal} />}
+        </>
+      )}
     </div>
   );
 }

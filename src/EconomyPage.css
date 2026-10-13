@@ -197,6 +197,19 @@
   color: var(--text-h);
 }
 
+/* Shows the rest of a long table, set like a details summary. */
+.economy__more {
+  margin-top: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--text-h);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 /* Tables are set like those folded into .economy__details, open or not. */
 .economy__table-wrap {
   font-size: 13.5px;
@@ -243,14 +256,25 @@
 .eco-seg--crow      { background: var(--eco-green); }
 .eco-seg--other     { background: var(--eco-other); }
 
-/* The kinds of Foodstock on the contributors leaderboard. Fish, meat, and
-   wheat take the colours of fishing, livestock, and farming in the food
-   chart; the two from foraging take two more. */
+/* The groups of gold paid to characters, and the two kinds of Tax Box, in
+   the colours of their series in the charts. */
+.eco-seg--sales     { background: var(--eco-blue); }
+.eco-seg--fragments { background: var(--eco-violet); }
+.eco-seg--scrap     { background: var(--eco-brown); }
+.eco-seg--work      { background: var(--eco-green); }
+.eco-seg--xp        { background: var(--eco-yellow); }
+.eco-seg--wages     { background: var(--eco-magenta); }
+.eco-seg--village   { background: var(--eco-blue); }
+.eco-seg--factions  { background: var(--eco-violet); }
+
+/* The kinds of Foodstock on the contributors leaderboard and in the stores.
+   Fish, meat, and potatoes take the colours of fishing, livestock, and
+   farming in the food chart; the two from foraging take two more. */
 .eco-kind--fish      { background: var(--eco-violet); }
 .eco-kind--berries   { background: var(--eco-magenta); }
 .eco-kind--mushrooms { background: var(--eco-aqua); }
 .eco-kind--meat      { background: var(--eco-gold); }
-.eco-kind--wheat     { background: var(--eco-brown); }
+.eco-kind--potatoes  { background: var(--eco-brown); }
 
 /* Names and descriptions in a table of figures read from the left. */
 .economy__table-wrap .economy__cell-left { text-align: left; }
