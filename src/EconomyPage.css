@@ -276,5 +276,20 @@
 .eco-kind--meat      { background: var(--eco-gold); }
 .eco-kind--potatoes  { background: var(--eco-brown); }
 
+/* What shares a store's room besides Foodstock: the Grey Soup pots and the
+   Millers' Scar Fragments, in the colours of brewing and handing in in their
+   own charts. */
+.eco-kind--soup      { background: var(--eco-olive); }
+.eco-kind--fragments { background: var(--eco-blue); }
+
+/* A heading row inside a table, naming the rows under it: the ration groups
+   by who feeds them. */
+.economy__table-wrap .economy__row-head th {
+  padding-top: 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
 /* Names and descriptions in a table of figures read from the left. */
 .economy__table-wrap .economy__cell-left { text-align: left; }

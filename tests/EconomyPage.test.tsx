@@ -72,6 +72,58 @@ const MODEL = {
   },
 }
 
+// What came with version 2 of the food model, as a wkserver sampling one
+// sends it: the Grey Soup pots, the Millers' fragments and their brewing,
+// the Millers' quiet withdrawals from the granary, and the villagers in
+// eleven groups, the Dredgers' and the Millers' own workers among them.
+const now = () => Math.floor(Date.now() / 1000)
+const group = (people: number, feeder: string, ration: number, baseline: number, extra = {}) => ({
+  people, feeder, ration, baseline, fed: 1, soup: 0, loss: 0, morale: 100, moraleFood: 100, moraleTarget: 100, output: 1, ...extra,
+})
+const SOUP = {
+  grey_soup: {
+    resource: 'grey_soup', levels: [[T, 412]],
+    flows: [[T - 3600, 'from_millers', 300, 5], [T - 3600, 'sold', -40, 8], [T - 3600, 'rations', -20, 1]],
+    latest: { t: T, value: 412, detail: null },
+  },
+  grey_soup_millers: {
+    resource: 'grey_soup_millers', levels: [[T, 96]], flows: [[T - 3600, 'brewed', 96, 2], [T - 3600, 'to_town', -10, 1]],
+    latest: { t: T, value: 96, detail: { made: 2250 } },
+  },
+  fragments_millers: {
+    resource: 'fragments_millers', levels: [[T, 5100]], flows: [[T - 3600, 'handin', 60, 2], [T - 3600, 'brewed', -500, 9]],
+    // Set brewing 60, ten minutes ago: ten bowls should be done.
+    latest: { t: T, value: 5100, detail: { brewing: 60, brewSince: now() - 600 } },
+  },
+  granary_taken: { resource: 'granary_taken', levels: [], flows: [[T - 3600, 'millers', 250, 2]], latest: null },
+}
+const MODEL_V2 = {
+  ...MODEL,
+  ...SOUP,
+  food_millers: {
+    resource: 'food_millers', levels: [[T, 100]], flows: [[T - 3600, 'granary', 250, 2], [T - 3600, 'ration_labourers', -15, 1]],
+    latest: { t: T, value: 100, detail: { stock: { potatoes: 100 }, share: 0, fragments: 1000, soup: 50 } },
+  },
+  villagers: {
+    resource: 'villagers', levels: [[T, 407]],
+    flows: [[T - 3600, 'died_millers_labourers', -2, 1]],
+    latest: {
+      t: T, value: 407,
+      detail: {
+        groups: {
+          labourers: group(0, 'council', 18, 18),
+          elders: group(80, 'council', 8, 11, { soup: 0.273, morale: 90, moraleFood: 72.7, moraleTarget: 68.7 }),
+          dredgers_labourers: group(32, 'dredgers', 18, 18),
+          millers_labourers: group(30, 'millers', 12, 18, { fed: 0.8, soup: 0.133, morale: 61.3, moraleFood: 66.7, moraleTarget: 62.6, output: 0.87 }),
+          millers_tradespeople: group(23, 'millers', 14, 14),
+        },
+        work: { fishing: [32, 32, 'dredgers_labourers'], blight: [10, 10, 'millers_labourers'] },
+        shares: { dredgers: 70, millers: 0 },
+      },
+    },
+  },
+}
+
 // The Treasury's resources, as a wkserver sampling an open Treasury sends
 // them, with the payroll and the journal.
 const TREASURY = {
@@ -130,7 +182,7 @@ function mockEconomy(requested: string[] = [], contributors: object | null = nul
     http.get(`${API}/economy/:resource`, ({ params, request }) => {
       requested.push(new URL(request.url).search)
       const resource = String(params.resource)
-      if (resource in MODEL) return model[resource] ? HttpResponse.json(model[resource]) : new HttpResponse(null, { status: 404 })
+      if (resource in MODEL || resource in SOUP) return model[resource] ? HttpResponse.json(model[resource]) : new HttpResponse(null, { status: 404 })
       if (resource in TREASURY) return treasury ? HttpResponse.json(TREASURY[resource as keyof typeof TREASURY]) : new HttpResponse(null, { status: 404 })
       return HttpResponse.json(resource === 'food' ? FOOD : GOLD)
     })
@@ -230,6 +282,47 @@ describe('EconomyPage', () => {
     const workplaces = within(villagers).getAllByRole('table')[1]
     expect(within(within(workplaces).getByRole('row', { name: /^Blight Control/ })).getByText('Tradespeople')).toBeInTheDocument()
     expect(within(within(workplaces).getByRole('row', { name: /^Farmland/ })).getByText('–')).toBeInTheDocument()
+  })
+
+  it('shows the Grey Soup, the fragments, the granary, and the factions\' workers from version 2 of the model', async () => {
+    mockEconomy([], null, MODEL_V2)
+    server.use(http.get(`${API}/economy/food`, () => HttpResponse.json({
+      ...FOOD, latest: { t: T, value: 400, detail: { stock: { fish: 400 }, soup: 100 } },
+    })))
+    render(<EconomyPage authToken="test-token" />)
+
+    // 400 fish at 0.15 litres and 100 bowls at 0.4; and the withdrawals the
+    // stores' own history leaves out.
+    const food = await screen.findByRole('region', { name: 'Food Stores' })
+    expect(within(food).getByText('100 L / 60 m³')).toBeInTheDocument()
+    expect(within(food).getByText('Taken by the Millers', { selector: '.economy__stat-label' })).toBeInTheDocument()
+    expect(within(food).getByText('250 Foodstock taken over the range shown, in 2 withdrawals.')).toBeInTheDocument()
+
+    // 100 potatoes, 1,000 fragments, and 50 bowls: 42 + 50 + 20 litres. The
+    // Millers' 30 Labourers at 12 and 23 Tradespeople at 14.
+    const millers = screen.getByRole('region', { name: "The Millers' Larder" })
+    expect(within(millers).getByText('112 L / 12 m³')).toBeInTheDocument()
+    expect(within(millers).getByText("Workers' Rations").parentElement!)
+      .toHaveTextContent("682A day, for the Millers' 53 workers; 862 at the baselines")
+    expect(within(within(millers).getByRole('table')).getByRole('columnheader', { name: 'Taken from the town\'s granary' })).toBeInTheDocument()
+
+    const town = screen.getByRole('region', { name: "The Town's Grey Soup" })
+    expect(within(town).getByText('412')).toBeInTheDocument()
+    expect(within(town).getByText('165 L')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: "The Millers' Grey Soup" })).getByText('2,250')).toBeInTheDocument()
+    const fragments = screen.getByRole('region', { name: "The Millers' Scar Fragments" })
+    expect(within(fragments).getByText('Brewing').parentElement!).toHaveTextContent('50Fragments still to brew, about 50 minutes')
+
+    // The groups by who feeds them, with the soup and both morale targets.
+    const villagers = screen.getByRole('region', { name: 'Villagers' })
+    const groups = within(villagers).getAllByRole('table')[0]
+    expect(within(groups).getByRole('row', { name: /^The Millers, from their larder · 53 people, 682 a day at these rations, 862 at the baselines/ })).toBeInTheDocument()
+    const millersLabourers = within(groups).getByRole('row', { name: /^Millers' Labourers/ })
+    expect(within(millersLabourers).getByText('13%')).toBeInTheDocument()
+    expect(within(millersLabourers).getByText('63')).toBeInTheDocument()
+    expect(within(millersLabourers).getByText('67')).toBeInTheDocument()
+    expect(within(villagers).getByText("Farm Hands' Output").parentElement!).toHaveTextContent('87%')
+    expect(within(villagers).getByRole('columnheader', { name: "Millers' Labourers" })).toBeInTheDocument()
   })
 
   it('counts stock saved as wheat with the potatoes', async () => {

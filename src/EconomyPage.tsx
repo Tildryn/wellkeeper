@@ -46,12 +46,13 @@ type ResourceConfig = {
 const OTHER = "var(--eco-other)";
 
 // Rot by kind of food, as the game records it ("rot_" and the kind). Wheat
-// and Grey Soup are history: the farms' wheat became potatoes on Oct 12, and
-// Grey Soup was taken out on Oct 10.
+// and Grey Soup as Foodstock are history: the farms' wheat became potatoes on
+// Oct 12, and Grey Soup was taken out of the Foodstock on Oct 10. It came back
+// on Oct 13 as pots of its own, whose rot is in their own sections.
 const ROT_REASONS = ["rot_berries", "rot_fish", "rot_mushrooms", "rot_meat", "rot_potatoes", "rot_wheat", "rot_greysoup"];
 const ROT_LABELS: Record<string, string> = {
   rot_berries: "Rotted: berries", rot_fish: "Rotted: fish", rot_mushrooms: "Rotted: mushrooms", rot_meat: "Rotted: meat",
-  rot_potatoes: "Rotted: potatoes", rot_wheat: "Rotted: wheat (before Oct 12)", rot_greysoup: "Rotted: Grey Soup",
+  rot_potatoes: "Rotted: potatoes", rot_wheat: "Rotted: wheat (before Oct 12)", rot_greysoup: "Rotted: Grey Soup (as Foodstock, before Oct 10)",
 };
 
 const RESOURCES: ResourceConfig[] = [
@@ -59,14 +60,22 @@ const RESOURCES: ResourceConfig[] = [
     resource: "food",
     title: "Food Stores",
     // The figures are the Food & Labour model's starting values
-    // (pw_inc_foodmodel in the module): its workplaces, output per worker,
-    // and ration baselines, and pw_inc_foodstore's diet, room, and rot.
-    // Building has no workers while there is nothing to build with, so its
-    // ten are Free Labour.
-    description: "The town's stores, not counting the factions' larders. The Dredgers' boats and the Millers' fields bring food in every hour, at the pace the Labourers can work: at full strength about 3,040 a day of fish, more or less with the day's sea (75–135% most days, next to nothing in a storm one day in twenty), and 660 from the farms, 88% of it potatoes and the rest meat, of which the Blight takes up to half when Blight Control is short-handed. Each faction sends the town the share its office holder sets and keeps the rest in its own larder, which it can release to the town later. Foodstock handed in adds to the stores too. The 407 villagers eat in seven ration groups, at the rations set in the Town Food Ledger: 5,050 a day at the baselines, of which the Labourers eat 1,116, the other workers (Tradespeople and Skilled Workers) 1,494, and the dependants (Free Labour, Mothers, Elders, and Children) 2,440. Snacks, meals, thrown food, and rot take from the stores as well. Everyone eats a mix, by diet: fish 57%, berries 15%, mushrooms 12%, potatoes 10%, and meat 6%, and more of the rest when one runs short. The stores are one space of 60 m³ that every kind shares by the room it takes packed for keeping, from a tenth of a litre for meat to nearly two for mushrooms, and food that does not fit is turned away. What is in them rots at its own rate: half the berries in two days, fish and mushrooms in three, meat in four, and potatoes over months.",
+    // (pw_inc_foodmodel in the module, version 2): its workplaces, output
+    // per worker, ration baselines, and who feeds whom, and
+    // pw_inc_foodstore's diet, room, and rot. Building and Forestry have no
+    // slots while there is nothing to build with and the woods are too
+    // dangerous, so the Council's Labourers are nobody and their people are
+    // Free Labour. The Council's 3,514 a day: Tradespeople 61 x 14, Skilled
+    // Workers 20 x 11, Free Labour 47 x 11, Mothers 16 x 14, Elders 80 x 11,
+    // and Children 91 x 9. The Dredgers' 702: 32 x 18 and 9 x 14; the
+    // Millers' 904: 30 x 18 and 26 x 14. (The Reeves and the mill each
+    // gained their Provisioner on Oct 13.)
+    description: "The town's stores of Foodstock, not counting the factions' larders; the town's Grey Soup pot, further down, takes room in them too. The Dredgers' boats and the Millers' fields bring food in every hour, at the pace each faction's own Labourers can work and at the faction's Morale: at full strength about 3,040 a day of fish, more or less with the day's sea (71–133% most days, next to nothing in a storm one day in fifty), and 660 from the farms, 88% of it potatoes and the rest meat. Each of Blight Control's ten posts not effectively manned, counting its worker at the Millers' Labourers' strength and the Millers' Morale, costs the farms 2% of their harvest, a fifth with all ten empty. Each faction sends the town the share its officer sets, 70% for the Dredgers and nothing for the Millers to start, and keeps the rest in its own larder, which feeds its own workers and which it can release to the town later. Foodstock handed in adds to the stores too. The Council feeds 315 villagers in seven ration groups from the stores, at the rations set in the Town Food Ledger: 3,514 a day at the baselines, of which the workers (the Reeves, the crafts and trades, and the Skilled Workers) eat 1,074 and the dependants (Free Labour, Mothers, Elders, and Children) 2,440. Its own Labourers are nobody while Building and Forestry are closed. The Dredgers' 41 workers (702 a day) and the Millers' 56 (904 a day, more than their whole harvest) eat from their larders instead, and the Council can send food to either from the stores, without seeing inside. Snacks, meals, thrown food, and rot take from the stores as well, and so do the Millers, who guard the granary and can quietly take from it into their larder: the game keeps that out of this history, so it shows only in the box below. Everyone eats a mix, by diet: fish 57%, berries 15%, mushrooms 12%, potatoes 10%, and meat 6%, and more of the rest when one runs short; a Council group whose ration falls short of its baseline makes up the rest from the Grey Soup pot while it lasts. The stores are one space of 60 m³ that every kind shares by the room it takes packed for keeping, from a tenth of a litre for meat to nearly two for mushrooms, and food that does not fit is turned away. What is in them rots at its own rate: half the berries in two days, fish and mushrooms in three, meat in four, and potatoes over months.",
     // Grouped as the Town Food Ledger's chart groups them in game
     // (GetFoodChartCategory in pw_inc_foodui), with the ration groups in its
-    // three bands. Retired series hold history from before the model.
+    // three bands. Retired series hold history from before the model. The
+    // Council's Labourers were the fishers and the farm hands until Oct 13,
+    // when the factions began to feed their own, and are nobody since.
     gains: [
       { key: "farming", label: "Farming (the Millers' share)", color: "var(--eco-brown)", reasons: ["farming", "livestock"], reasonLabels: { farming: "Farming: potatoes", livestock: "Farming: livestock" } },
       { key: "fishing", label: "Fishing (the Dredgers' share)", color: "var(--eco-violet)", reasons: ["fishing"] },
@@ -78,6 +87,8 @@ const RESOURCES: ResourceConfig[] = [
       { key: "labourers", label: "Rations: Labourers", color: "var(--eco-vermilion)", reasons: ["ration_labourers"] },
       { key: "workers", label: "Rations: other workers", color: "var(--eco-blue)", reasons: ["ration_tradespeople", "ration_skilled"], reasonLabels: { ration_tradespeople: "Rations: Tradespeople", ration_skilled: "Rations: Skilled Workers" } },
       { key: "dependants", label: "Rations: dependants", color: "var(--eco-magenta)", reasons: ["ration_free", "ration_mothers", "ration_elders", "ration_children"], reasonLabels: { ration_free: "Rations: Free Labour", ration_mothers: "Rations: Mothers", ration_elders: "Rations: Elders", ration_children: "Rations: Children" } },
+      // The colour of the releases above: the same road, the other way.
+      { key: "supply", label: "Sent to the factions' larders", color: "var(--eco-olive)", reasons: ["supply_dredgers", "supply_millers"], reasonLabels: { supply_dredgers: "Sent to the Dredgers' larder", supply_millers: "Sent to the Millers' larder" } },
       { key: "villagers", label: "Eaten by villagers (before the ration groups)", color: "var(--eco-aqua)", reasons: ["villagers", "villagers_soup"], reasonLabels: { villagers: "Eaten by villagers", villagers_soup: "Grey Soup eaten by villagers" }, retired: true },
       { key: "meals", label: "Meals and snacks", color: "var(--eco-yellow)", reasons: ["meal", "snack", "thrown", "purchase"], reasonLabels: { meal: "Meals bought (3 each)", snack: "Snacks bought", thrown: "Thrown from the food baskets", purchase: "Bought before Sep 23 (snack or meal)" } },
       { key: "decay", label: "Passive decay (200 a day, before the baselines)", color: "var(--eco-lavender)", reasons: ["decay"], retired: true },
@@ -163,7 +174,7 @@ const spendLabel = (reason: string) => {
 const PAID: ResourceConfig = {
   resource: "gold_paid",
   title: "Gold Paid to Characters",
-  description: "The gold the game pays players, recorded as it is paid: items sold to a store, under the store; Scar fragments and scrap traded in; patrol and survey rewards; experience traded for gold; and the wage packets faction members and the Council's employees collect from their paymasters. DMs are left out, and so is gold handed between players or picked up as loot.",
+  description: "The gold the game pays players, recorded as it is paid: items sold to a store, under the store; scrap, and Scar fragments traded in at Dazai's (the fragments then go to the Millers, to brew into Grey Soup); patrol and survey rewards; experience traded for gold; and the wage packets faction members and the Council's employees collect from their paymasters. DMs are left out, and so is gold handed between players or picked up as loot.",
   gains: [
     { key: "sales", label: "Sold to stores", color: "var(--eco-blue)", reasons: [], prefixes: ["store_"] },
     { key: "fragments", label: "Scar fragments", color: "var(--eco-violet)", reasons: ["fragments"] },
@@ -1008,25 +1019,46 @@ const LARDER_LITRES: Record<string, number> = { dredgers: 8000, millers: 12000 }
 const volume = (litres: number) =>
   litres < 1000 ? `${fmt(litres)} L` : `${(litres / 1000).toLocaleString("en-US", { maximumFractionDigits: litres < 10000 ? 1 : 0 })} m³`;
 
-// How much of a store's room each kind takes, from a level's detail.stock.
-function StockCard({ stock: raw, litres, title }: { stock: Record<string, number>; litres: number; title: string }) {
+// What else takes room in a store besides Foodstock, from the game's
+// constants (GREY_SOUP_BOWL_LITRES in pw_inc_foodstore, SCAR_FRAGMENT_LITRES
+// in pw_inc_foodmodel): the Grey Soup pots, in the town's stores and the
+// Millers' larder, and the Millers' Scar Fragments. Neither is Foodstock, so
+// neither counts in a store's level, but the room they take is room the food
+// cannot have.
+type StoreExtra = { key: string; label: string; unit: string; n: number; litres: number; keeps: string };
+const greySoupExtra = (n: number): StoreExtra =>
+  ({ key: "soup", label: "Grey Soup", unit: "bowls", n, litres: 0.4, keeps: "Half of it rots in a day" });
+const fragmentsExtra = (n: number): StoreExtra =>
+  ({ key: "fragments", label: "Scar Fragments", unit: "fragments", n, litres: 0.05, keeps: "Never spoils" });
+
+// How much of a store's room each kind takes, from a level's detail.stock,
+// and anything else kept there (`extras`).
+function StockCard({ stock: raw, litres, title, extras = [] }: { stock: Record<string, number>; litres: number; title: string; extras?: StoreExtra[] }) {
   const stock = byKind(raw);
   const total = Object.values(stock).reduce((s, n) => s + n, 0);
   const room = (k: { key: string; litres: number }) => (stock[k.key] ?? 0) * k.litres;
-  const used = STOCK_KINDS.reduce((s, k) => s + room(k), 0);
+  const used = STOCK_KINDS.reduce((s, k) => s + room(k), 0) + extras.reduce((s, x) => s + x.n * x.litres, 0);
   const free = Math.max(0, litres - used);
   return (
     <div className="economy__card">
       <h4>{title}</h4>
-      <p className="demo-note">One space that every kind shares, by the room each takes packed for keeping. Food that does not fit is turned away.</p>
+      <p className="demo-note">
+        One space that every kind shares, by the room each takes packed for keeping{extras.length ? `, with the ${extras.map((x) => x.label).join(" and ")} kept beside them` : ""}. Food that does not fit is turned away.
+      </p>
       <div className="demo-bars">
         <BarRow label="Room Used" value={`${volume(used)} / ${volume(litres)}`} max={litres}
-          segments={STOCK_KINDS.map((k) => ({ n: room(k), className: `eco-kind--${k.key}` }))}
+          segments={[
+            ...STOCK_KINDS.map((k) => ({ n: room(k), className: `eco-kind--${k.key}` })),
+            ...extras.map((x) => ({ n: x.n * x.litres, className: `eco-kind--${x.key}` })),
+          ]}
           tip={<>
             <strong>{share(used, litres)} full</strong>
-            <span>{fmt(total)} Foodstock in {volume(used)} · room for {fmt(free / 0.15)} more fish, or {fmt(free / 0.42)} potatoes</span>
+            <span>{fmt(total)} Foodstock{extras.some((x) => x.n) ? ` and ${extras.filter((x) => x.n).map((x) => `${fmt(x.n)} ${x.unit}`).join(" and ")}` : ""} in {volume(used)} · room for {fmt(free / 0.15)} more fish, or {fmt(free / 0.42)} potatoes</span>
             {STOCK_KINDS.filter((k) => stock[k.key]).map((k) => (
               <span key={k.key} className="economy__tip-row"><i className={`eco-kind--${k.key}`} />{k.label}<b>{volume(room(k))}</b></span>
+            ))}
+            {extras.filter((x) => x.n).map((x) => (
+              <span key={x.key} className="economy__tip-row"><i className={`eco-kind--${x.key}`} />{x.label}<b>{volume(x.n * x.litres)}</b></span>
             ))}
           </>} />
         {STOCK_KINDS.map((k) => {
@@ -1041,6 +1073,15 @@ function StockCard({ stock: raw, litres, title }: { stock: Record<string, number
               </>} />
           );
         })}
+        {extras.map((x) => (
+          <BarRow key={x.key} label={x.label} value={fmt(x.n)} max={litres}
+            segments={[{ n: x.n * x.litres, className: `eco-kind--${x.key}` }]}
+            tip={<>
+              <strong>{x.label}</strong>
+              <span>{fmt(x.n)} {x.unit}, not Foodstock · {volume(x.n * x.litres)}, {share(x.n * x.litres, litres)} of the room</span>
+              <span>{x.litres} litres each · {x.keeps}</span>
+            </>} />
+        ))}
       </div>
     </div>
   );
@@ -1072,42 +1113,219 @@ function FoodLostStat({ history, now }: { history: History; now: number }) {
   );
 }
 
-const FACTION_LARDERS: { faction: string; config: ResourceConfig }[] = [
-  ["dredgers", "The Dredgers' Larder", "the fish the Dredgers land", "the holder of a Dredger Trustee's Badge", "the hold of their ship and the barrels at their camp, 8 m³, about 53,000 fish", "Kelo sells snacks and meals from it aboard the ship"],
-  ["millers", "The Millers' Larder", "the potatoes and meat the Millers' farms bring in", "the holder of a Miller Logistics Badge", "the mill's floor and basement, 12 m³, about 28,500 potatoes", "The Provisioner sells snacks and meals from it at the mill"],
-].map(([faction, title, produce, office, room, shop]) => ({
-  faction,
-  config: {
-    resource: `food_${faction}`,
-    title,
-    description: `What the faction keeps back of ${produce}: everything its share does not send to the town's stores, a share set by ${office}. It has room in ${room}, and rots as the town's stores do, until it is released to the town. ${shop}, to feed the faction's members, at the Refuge's prices while it is well stocked and dearer as it runs low.`,
-    gains: [{ key: "kept", label: "Kept back", color: "var(--eco-green)", reasons: ["kept"] }],
-    losses: [
-      { key: "rot", label: "Rotted", color: "var(--eco-rot)", reasons: ROT_REASONS, reasonLabels: ROT_LABELS },
-      { key: "meals", label: "Meals and snacks", color: "var(--eco-yellow)", reasons: ["meal", "snack"], reasonLabels: { meal: "Meals bought (3 each)", snack: "Snacks bought" } },
-      { key: "released", label: "Released to the town", color: "var(--eco-olive)", reasons: ["released"] },
-    ],
-    otherLabels: { dm: "DM changes" },
-  },
-}));
+// What the Millers took from the town's stores into their larder without
+// the Council's say (granary_taken: flows alone, positive, by the faction
+// that took it). The game keeps these out of the town's food history on
+// purpose, so the Council's ledger never names them and neither does the
+// Food Stores chart above; DMs see them here.
+const GRANARY: ResourceConfig = {
+  resource: "granary_taken",
+  title: "Taken from the Granary",
+  description: "",
+  gains: [{ key: "millers", label: "Taken by the Millers", color: "var(--eco-vermilion)", reasons: ["millers"] }],
+  losses: [],
+  totalLabel: "Taken",
+  flowsLabel: "Taken from the granary per day",
+};
 
-// The ration groups in the game's order. Each one's baseline, the Foodstock a
-// day that keeps one of it comfortable at full output, comes with the sample,
-// from the game (GetFoodGroupBaseline), as does the group each workplace's
-// workers are in (GetFoodWorkGroup): the page keeps only their names.
-const RATION_GROUPS: { key: string; label: string }[] = [
-  { key: "labourers", label: "Labourers" },
-  { key: "tradespeople", label: "Tradespeople" },
-  { key: "skilled", label: "Skilled Workers" },
-  { key: "free", label: "Free Labour" },
-  { key: "mothers", label: "Mothers" },
-  { key: "elders", label: "Elders" },
-  { key: "children", label: "Children" },
+// The Millers quietly taking from the town's stores: what they took over
+// the range shown, by day, beside the stores whose fall it leaves
+// unexplained.
+function GranaryCard({ history }: { history: History }) {
+  const days = useMemo(() => foldFlows(history.flows, GRANARY), [history]);
+  const taken = history.flows.reduce((s, f) => s + f[2], 0);
+  const times = history.flows.reduce((s, f) => s + f[3], 0);
+  return (
+    <div className="economy__card">
+      <h4>Taken by the Millers, Unrecorded</h4>
+      <p className="demo-note">
+        The Millers guard and work the town's granary, and their officer can take food from it into their own larder. By law nothing leaves it without the Council's say, and nothing tells the Council: the game keeps these withdrawals out of the stores' history, so the chart below never names them and the stores simply hold less than their ins and outs explain. Players never see this; it is shown here for DMs.
+      </p>
+      {taken === 0 ? <p className="economy__empty">Nothing taken in the range shown.</p> : (
+        <>
+          <p className="demo-note">{fmt(taken)} Foodstock taken over the range shown, in {fmt(times)} {times === 1 ? "withdrawal" : "withdrawals"}.</p>
+          <FlowChart days={days} config={GRANARY} />
+        </>
+      )}
+    </div>
+  );
+}
+
+// The same as a figure beside the stores' own: a daily average over the
+// last 7 days, like the Added and Removed figures, which leave it out.
+function GranaryStat({ history, now }: { history: History; now: number }) {
+  const { week, perDay } = perDayOverWeek(history.flows, now);
+  return (
+    <div className="economy__stat">
+      <span className="economy__stat-label">Taken by the Millers</span>
+      <span className={`economy__stat-value${week.length ? " economy__neg" : ""}`}>{week.length ? fmt(perDay((f) => f[2])) : "0"}</span>
+      <span className="economy__stat-note">{week.length ? "A day from the granary, unrecorded in the stores' history" : "Nothing from the granary in the last 7 days"}</span>
+    </div>
+  );
+}
+
+// Each faction's larder (food_dredgers, food_millers), with the faction's
+// name for the figures beside it. The faction's two ration groups eat from
+// it as their kind of group ("ration_labourers"), so `workers` in
+// larderConfig names who each of them is.
+type LarderInfo = { faction: string; name: string; config: ResourceConfig };
+
+const larderConfig = (faction: string, title: string, description: string, workers: [string, string], extraGains: Series[] = []): ResourceConfig => ({
+  resource: `food_${faction}`,
+  title,
+  description,
+  gains: [
+    { key: "kept", label: "Kept back", color: "var(--eco-green)", reasons: ["kept"] },
+    { key: "supplied", label: "Sent by the Council", color: "var(--eco-blue)", reasons: ["supplied"] },
+    ...extraGains,
+  ],
+  losses: [
+    { key: "rations", label: "Rations: the faction's workers", color: "var(--eco-magenta)", reasons: ["ration_labourers", "ration_tradespeople"],
+      reasonLabels: { ration_labourers: `Rations: ${workers[0]}`, ration_tradespeople: `Rations: ${workers[1]}` } },
+    { key: "meals", label: "Meals and snacks", color: "var(--eco-yellow)", reasons: ["meal", "snack"], reasonLabels: { meal: "Meals bought (3 each)", snack: "Snacks bought" } },
+    { key: "rot", label: "Rotted", color: "var(--eco-rot)", reasons: ROT_REASONS, reasonLabels: ROT_LABELS },
+    { key: "released", label: "Released to the town", color: "var(--eco-olive)", reasons: ["released"] },
+  ],
+  otherLabels: { dm: "DM changes" },
+});
+
+// From version 2 of the food model (pw_inc_foodmodel): each faction feeds
+// its own workers from its larder, at rations its officer sets, and the
+// Council can send it food it never sees inside. The figures are the
+// model's: the Dredgers' 32 fishers at 18 and 9 at 14, the fish processors and their Provisioner, 702
+// a day; the Millers' 30 farm hands and Blight Control at 18 and 23 at the
+// mill at 14, 904 a day, against a harvest of about 660.
+const FACTION_LARDERS: LarderInfo[] = [
+  {
+    faction: "dredgers", name: "the Dredgers",
+    config: larderConfig("dredgers", "The Dredgers' Larder",
+      "What the Dredgers keep back of the fish they land: everything their share does not send to the town's stores, a share set by the holder of a Dredger Trustee's Badge, 70% to start. It feeds their own 41 workers, the 32 fishers and the 9 fish processors and Provisioner, at rations the Trustee sets: 702 a day at the baselines. The Council can send it food from the town's stores, without seeing inside. It has room in the hold of their ship and the barrels at their camp, 8 m³, about 53,000 fish, and rots as the town's stores do, until it is released to the town. Kelo sells snacks and meals from it aboard the ship, to feed the faction's members, at the Refuge's prices while it is well stocked and dearer as it runs low. The Dredgers keep no Grey Soup, so their workers have nothing to fall back on when it runs short.",
+      ["fishers (Labourers)", "fish processors (Tradespeople)"]),
+  },
+  {
+    faction: "millers", name: "the Millers",
+    config: larderConfig("millers", "The Millers' Larder",
+      "What the Millers keep back of the potatoes and meat their farms bring in: everything their share does not send to the town's stores, a share set by the holder of a Miller Logistics Badge, nothing to start. It feeds their own 56 workers, the 30 farm hands and Blight Control and the 26 at the mill, at rations the officer sets: 904 a day at the baselines, more than the whole harvest at full strength (about 660), so the Millers cannot feed their own without the Council's supplies or the granary, which they guard and can quietly take from. Their Scar Fragments and Grey Soup take room in it too, and their hungry workers fall back on the soup. It has room on the mill's floor and in its basement, 12 m³, about 28,500 potatoes, and rots as the town's stores do, until it is released to the town. The Provisioner sells snacks, meals, and Grey Soup from it at the mill, to feed the faction's members, the food at the Refuge's prices while it is well stocked and dearer as it runs low.",
+      ["farm hands and Blight Control (Labourers)", "the mill (Tradespeople)"],
+      [{ key: "granary", label: "Taken from the town's granary", color: "var(--eco-vermilion)", reasons: ["granary"] }]),
+  },
+];
+
+// What came with version 2 of the food model, Oct 13: the Grey Soup pots,
+// the Millers' fragments, and what the Millers take from the granary.
+const GREY_SOUP_RESOURCES = ["grey_soup", "grey_soup_millers", "fragments_millers", "granary_taken"];
+
+// The Grey Soup and the Scar Fragments it is brewed from (pw_inc_foodstore
+// and pw_inc_foodmodel in the module), in bowls and fragments: the town's
+// pot (grey_soup), the Millers' pot in their larder (grey_soup_millers), and
+// their fragments (fragments_millers). "fragments" in the town's pot is
+// history from the first hour of the pots, before the fragments went to the
+// Millers.
+const GREY_SOUP: ResourceConfig = {
+  resource: "grey_soup",
+  title: "The Town's Grey Soup",
+  description: "The town's Grey Soup pot, in bowls. Grey Soup is not Foodstock, and no one eats it by choice. The Millers brew it from the Scar Fragments players hand in at Dazai's, a bowl a fragment, keep a day of what their own hungry workers need, and send the town every other bowl, with anything over that reserve each hour and all of it when they release their larder. The Refuge sells from the pot, and no shop sells from an empty one. Any of the Council's groups whose ration, as the stores gave it, falls short of its baseline makes up the rest from it while it lasts, a bowl for a Foodstock, and if it cannot cover them all each gets the same share of what it lacks. Soup holds off weight loss, lost output, and deaths, but not unhappiness: a group loses a point of morale for each percent of its baseline made up with soup, and two for each percent made up with nothing. Each bowl takes 0.4 litres of the town's stores, and half of the pot rots in a day.",
+  gains: [
+    { key: "millers", label: "Sent by the Millers", color: "var(--eco-olive)", reasons: ["from_millers"] },
+    { key: "fragments", label: "Scar Fragments handed in (Oct 13, before the Millers)", color: "var(--eco-blue)", reasons: ["fragments"], retired: true },
+  ],
+  losses: [
+    { key: "rations", label: "Eaten by the Council's hungry groups", color: "var(--eco-magenta)", reasons: ["rations"] },
+    { key: "sold", label: "Sold at the Refuge", color: "var(--eco-yellow)", reasons: ["sold"] },
+    { key: "rot", label: "Rotted", color: "var(--eco-rot)", reasons: ["rot"] },
+  ],
+  otherLabels: { dm: "DM changes" },
+};
+
+const MILLERS_SOUP: ResourceConfig = {
+  resource: "grey_soup_millers",
+  title: "The Millers' Grey Soup",
+  description: "The Grey Soup the Millers keep in their larder, in bowls: the first of every batch they brew, up to a day of what their own workers' rations, as the larder last fed them, leave short of the baseline, which is nothing while it feeds them in full. Their hungry workers make up their shortfall from it, and the Provisioner sells it at the mill. Every other bowl goes to the town's pot as it is brewed, whatever is over the reserve follows it each hour, and releasing the larder sends all of it. Each bowl takes 0.4 litres of the larder's room, and half of it rots in a day.",
+  gains: [{ key: "brewed", label: "Brewed and kept", color: "var(--eco-olive)", reasons: ["brewed"] }],
+  losses: [
+    { key: "rations", label: "Eaten by the Millers' hungry workers", color: "var(--eco-magenta)", reasons: ["rations"] },
+    { key: "sold", label: "Sold by the Provisioner", color: "var(--eco-yellow)", reasons: ["sold"] },
+    { key: "to_town", label: "Sent to the town's pot", color: "var(--eco-aqua)", reasons: ["to_town", "released"], reasonLabels: { to_town: "Sent to the town's pot: over the reserve", released: "Sent to the town's pot: released" } },
+    { key: "rot", label: "Rotted", color: "var(--eco-rot)", reasons: ["rot"] },
+  ],
+  otherLabels: { dm: "DM changes" },
+};
+
+const FRAGMENTS: ResourceConfig = {
+  resource: "fragments_millers",
+  title: "The Millers' Scar Fragments",
+  description: "The Scar Fragments handed in at Dazai's, who still pays gold for each, go to the Millers, who keep them in their larder, 0.05 litres each, never spoiling, and brew them into Grey Soup as their officer sets, a fragment to a bowl, one a minute. Brewing is worked out from the clock, so it carries on through a restart, and it waits rather than wastes a fragment when there is no room for the soup. They started on Oct 13 with 5,540: the fragments handed in since Sep 29, less the 1,810 bowls the Refuge had already sold.",
+  gains: [
+    { key: "handin", label: "Handed in at Dazai's", color: "var(--eco-blue)", reasons: ["handin"] },
+    { key: "seed", label: "Counted in at the start (Oct 13)", color: "var(--eco-lavender)", reasons: ["seed"] },
+  ],
+  losses: [{ key: "brewed", label: "Brewed into Grey Soup", color: "var(--eco-olive)", reasons: ["brewed"] }],
+  otherLabels: { dm: "DM changes" },
+};
+
+// The room a store's Grey Soup takes, as a stat beside its chart.
+function RoomTakenStat({ litres, of, where }: { litres: number; of: number; where: string }) {
+  return (
+    <div className="economy__stat">
+      <span className="economy__stat-label">Room Taken</span>
+      <span className="economy__stat-value">{volume(litres)}</span>
+      <span className="economy__stat-note">{share(litres, of)} of {where}</span>
+    </div>
+  );
+}
+
+// The Millers' brewing, from the fragments sample's detail. The game brings
+// the brewing up to the clock only when something looks at it, at least
+// every in-game hour, so `brewing` can be a little behind: a bowl a minute
+// has gone on since `brewSince`, as far as there were fragments and room.
+type BrewDetail = { brewing: number; brewSince: number | null };
+
+function BrewingStat({ detail, fragments, now }: { detail: BrewDetail | null | undefined; fragments: number; now: number }) {
+  const set = detail?.brewing ?? 0;
+  const due = detail?.brewSince ? Math.max(0, Math.floor((now - detail.brewSince) / 60)) : 0;
+  const left = Math.max(0, Math.min(set, fragments) - due);
+  return (
+    <div className="economy__stat">
+      <span className="economy__stat-label">Brewing</span>
+      <span className="economy__stat-value">{set ? fmt(left) : "–"}</span>
+      <span className="economy__stat-note">
+        {!set ? "Nothing set brewing" : left ? `Fragments still to brew, about ${left >= 90 ? `${Math.round(left / 60)} hours` : `${left} minutes`} at a bowl a minute` : "Should be done by now, room allowing"}
+      </span>
+    </div>
+  );
+}
+
+// The ration groups in the game's order, by who feeds them: the Council's
+// seven from the town's stores, then the Dredgers' and the Millers' own
+// workers from their larders (version 2 of the model; a sample from before
+// has only the seven, and the rest are left out). Each one's baseline, the
+// Foodstock a day that keeps one of it comfortable at full output, comes
+// with the sample, from the game (GetFoodGroupBaseline), as does the group
+// each workplace's workers are in (GetFoodWorkRationGroup): the page keeps
+// only their names, as the game gives them (GetFoodGroupName).
+const FEEDERS: { key: string; label: string; store: string }[] = [
+  { key: "council", label: "The Council", store: "the town's stores" },
+  { key: "dredgers", label: "The Dredgers", store: "their larder" },
+  { key: "millers", label: "The Millers", store: "their larder" },
+];
+
+const RATION_GROUPS: { key: string; label: string; feeder: string }[] = [
+  { key: "labourers", label: "Labourers", feeder: "council" },
+  { key: "tradespeople", label: "Tradespeople", feeder: "council" },
+  { key: "skilled", label: "Skilled Workers", feeder: "council" },
+  { key: "free", label: "Free Labour", feeder: "council" },
+  { key: "mothers", label: "Mothers", feeder: "council" },
+  { key: "elders", label: "Elders", feeder: "council" },
+  { key: "children", label: "Children", feeder: "council" },
+  { key: "dredgers_labourers", label: "Dredgers' Labourers", feeder: "dredgers" },
+  { key: "dredgers_tradespeople", label: "Dredgers' Tradespeople", feeder: "dredgers" },
+  { key: "millers_labourers", label: "Millers' Labourers", feeder: "millers" },
+  { key: "millers_tradespeople", label: "Millers' Tradespeople", feeder: "millers" },
 ];
 
 const WORKPLACES: [string, string][] = [
   ["fishing", "Fishing"], ["farmland", "Farmland"], ["blight", "Blight Control"], ["building", "Building"],
-  ["forestry", "Forestry"], ["reeves", "Reeves"], ["millers", "Millers"], ["crafts", "Crafts & Trades"],
+  ["forestry", "Forestry"], ["mining", "Mining"], ["reeves", "Reeves"], ["millers", "Millers"], ["crafts", "Crafts & Trades"],
   ["fishproc", "Fish Processing"], ["skilled", "Skilled Roles"],
 ];
 const groupLabel = (key: string | undefined) => RATION_GROUPS.find((g) => g.key === key)?.label ?? "–";
@@ -1118,11 +1336,22 @@ const reserves = (loss: number) =>
 
 // `baseline` is null in a sample from a model the game saved before it wrote
 // one, and a workplace's group is missing from a wkserver from before then.
-type RationGroup = { people: number; ration: number; baseline?: number | null; fed: number; loss: number; morale: number; output: number };
+// `fed` counts the Grey Soup eaten, and `soup` is that part of it, both as
+// fractions of the baseline. `morale` is the whole of how the group feels,
+// its food and the Treasury's pressures together; it drifts toward
+// `moraleTarget`, and `moraleFood` is where food alone would put it. The
+// rest, and who feeds the group, are missing from a wkserver from before
+// Oct 13, and the targets from a model saved before the game wrote them.
+type RationGroup = {
+  people: number; feeder?: string; ration: number; baseline?: number | null; fed: number; soup?: number; loss: number;
+  morale: number; moraleFood?: number | null; moraleTarget?: number | null; output: number;
+};
 type VillagersDetail = { groups: Record<string, RationGroup>; work: Record<string, [number, number, string?]>; shares: Record<string, number> };
 
-// Deaths from hunger (the villagers' flows, negative), charted upwards in the
-// same three bands as the rations, and the infants lost to under-fed Mothers.
+// Deaths from hunger (the villagers' flows, negative, as "died_" and the
+// group's key), charted upwards in the same three bands as the rations, the
+// factions' own workers in a fourth, and the infants lost to under-fed
+// Mothers. The Labourers were the fishers and the farm hands until Oct 13.
 const DEATHS: ResourceConfig = {
   resource: "villagers",
   title: "Deaths from Hunger",
@@ -1131,6 +1360,9 @@ const DEATHS: ResourceConfig = {
     { key: "labourers", label: "Labourers", color: "var(--eco-vermilion)", reasons: ["died_labourers"] },
     { key: "workers", label: "Other workers", color: "var(--eco-blue)", reasons: ["died_tradespeople", "died_skilled"], reasonLabels: { died_tradespeople: "Tradespeople", died_skilled: "Skilled Workers" } },
     { key: "dependants", label: "Dependants", color: "var(--eco-magenta)", reasons: ["died_free", "died_mothers", "died_elders", "died_children"], reasonLabels: { died_free: "Free Labour", died_mothers: "Mothers", died_elders: "Elders", died_children: "Children" } },
+    { key: "factions", label: "The factions' workers", color: "var(--eco-aqua)",
+      reasons: ["died_dredgers_labourers", "died_dredgers_tradespeople", "died_millers_labourers", "died_millers_tradespeople"],
+      reasonLabels: { died_dredgers_labourers: "Dredgers' Labourers", died_dredgers_tradespeople: "Dredgers' Tradespeople", died_millers_labourers: "Millers' Labourers", died_millers_tradespeople: "Millers' Tradespeople" } },
     { key: "infants", label: "Infants", color: "var(--eco-yellow)", reasons: ["died_infants"] },
   ],
   losses: [],
@@ -1140,18 +1372,51 @@ const DEATHS: ResourceConfig = {
 
 const pct = (f: number) => `${Math.round(f * 100)}%`;
 
-function VillagersSection({ history }: { history: History }) {
+// The share of its harvest Blight Control's ten posts cost the farms, from
+// the model's figures (GetFoodBlightPostsManned and GetFoodBlightFactor in
+// pw_inc_foodmodel): a post counts as manned only as far as its worker
+// works, at the Millers' Labourers' output and the Millers' Morale, and
+// each one short costs 2%. The Morale is the Treasury's (treasury_purse);
+// without it the faction works at full strength, as the game has it.
+const BLIGHT_LOSS_PER_POST = 0.02;
+
+function blightPosts(detail: VillagersDetail, millersMorale: number | undefined) {
+  const [workers, posts] = detail.work.blight ?? [0, 0];
+  const output = (detail.groups.millers_labourers ?? detail.groups.labourers)?.output ?? 1;
+  const manned = Math.min(posts, workers * output * (millersMorale ?? 100) / 100);
+  return { posts, manned, lost: Math.min(1, BLIGHT_LOSS_PER_POST * (posts - manned)) };
+}
+
+function VillagersSection({ history, millersMorale }: { history: History; millersMorale?: number }) {
   const { levels, latest } = history;
   const detail = latest?.detail as VillagersDetail | null | undefined;
   const deaths = useMemo(() => history.flows.map(([t, r, a, e]): Flow => [t, r, -a, e]), [history]);
   const days = useMemo(() => foldFlows(deaths, DEATHS), [deaths]);
   const died = deaths.reduce((s, f) => s + f[2], 0);
   const infants = deaths.filter((f) => f[1] === "died_infants").reduce((s, f) => s + f[2], 0);
-  const groups = RATION_GROUPS.map((g) => ({ ...g, ...(detail?.groups[g.key] ?? { people: 0, ration: 0, fed: 1, loss: 0, morale: 100, output: 1 }) }));
+  // The faction groups only where the sample has them; the Council's seven
+  // always, as the game's defaults where one is missing.
+  const groups = RATION_GROUPS
+    .filter((g) => g.feeder === "council" || detail?.groups[g.key])
+    .map((g) => ({ ...g, ...(detail?.groups[g.key] ?? { people: 0, ration: 0, fed: 1, loss: 0, morale: 100, output: 1 }) }));
   const people = groups.reduce((s, g) => s + g.people, 0);
   const morale = people ? groups.reduce((s, g) => s + g.morale * g.people, 0) / people : 0;
   const lowest = groups.filter((g) => g.people > 0).sort((a, b) => a.morale - b.morale)[0];
-  const labourers = groups[0];
+  // Whose output the boats and the fields work at: the factions' own
+  // Labourers, or the Council's in a sample from before they had their own.
+  const workerGroup = (key: string) => groups.find((g) => g.key === key) ?? groups[0];
+  const fishers = workerGroup("dredgers_labourers"), farmHands = workerGroup("millers_labourers");
+  const blight = detail ? blightPosts(detail, millersMorale) : null;
+  const feeders = FEEDERS.map((f) => {
+    const members = groups.filter((g) => g.feeder === f.key);
+    return {
+      ...f, members,
+      people: members.reduce((s, g) => s + g.people, 0),
+      need: members.reduce((s, g) => s + g.people * (g.baseline ?? 0), 0),
+      rations: members.reduce((s, g) => s + g.people * g.ration, 0),
+    };
+  }).filter((f) => f.members.length);
+  const moraleShown = groups.some((g) => g.moraleTarget != null);
   const start = levels[0];
   const labelOf = (reason: string) => {
     const s = DEATHS.gains.find((s) => s.reasons.includes(reason));
@@ -1162,7 +1427,7 @@ function VillagersSection({ history }: { history: History }) {
     <section className="economy__section" aria-labelledby="eco-villagers">
       <h3 id="eco-villagers">Villagers</h3>
       <p className="economy__sub">
-        The town's people as the food model last saved them: how well each ration group is fed, and what hunger has cost. A group given less than its baseline works more slowly at once, then loses weight, and once Underweight or Exhausted it starts to die, the Elders and Children first; under-fed Mothers lose infants. Need falls as people lose weight, so a moderate shortfall settles thin but stable. The Labourers' output is the pace the boats and farms work at, so starving them starves everyone.
+        The town's people as the food model last saved them: how well each ration group is fed, how it feels, and what hunger has cost. The Council feeds seven groups from the town's stores, at the rations set in the Town Food Ledger; the Dredgers and the Millers feed their own workers from their larders, at rations their officers set. A group whose ration, as its store gave it, falls short of its baseline makes up the rest from its Grey Soup pot while it lasts: the town's for the Council's groups, the Millers' for theirs, and none for the Dredgers', who keep none. Soup feeds the body but not the spirits. Short of that, a group works more slowly at once, then loses weight, and once Underweight or Exhausted it starts to die, the Elders and Children first; under-fed Mothers lose infants. Need falls as people lose weight, so a moderate shortfall settles thin but stable. The fishers' and the farm hands' output is the pace the boats and fields work at, so starving them starves everyone.
       </p>
 
       <div className="economy__stats">
@@ -1184,37 +1449,71 @@ function VillagersSection({ history }: { history: History }) {
           <span className="economy__stat-note">{detail && lowest ? `Out of 100, by head · lowest ${lowest.label} at ${fmt(lowest.morale)}` : "Out of 100"}</span>
         </div>
         <div className="economy__stat">
-          <span className="economy__stat-label">Labourers' Output</span>
-          <span className={`economy__stat-value${detail && labourers.output < 1 ? " economy__neg" : ""}`}>{detail ? pct(labourers.output) : "–"}</span>
-          <span className="economy__stat-note">The pace the boats and farms work at</span>
+          <span className="economy__stat-label">Fishers' Output</span>
+          <span className={`economy__stat-value${detail && fishers.output < 1 ? " economy__neg" : ""}`}>{detail ? pct(fishers.output) : "–"}</span>
+          <span className="economy__stat-note">The pace the boats work at</span>
         </div>
+        <div className="economy__stat">
+          <span className="economy__stat-label">Farm Hands' Output</span>
+          <span className={`economy__stat-value${detail && farmHands.output < 1 ? " economy__neg" : ""}`}>{detail ? pct(farmHands.output) : "–"}</span>
+          <span className="economy__stat-note">The pace the fields and Blight Control work at</span>
+        </div>
+        {blight && blight.posts > 0 && (
+          <div className="economy__stat">
+            <span className="economy__stat-label">Blight Control</span>
+            <span className={`economy__stat-value${blight.lost >= 0.005 ? " economy__neg" : ""}`}>{blight.manned.toFixed(1)} / {fmt(blight.posts)}</span>
+            <span className="economy__stat-note">
+              Posts effectively manned · the Blight takes {blight.lost >= 0.005 ? `${(blight.lost * 100).toFixed(blight.lost < 0.1 ? 1 : 0)}%` : "none"} of the harvest{millersMorale === undefined ? "" : `, at the Millers' Morale of ${fmt(millersMorale)}`}
+            </span>
+          </div>
+        )}
       </div>
 
       {detail && (
         <div className="economy__card">
           <h4>Ration Groups</h4>
-          <p className="demo-note">Rations are Foodstock a head a day, set in the Town Food Ledger. Fed is the last hour's food against the group's baseline.</p>
+          <p className="demo-note">
+            Rations are Foodstock a head a day. Fed is the last hour's food against the group's baseline, Grey Soup included, and Soup is how much of the baseline was soup.{moraleShown && " Morale is the whole of how a group feels: its food, and the Treasury's pressures on top (the Hearth Tax, the Council's own wages for the Council's groups, and the Reeves' watch). It moves toward its Target every hour, quickly down and slowly up; Food Alone is where its food alone would put it, so the gap between Target and Food Alone is the Treasury's doing."}
+          </p>
           <div className="economy__table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th className="economy__cell-left">Group</th><th>People</th><th>Ration</th><th>Baseline</th><th>Fed</th>
-                  <th>Weight Lost</th><th className="economy__cell-left">Reserves</th><th>Morale</th><th>Output</th>
+                  <th className="economy__cell-left">Group</th><th>People</th><th>Ration</th><th>Baseline</th><th>Fed</th><th>Soup</th>
+                  <th>Weight Lost</th><th className="economy__cell-left">Reserves</th><th>Morale</th>
+                  {moraleShown && <><th>Target</th><th>Food Alone</th></>}
+                  <th>Output</th>
                 </tr>
               </thead>
               <tbody>
-                {groups.map((g) => (
-                  <tr key={g.key}>
-                    <td className="economy__cell-left">{g.label}</td>
-                    <td>{fmt(g.people)}</td>
-                    <td>{fmt(g.ration)}</td>
-                    <td>{g.baseline == null ? "–" : fmt(g.baseline)}</td>
-                    <td className={g.fed < 0.995 ? "economy__neg" : undefined}>{pct(g.fed)}</td>
-                    <td>{g.loss > 0 ? `${(g.loss * 100).toFixed(1)}%` : "–"}</td>
-                    <td className={`economy__cell-left${g.loss >= 0.15 ? " economy__neg" : ""}`}>{reserves(g.loss)}</td>
-                    <td>{fmt(g.morale)}</td>
-                    <td>{pct(g.output)}</td>
-                  </tr>
+                {feeders.map((f) => (
+                  <Fragment key={f.key}>
+                    {feeders.length > 1 && (
+                      <tr className="economy__row-head">
+                        <th colSpan={moraleShown ? 12 : 10} className="economy__cell-left">
+                          {f.label}, from {f.store} · {fmt(f.people)} people, {fmt(f.rations)} a day at these rations{f.need ? `, ${fmt(f.need)} at the baselines` : ""}
+                        </th>
+                      </tr>
+                    )}
+                    {f.members.map((g) => (
+                      <tr key={g.key}>
+                        <td className="economy__cell-left">{g.label}</td>
+                        <td>{fmt(g.people)}</td>
+                        <td>{fmt(g.ration)}</td>
+                        <td>{g.baseline == null ? "–" : fmt(g.baseline)}</td>
+                        <td className={g.fed < 0.995 ? "economy__neg" : undefined}>{pct(g.fed)}</td>
+                        <td>{g.soup ? pct(g.soup) : "–"}</td>
+                        <td>{g.loss > 0 ? `${(g.loss * 100).toFixed(1)}%` : "–"}</td>
+                        <td className={`economy__cell-left${g.loss >= 0.15 ? " economy__neg" : ""}`}>{reserves(g.loss)}</td>
+                        <td>{fmt(g.morale)}</td>
+                        {moraleShown && <>
+                          <td>{g.moraleTarget == null ? "–" : fmt(g.moraleTarget)}</td>
+                          <td>{g.moraleFood == null ? "–" : fmt(g.moraleFood)}</td>
+                        </>}
+                        <td>{pct(g.output)}</td>
+                      </tr>
+                    ))}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -1318,7 +1617,7 @@ const TREASURY: ResourceConfig = {
 const PURSES: ResourceConfig = {
   resource: "treasury_purse",
   title: "The Factions' Treasuries",
-  description: "The Dredgers', the Millers', and the Reeves' treasuries together, each kept by the faction's officer. The Council's allocation comes in every day, with whatever the officer pays in, the faction's own sales tax among it. Out go the coin wages of the faction's workers, the wage packets of its members, which they collect from the faction's paymaster (Kelo, the Provisioner, or the Reeve Provisioner), and whatever the officer takes out. A treasury can go into debt, and a faction in debt loses Morale.",
+  description: "The Dredgers', the Millers', and the Reeves' treasuries together, each kept by the faction's officer. The Council's allocation comes in every day, with whatever the officer pays in, the faction's own sales tax among it. Out go the coin wages of the faction's workers, the wage packets of its members, which they collect from the faction's paymaster (Kelo, the Provisioner, or the Reeve Provisioner), and whatever the officer takes out. A treasury can go into debt, and a faction in debt loses Morale. Each faction's Morale heads for its own people's, moved by its own debt and wages: the Dredgers' and the Millers' for their own workers', by head, and the Reeves' for the Council's Tradespeople, among whom they eat. It sets the pace of the Dredgers' catch, the Millers' harvest, and the Reeves' watch.",
   gains: [
     { key: "alloc", label: "The Council's allocation", color: "var(--eco-violet)", reasons: perFaction("_alloc"), reasonLabels: perFactionLabels("_alloc", "", "Allocation") },
     { key: "in", label: "Paid in", color: "var(--eco-blue)", reasons: perFaction("_in"), reasonLabels: perFactionLabels("_in", "", "Paid in") },
@@ -1595,8 +1894,8 @@ function EconomyPage({ authToken }: EconomyPageProps) {
   useEffect(() => {
     let current = true;
     // A wkserver from before the average gold, the spending, the
-    // contributors, the food model, or the Treasury answers 404 for them, and
-    // the page shows the rest.
+    // contributors, the food model, the Treasury, or the Grey Soup answers
+    // 404 for them, and the page shows the rest.
     const get = <T,>(path: string, d: number, optional = false) =>
       fetch(`${import.meta.env.VITE_API_URL}/economy/${path}?days=${d}`, {
         cache: "no-store",
@@ -1611,7 +1910,7 @@ function EconomyPage({ authToken }: EconomyPageProps) {
         ...RESOURCES.map((c) => get<History>(c.resource, days)),
         get<History>("gold_average", days ? Math.max(days, 31) : 0, true),
         get<History>("gold_spent", days, true),
-        ...["food_dredgers", "food_millers", "food_lost", "villagers", "gold_paid", ...TREASURY_RESOURCES].map((r) => get<History>(r, days, true)),
+        ...["food_dredgers", "food_millers", "food_lost", "villagers", "gold_paid", ...TREASURY_RESOURCES, ...GREY_SOUP_RESOURCES].map((r) => get<History>(r, days, true)),
       ]),
       get<Contributions>("food/contributors", days, true),
       get<Payroll>("treasury/members", days, true),
@@ -1636,6 +1935,33 @@ function EconomyPage({ authToken }: EconomyPageProps) {
   // The Treasury likewise, once the game has opened it (PW_TREASURY).
   const treasuryOpen = !!data.treasury?.latest;
   const stockOf = (h: History) => (h.latest?.detail?.stock ?? null) as Record<string, number> | null;
+  // A count from a sample's detail, or undefined where it has none (a
+  // wkserver or a model from before the Grey Soup).
+  const countOf = (h: History | undefined, key: string) => {
+    const n = h?.latest?.detail?.[key];
+    return typeof n === "number" ? n : undefined;
+  };
+  const townSoup = countOf(data.food, "soup");
+  const millersExtras = (h: History) => {
+    const fragments = countOf(h, "fragments"), soup = countOf(h, "soup");
+    return fragments === undefined && soup === undefined ? [] : [fragmentsExtra(fragments ?? 0), greySoupExtra(soup ?? 0)];
+  };
+  const villagersDetail = data.villagers?.latest?.detail as VillagersDetail | null | undefined;
+  // A faction's workers' rations a day, at the rations set now and at the
+  // baselines, from the villagers' latest sample.
+  const workersOf = (faction: string) => {
+    const groups = Object.entries(villagersDetail?.groups ?? {}).filter(([key]) => key.startsWith(`${faction}_`)).map(([, g]) => g);
+    return {
+      people: groups.reduce((s, g) => s + g.people, 0),
+      rations: groups.reduce((s, g) => s + g.people * g.ration, 0),
+      need: groups.reduce((s, g) => s + g.people * (g.baseline ?? 0), 0),
+    };
+  };
+  const millersMorale = (data.treasury_purse?.latest?.detail?.morale as Record<string, number> | undefined)?.millers;
+  const soupRunning = !!data.grey_soup?.latest;
+  // The granary can be taken from only from version 2 of the model, so it is
+  // shown once that is running, or once anything has been taken.
+  const granary = data.granary_taken && (soupRunning || data.granary_taken.flows.length > 0) ? data.granary_taken : null;
 
   return (
     <div className="economy">
@@ -1658,23 +1984,68 @@ function EconomyPage({ authToken }: EconomyPageProps) {
         c.resource === "food" ? (
           <Fragment key={c.resource}>
             <ResourceSection config={c} history={data.food}
-              stats={modelRunning && data.food_lost && <FoodLostStat history={data.food_lost} now={fetchedAt} />}>
-              {stockOf(data.food) && <StockCard stock={stockOf(data.food)!} litres={TOWN_STORE_LITRES} title="In Store Now, by Kind" />}
+              stats={<>
+                {modelRunning && data.food_lost && <FoodLostStat history={data.food_lost} now={fetchedAt} />}
+                {granary && <GranaryStat history={granary} now={fetchedAt} />}
+              </>}>
+              {stockOf(data.food) && (
+                <StockCard stock={stockOf(data.food)!} litres={TOWN_STORE_LITRES} title="In Store Now, by Kind"
+                  extras={townSoup === undefined ? [] : [greySoupExtra(townSoup)]} />
+              )}
+              {granary && <GranaryCard history={granary} />}
             </ResourceSection>
             {contributors && <ContributorsSection data={contributors} />}
-            {modelRunning && FACTION_LARDERS.map(({ faction, config }) => data[config.resource] && (
-              <ResourceSection key={faction} config={config} history={data[config.resource]}
-                stats={
-                  <div className="economy__stat">
-                    <span className="economy__stat-label">Sent to the Town</span>
-                    <span className="economy__stat-value">{Number(data[config.resource].latest?.detail?.share ?? 100)}%</span>
-                    <span className="economy__stat-note">Of what it produces; it keeps the rest</span>
-                  </div>
-                }>
-                <StockCard stock={stockOf(data[config.resource]) ?? {}} litres={LARDER_LITRES[faction]} title="In the Larder Now, by Kind" />
-              </ResourceSection>
-            ))}
-            {modelRunning && <VillagersSection history={data.villagers} />}
+            {modelRunning && FACTION_LARDERS.map(({ faction, name, config }) => {
+              const history = data[config.resource];
+              if (!history) return null;
+              const workers = workersOf(faction);
+              return (
+                <ResourceSection key={faction} config={config} history={history}
+                  stats={<>
+                    <div className="economy__stat">
+                      <span className="economy__stat-label">Sent to the Town</span>
+                      <span className="economy__stat-value">{Number(history.latest?.detail?.share ?? 100)}%</span>
+                      <span className="economy__stat-note">Of what it produces; it keeps the rest</span>
+                    </div>
+                    {workers.people > 0 && (
+                      <div className="economy__stat">
+                        <span className="economy__stat-label">Workers' Rations</span>
+                        <span className="economy__stat-value">{fmt(workers.rations)}</span>
+                        <span className="economy__stat-note">A day, for {name}' {fmt(workers.people)} workers; {fmt(workers.need)} at the baselines</span>
+                      </div>
+                    )}
+                  </>}>
+                  <StockCard stock={stockOf(history) ?? {}} litres={LARDER_LITRES[faction]} title="In the Larder Now, by Kind"
+                    extras={faction === "millers" ? millersExtras(history) : []} />
+                </ResourceSection>
+              );
+            })}
+            {modelRunning && soupRunning && (
+              <>
+                <ResourceSection config={GREY_SOUP} history={data.grey_soup}
+                  stats={<RoomTakenStat litres={(data.grey_soup.latest?.value ?? 0) * 0.4} of={TOWN_STORE_LITRES} where="the town's stores" />} />
+                {data.grey_soup_millers && (
+                  <ResourceSection config={MILLERS_SOUP} history={data.grey_soup_millers}
+                    stats={<>
+                      <RoomTakenStat litres={(data.grey_soup_millers.latest?.value ?? 0) * 0.4} of={LARDER_LITRES.millers} where="the Millers' larder" />
+                      <div className="economy__stat">
+                        <span className="economy__stat-label">Brewed Ever</span>
+                        <span className="economy__stat-value">{fmt(Number(data.grey_soup_millers.latest?.detail?.made ?? 0))}</span>
+                        <span className="economy__stat-note">Bowls, for the town and themselves, counting the 1,810 the Refuge sold before the Millers brewed</span>
+                      </div>
+                    </>} />
+                )}
+                {data.fragments_millers && (
+                  <ResourceSection config={FRAGMENTS} history={data.fragments_millers}
+                    stats={<>
+                      <BrewingStat detail={data.fragments_millers.latest?.detail as BrewDetail | null | undefined}
+                        fragments={data.fragments_millers.latest?.value ?? 0} now={fetchedAt} />
+                      <RoomTakenStat litres={(data.fragments_millers.latest?.value ?? 0) * 0.05} of={LARDER_LITRES.millers} where="the Millers' larder" />
+                    </>} />
+                )}
+              </>
+            )}
+            {modelRunning && <VillagersSection history={data.villagers} millersMorale={millersMorale} />}
           </Fragment>
         ) : <ResourceSection key={c.resource} config={c} history={data[c.resource]} />
       ))}
