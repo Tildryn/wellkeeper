@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { IconRefresh } from "./Icons";
 import { BarRow } from "./BarRow";
 import { niceMax, useWidth } from "./chart";
@@ -111,6 +111,10 @@ const RESOURCES: ResourceConfig[] = [
     ],
   },
 ];
+
+// Food on the Granaries tab, gold on the Treasuries.
+const FOOD = RESOURCES.find((c) => c.resource === "food")!;
+const GOLD = RESOURCES.find((c) => c.resource === "gold")!;
 
 // The gold an active character holds (wkserver's gold_average): its file was
 // saved in the last ACTIVE_DAYS and it is above the starting level. Both
@@ -1870,7 +1874,42 @@ interface EconomyPageProps {
   authToken: string;
 }
 
+// The page's two halves: food (the stores, the larders, the Grey Soup, and
+// the villagers who eat it all) and gold (the Treasury, and the gold the
+// characters hold, spend, and are paid). Both are fetched together, so a
+// switch shows the other at once, for the same range.
+const TABS = [["granaries", "Granaries"], ["treasuries", "Treasuries"]] as const;
+type Tab = typeof TABS[number][0];
+
+// A tab list as the ARIA practices have it: one tab in the Tab order, and the
+// arrow keys, Home, and End move between them, selecting as they go.
+function EconomyTabs({ tab, onChange }: { tab: Tab; onChange: (tab: Tab) => void }) {
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    const at = TABS.findIndex(([key]) => key === tab);
+    const to = e.key === "ArrowRight" ? (at + 1) % TABS.length
+      : e.key === "ArrowLeft" ? (at - 1 + TABS.length) % TABS.length
+      : e.key === "Home" ? 0
+      : e.key === "End" ? TABS.length - 1
+      : -1;
+    if (to < 0) return;
+    e.preventDefault();
+    onChange(TABS[to][0]);
+    refs.current[to]?.focus();
+  }
+  return (
+    <div className="economy__tabs" role="tablist" aria-label="Economy" onKeyDown={onKeyDown}>
+      {TABS.map(([key, label], i) => (
+        <button key={key} ref={(el) => { refs.current[i] = el; }} role="tab" id={`eco-tab-${key}`}
+          aria-selected={tab === key} aria-controls="eco-panel" tabIndex={tab === key ? 0 : -1}
+          className="economy__tab" onClick={() => onChange(key)}>{label}</button>
+      ))}
+    </div>
+  );
+}
+
 function EconomyPage({ authToken }: EconomyPageProps) {
+  const [tab, setTab] = useState<Tab>("granaries");
   const [days, setDays] = useState(30);
   const [data, setData] = useState<Record<string, History>>({});
   const [contributors, setContributors] = useState<Contributions | null>(null);
@@ -1962,10 +2001,13 @@ function EconomyPage({ authToken }: EconomyPageProps) {
   // The granary can be taken from only from version 2 of the model, so it is
   // shown once that is running, or once anything has been taken.
   const granary = data.granary_taken && (soupRunning || data.granary_taken.flows.length > 0) ? data.granary_taken : null;
+  const granaries = !loading && !error && tab === "granaries";
+  const treasuries = !loading && !error && tab === "treasuries";
 
   return (
     <div className="economy">
       <h2 className="sr-only">Economy</h2>
+      <EconomyTabs tab={tab} onChange={setTab} />
       <div className="list-toolbar">
         <div className="bans-filter" role="group" aria-label="Time range">
           {RANGES.map(([d, label]) => (
@@ -1978,12 +2020,12 @@ function EconomyPage({ authToken }: EconomyPageProps) {
           <IconRefresh /><span className="refresh-btn__label" aria-hidden="true"> Refresh</span>
         </button>
       </div>
-      {loading && <p role="status">Loading...</p>}
-      {error && <p role="alert" style={{ color: "#c0323a" }}>Error: {error}</p>}
-      {!loading && !error && RESOURCES.map((c) => data[c.resource] && (
-        c.resource === "food" ? (
-          <Fragment key={c.resource}>
-            <ResourceSection config={c} history={data.food}
+      <div className="economy__panel" role="tabpanel" id="eco-panel" aria-labelledby={`eco-tab-${tab}`}>
+        {loading && <p role="status">Loading...</p>}
+        {error && <p role="alert" style={{ color: "#c0323a" }}>Error: {error}</p>}
+        {granaries && data.food && (
+          <>
+            <ResourceSection config={FOOD} history={data.food}
               stats={<>
                 {modelRunning && data.food_lost && <FoodLostStat history={data.food_lost} now={fetchedAt} />}
                 {granary && <GranaryStat history={granary} now={fetchedAt} />}
@@ -2046,30 +2088,31 @@ function EconomyPage({ authToken }: EconomyPageProps) {
               </>
             )}
             {modelRunning && <VillagersSection history={data.villagers} millersMorale={millersMorale} />}
-          </Fragment>
-        ) : <ResourceSection key={c.resource} config={c} history={data[c.resource]} />
-      ))}
-      {!loading && !error && data.gold_average && <AverageGoldSection history={data.gold_average} rangeDays={days} />}
-      {!loading && !error && data.gold_spent && <PaymentsSection history={data.gold_spent} now={fetchedAt} config={SPENDING} words={SPEND_WORDS} nameOf={spendLabel} />}
-      {!loading && !error && data.gold_paid && <PaymentsSection history={data.gold_paid} now={fetchedAt} config={PAID} words={PAID_WORDS} nameOf={paidLabel} />}
-      {!loading && !error && treasuryOpen && (
-        <>
-          <ResourceSection config={TREASURY} history={data.treasury} />
-          {data.treasury_purse && (
-            <ResourceSection config={PURSES} history={data.treasury_purse}
-              stats={<PurseStats detail={data.treasury_purse.latest?.detail as PurseDetail | null | undefined} />} />
-          )}
-          {data.treasury_villagers && <ResourceSection config={VILLAGERS_PURSE} history={data.treasury_villagers} />}
-          {data.treasury_tax && (
-            <ResourceSection config={SALES_TAX} history={data.treasury_tax}>
-              <TaxBoxesCard boxes={(data.treasury_tax.latest?.detail?.boxes ?? {}) as Record<string, number>} />
-            </ResourceSection>
-          )}
-          {data.treasury_fines && <ResourceSection config={FINES} history={data.treasury_fines} />}
-          {payroll && <PayrollSection data={payroll} />}
-          {journal && <JournalSection data={journal} />}
-        </>
-      )}
+          </>
+        )}
+        {treasuries && treasuryOpen && (
+          <>
+            <ResourceSection config={TREASURY} history={data.treasury} />
+            {data.treasury_purse && (
+              <ResourceSection config={PURSES} history={data.treasury_purse}
+                stats={<PurseStats detail={data.treasury_purse.latest?.detail as PurseDetail | null | undefined} />} />
+            )}
+            {data.treasury_villagers && <ResourceSection config={VILLAGERS_PURSE} history={data.treasury_villagers} />}
+            {data.treasury_tax && (
+              <ResourceSection config={SALES_TAX} history={data.treasury_tax}>
+                <TaxBoxesCard boxes={(data.treasury_tax.latest?.detail?.boxes ?? {}) as Record<string, number>} />
+              </ResourceSection>
+            )}
+            {data.treasury_fines && <ResourceSection config={FINES} history={data.treasury_fines} />}
+            {payroll && <PayrollSection data={payroll} />}
+            {journal && <JournalSection data={journal} />}
+          </>
+        )}
+        {treasuries && data.gold && <ResourceSection config={GOLD} history={data.gold} />}
+        {treasuries && data.gold_average && <AverageGoldSection history={data.gold_average} rangeDays={days} />}
+        {treasuries && data.gold_spent && <PaymentsSection history={data.gold_spent} now={fetchedAt} config={SPENDING} words={SPEND_WORDS} nameOf={spendLabel} />}
+        {treasuries && data.gold_paid && <PaymentsSection history={data.gold_paid} now={fetchedAt} config={PAID} words={PAID_WORDS} nameOf={paidLabel} />}
+      </div>
     </div>
   );
 }

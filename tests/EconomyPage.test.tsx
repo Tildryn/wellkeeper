@@ -196,9 +196,28 @@ describe('EconomyPage', () => {
     const food = await screen.findByRole('region', { name: 'Food Stores' })
     expect(within(food).getByText('4,303')).toBeInTheDocument()
     expect(within(food).getByText('−397')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('tab', { name: 'Treasuries' }))
     const gold = screen.getByRole('region', { name: 'Gold Held by Characters' })
     expect(within(gold).getByText('4,800,000')).toBeInTheDocument()
     expect(within(gold).getByText(/top 10% hold 61%/)).toBeInTheDocument()
+  })
+
+  it('shows food on the Granaries tab and gold on the Treasuries tab', async () => {
+    mockEconomy([], null, {}, true)
+    render(<EconomyPage authToken="test-token" />)
+    await screen.findByRole('region', { name: 'Food Stores' })
+    expect(screen.getByRole('tab', { name: 'Granaries' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByRole('region', { name: "The Council's Treasury" })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Gold Held by Characters' })).not.toBeInTheDocument()
+
+    // The arrow keys move between the tabs, as the ARIA practices have it.
+    screen.getByRole('tab', { name: 'Granaries' }).focus()
+    await userEvent.keyboard('{ArrowRight}')
+    expect(screen.getByRole('tab', { name: 'Treasuries' })).toHaveFocus()
+    expect(screen.getByRole('tabpanel', { name: 'Treasuries' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: "The Council's Treasury" })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Gold Held by Characters' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Food Stores' })).not.toBeInTheDocument()
   })
 
   it('lists every reason in the table, including ones the chart folds into Other', async () => {
@@ -222,6 +241,7 @@ describe('EconomyPage', () => {
   it('shows an empty state for a resource with no flows yet', async () => {
     mockEconomy()
     render(<EconomyPage authToken="test-token" />)
+    await userEvent.click(screen.getByRole('tab', { name: 'Treasuries' }))
     const gold = await screen.findByRole('region', { name: 'Gold Held by Characters' })
     expect(within(gold).getByText("No flows recorded yet.")).toBeInTheDocument()
     expect(within(gold).getAllByText("No flows recorded yet")).toHaveLength(2)
@@ -340,6 +360,7 @@ describe('EconomyPage', () => {
   it('shows the Treasury once the game has opened it', async () => {
     mockEconomy([], null, {}, true)
     render(<EconomyPage authToken="test-token" />)
+    await userEvent.click(screen.getByRole('tab', { name: 'Treasuries' }))
 
     const council = await screen.findByRole('region', { name: "The Council's Treasury" })
     expect(within(council).getByText('99,411')).toBeInTheDocument()
@@ -377,6 +398,8 @@ describe('EconomyPage', () => {
     mockEconomy()
     render(<EconomyPage authToken="test-token" />)
     await screen.findByRole('region', { name: 'Food Stores' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Treasuries' }))
+    await screen.findByRole('region', { name: 'Gold Held by Characters' })
     expect(screen.queryByRole('region', { name: "The Council's Treasury" })).not.toBeInTheDocument()
     expect(screen.queryByRole('region', { name: "Members' Wages" })).not.toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Gold Paid to Characters' })).not.toBeInTheDocument()
