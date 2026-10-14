@@ -1344,8 +1344,11 @@ const VILLAGERS_PURSE: ResourceConfig = {
 };
 
 // The shops the Treasury taxes, by the keys the game gives them
-// (GetTreasuryShopKey), named as the Treasury window names them. The last
-// seven are the factions' own, whose tax goes to the faction.
+// (GetTreasuryShopKey), named as the Treasury window names them.
+// FACTION_SHOPS are the factions' own (GetTreasuryShopFaction), whose tax
+// goes to the faction: Mireva and Kelo's for the Dredgers, Haremaru's counter
+// at Fitz Bazalgate's and the Provisioner's for the Millers, and the Reeve
+// Provisioner for the Reeves.
 const TAX_SHOPS: Record<string, string> = {
   ephedra: "Ephedra, Alchemist", theboy: "The Boy, Scrolls", lockwood: "Dan Lockwood, Smith", logue: "Yasha Logue, Stores",
   mireva: "Mireva", nick: "Nine-Fingered Nick", bazalgate: "Fitz Bazalgate", crow: "The Talking Crow",
@@ -1355,7 +1358,7 @@ const TAX_SHOPS: Record<string, string> = {
   provsnack: "Provisioner, Snacks", provmeal: "Provisioner, Meals", provgrey: "Provisioner, Grey Soup",
   reeveprov: "Reeve Provisioner",
 };
-const FACTION_SHOPS = ["kelo", "kelosnack", "kelomeal", "provsnack", "provmeal", "provgrey", "reeveprov"];
+const FACTION_SHOPS = ["mireva", "kelo", "kelosnack", "kelomeal", "bazalgate", "provsnack", "provmeal", "provgrey", "reeveprov"];
 const VILLAGE_SHOPS = Object.keys(TAX_SHOPS).filter((k) => !FACTION_SHOPS.includes(k));
 const shopName = (key: string) => TAX_SHOPS[key] ?? key;
 
@@ -1626,6 +1629,9 @@ function EconomyPage({ authToken }: EconomyPageProps) {
 
   // The larders and the villagers are sampled once the game's food model has
   // saved itself; before that (or from an older wkserver) they are left out.
+    // What Haremaru pays hunters for their Scar Fragments, at the prices the
+    // Millers set, comes out of the Millers' treasury (ChargeTreasuryFragments).
+    { key: "fragments", label: "Scar Fragments bought (the Millers)", color: "var(--eco-brown)", reasons: ["millers_fragments"] },
   const modelRunning = !!data.villagers?.latest;
   // The Treasury likewise, once the game has opened it (PW_TREASURY).
   const treasuryOpen = !!data.treasury?.latest;
