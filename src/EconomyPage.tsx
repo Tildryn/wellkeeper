@@ -1327,6 +1327,9 @@ const PURSES: ResourceConfig = {
     { key: "wages", label: "Workers' coin wages", color: "var(--eco-vermilion)", reasons: perFaction("_wages"), reasonLabels: perFactionLabels("_wages", "", "Workers' wages") },
     { key: "members", label: "Members' wage packets", color: "var(--eco-magenta)", reasons: perFaction("_members"), reasonLabels: perFactionLabels("_members", "", "Members' wages") },
     { key: "out", label: "Taken out", color: "var(--eco-yellow)", reasons: perFaction("_out"), reasonLabels: perFactionLabels("_out", "", "Taken out") },
+    // What Haremaru pays hunters for their Scar Fragments, at the prices the
+    // Millers set, comes out of the Millers' treasury (ChargeTreasuryFragments).
+    { key: "fragments", label: "Scar Fragments bought (the Millers)", color: "var(--eco-brown)", reasons: ["millers_fragments"] },
   ],
 };
 
@@ -1629,9 +1632,6 @@ function EconomyPage({ authToken }: EconomyPageProps) {
 
   // The larders and the villagers are sampled once the game's food model has
   // saved itself; before that (or from an older wkserver) they are left out.
-    // What Haremaru pays hunters for their Scar Fragments, at the prices the
-    // Millers set, comes out of the Millers' treasury (ChargeTreasuryFragments).
-    { key: "fragments", label: "Scar Fragments bought (the Millers)", color: "var(--eco-brown)", reasons: ["millers_fragments"] },
   const modelRunning = !!data.villagers?.latest;
   // The Treasury likewise, once the game has opened it (PW_TREASURY).
   const treasuryOpen = !!data.treasury?.latest;
