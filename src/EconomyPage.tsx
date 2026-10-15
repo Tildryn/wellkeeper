@@ -41,6 +41,9 @@ type ResourceConfig = {
   // not a net of gains and losses.
   totalLabel?: string;
   flowsLabel?: string;
+  // Reasons the game once recorded under this resource and no longer does,
+  // left out of every chart and table rather than shown as Other.
+  ignorePrefixes?: string[];
 };
 
 const OTHER = "var(--eco-other)";
@@ -163,6 +166,7 @@ const OTHER_SPEND_LABELS: Record<string, string> = {
   store_reeveprov: "The Reeve Provisioner",
   store_normmerch: "Trustworthy Shopkeep",
   dialogue: "Other payments in conversation",
+  dm: "Taken by a DM",
 };
 
 const spendLabel = (reason: string) => {
@@ -173,24 +177,30 @@ const spendLabel = (reason: string) => {
 
 // The gold the game pays characters (gold_paid), by what it paid for:
 // "store_" and the store's tag for an item sold, the way gold_spent names a
-// purchase, and a reason of its own for each kind of reward. The Hand-In
-// Bounty is the Treasury's, and is in its section below.
+// purchase, and a reason of its own for each kind of reward. Only gold the
+// game creates belongs here: the Hand-In Bounty, the wage packets, and the
+// starting purse once the Treasury is live, come out of a Treasury chest, and
+// are in its sections below. The game recorded wage packets here until
+// 2026-10-15; those rows are ignored.
 const PAID: ResourceConfig = {
   resource: "gold_paid",
   title: "Gold Paid to Characters",
-  description: "The gold the game pays players, recorded as it is paid: items sold to a store, under the store; scrap, and Scar fragments traded in at Dazai's (the fragments then go to the Millers, to brew into Grey Soup); patrol and survey rewards; experience traded for gold; the wage packets faction members and the Council's employees collect from their paymasters; and gold found in lootables. DMs are left out, and so is gold handed between players.",
+  description: "The gold the game creates in players' hands, recorded as it is paid: items sold to a store, under the store; scrap, and Scar fragments traded in at Dazai's (the fragments then go to the Millers, to brew into Grey Soup); patrol and survey rewards; experience traded for gold; the Prize's takings, shared among her crew; gold found in lootables; gold a DM hands out; and each new character's starting purse while the Treasury is not live. DM characters are left out, and so is gold handed between players or paid out of a Treasury chest, such as the Hand-In Bounty and the wage packets.",
   gains: [
     { key: "sales", label: "Sold to stores", color: "var(--eco-blue)", reasons: [], prefixes: ["store_"] },
     { key: "fragments", label: "Scar fragments", color: "var(--eco-violet)", reasons: ["fragments"] },
     { key: "scrap", label: "Scrap", color: "var(--eco-brown)", reasons: ["scrap_nick", "scrap_merchant"], reasonLabels: { scrap_nick: "Scrap to Nine Fingered Nick", scrap_merchant: "Scrap to a merchant" } },
     { key: "work", label: "Patrols and surveys", color: "var(--eco-green)", reasons: ["patrol", "survey"], reasonLabels: { patrol: "Patrols", survey: "Surveys" } },
     { key: "xp", label: "Experience traded for gold", color: "var(--eco-yellow)", reasons: ["xp_for_gold"] },
-    { key: "wages", label: "Wage packets", color: "var(--eco-magenta)", reasons: ["wages_council", "wages_dredgers", "wages_millers", "wages_reeves"], reasonLabels: { wages_council: "Wages: the Council", wages_dredgers: "Wages: the Dredgers", wages_millers: "Wages: the Millers", wages_reeves: "Wages: the Reeves" } },
+    { key: "prize", label: "The Prize", color: "var(--eco-orange)", reasons: ["prize"] },
     { key: "loot", label: "Looted", color: "var(--eco-aqua)", reasons: ["loot"] },
+    { key: "purses", label: "Starting purses", color: "var(--eco-olive)", reasons: ["starting_purse"] },
+    { key: "dm", label: "Given by a DM", color: "var(--eco-gold)", reasons: ["dm"] },
   ],
   losses: [],
   totalLabel: "Paid",
   flowsLabel: "Gold paid per day",
+  ignorePrefixes: ["wages_"],
 };
 
 const paidLabel = (reason: string) => {
@@ -698,7 +708,9 @@ function AverageGoldSection({ history, rangeDays }: { history: History; rangeDay
 // Where gold is spent, or where the game pays it out, from the payments the
 // game records, charted upwards either way.
 function PaymentsSection({ history, now, config, words, nameOf }: { history: History; now: number; config: ResourceConfig; words: PaymentWords; nameOf: (reason: string) => string }) {
-  const flows = useMemo(() => history.flows.map(([t, r, a, e]): Flow => [t, r, words.recordSign * a, e]), [history, words]);
+  const flows = useMemo(() => history.flows
+    .filter(([, r]) => !config.ignorePrefixes?.some((p) => r.startsWith(p)))
+    .map(([t, r, a, e]): Flow => [t, r, words.recordSign * a, e]), [history, words, config]);
   const days = useMemo(() => foldFlows(flows, config), [flows, config]);
 
   const weekFlows = flows.filter((f) => f[0] >= now - 7 * 86400);
