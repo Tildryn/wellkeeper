@@ -178,7 +178,7 @@ const spendLabel = (reason: string) => {
 const PAID: ResourceConfig = {
   resource: "gold_paid",
   title: "Gold Paid to Characters",
-  description: "The gold the game pays players, recorded as it is paid: items sold to a store, under the store; scrap, and Scar fragments traded in at Dazai's (the fragments then go to the Millers, to brew into Grey Soup); patrol and survey rewards; experience traded for gold; and the wage packets faction members and the Council's employees collect from their paymasters. DMs are left out, and so is gold handed between players or picked up as loot.",
+  description: "The gold the game pays players, recorded as it is paid: items sold to a store, under the store; scrap, and Scar fragments traded in at Dazai's (the fragments then go to the Millers, to brew into Grey Soup); patrol and survey rewards; experience traded for gold; the wage packets faction members and the Council's employees collect from their paymasters; and gold found in lootables. DMs are left out, and so is gold handed between players.",
   gains: [
     { key: "sales", label: "Sold to stores", color: "var(--eco-blue)", reasons: [], prefixes: ["store_"] },
     { key: "fragments", label: "Scar fragments", color: "var(--eco-violet)", reasons: ["fragments"] },
@@ -186,6 +186,7 @@ const PAID: ResourceConfig = {
     { key: "work", label: "Patrols and surveys", color: "var(--eco-green)", reasons: ["patrol", "survey"], reasonLabels: { patrol: "Patrols", survey: "Surveys" } },
     { key: "xp", label: "Experience traded for gold", color: "var(--eco-yellow)", reasons: ["xp_for_gold"] },
     { key: "wages", label: "Wage packets", color: "var(--eco-magenta)", reasons: ["wages_council", "wages_dredgers", "wages_millers", "wages_reeves"], reasonLabels: { wages_council: "Wages: the Council", wages_dredgers: "Wages: the Dredgers", wages_millers: "Wages: the Millers", wages_reeves: "Wages: the Reeves" } },
+    { key: "loot", label: "Looted", color: "var(--eco-aqua)", reasons: ["loot"] },
   ],
   losses: [],
   totalLabel: "Paid",
