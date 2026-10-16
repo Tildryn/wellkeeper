@@ -136,6 +136,10 @@ const TREASURY = {
     resource: 'treasury_purse', levels: [[T, 41000]], flows: [[T - 3600, 'dredgers_alloc', 166, 1], [T - 3600, 'dredgers_members', -40, 1]],
     latest: { t: T, value: 41000, detail: { purses: { dredgers: -1000, millers: 18000, reeves: 24000 }, morale: { dredgers: 82, millers: 100 } } },
   },
+  treasury_merchants: {
+    resource: 'treasury_merchants', levels: [[T, 151234]], flows: [[T - 3600, 'trades', 9000, 40], [T - 3600, 'wages', -195, 1]],
+    latest: { t: T, value: 151234, detail: null },
+  },
   treasury_villagers: {
     resource: 'treasury_villagers', levels: [[T, 704]], flows: [[T - 3600, 'wages', 782, 4], [T - 3600, 'hearth', -78, 1]],
     latest: { t: T, value: 704, detail: null },
@@ -375,6 +379,7 @@ describe('EconomyPage', () => {
     expect(within(purses).getByText('The Reeves', { selector: '.economy__stat-label' }).parentElement!).toHaveTextContent('Morale not set yet')
 
     expect(screen.getByRole('region', { name: "The Villagers' Purse" })).toHaveTextContent('704')
+    expect(screen.getByRole('region', { name: "The Merchants' Purse" })).toHaveTextContent('151,234')
     const tax = screen.getByRole('region', { name: 'Sales Tax' })
     expect(within(tax).getByText('Ephedra, Alchemist')).toBeInTheDocument()
     expect(within(tax).getByText('Kelo, Snacks')).toBeInTheDocument()

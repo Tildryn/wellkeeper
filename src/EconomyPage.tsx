@@ -1604,7 +1604,7 @@ function VillagersSection({ history, millersMorale }: { history: History; miller
 // Council only as tax: the shops keep their takings, less the sales tax,
 // and the villagers' coin wages pay the Hearth Tax.
 
-const TREASURY_RESOURCES = ["treasury", "treasury_purse", "treasury_villagers", "treasury_tax", "treasury_fines"];
+const TREASURY_RESOURCES = ["treasury", "treasury_purse", "treasury_villagers", "treasury_merchants", "treasury_tax", "treasury_fines"];
 
 // The factions with a treasury of their own, as the game keys them.
 const PURSE_FACTIONS: [string, string][] = [["dredgers", "The Dredgers"], ["millers", "The Millers"], ["reeves", "The Reeves"]];
@@ -1659,6 +1659,21 @@ const VILLAGERS_PURSE: ResourceConfig = {
   ],
   losses: [
     { key: "hearth", label: "Hearth Tax", color: "var(--eco-vermilion)", reasons: ["hearth"] },
+  ],
+};
+
+// What the Merchants' shops keep (TREASURY_MERCHANTS in pw_inc_treasury):
+// Ephedra's, The Boy's, Dan Lockwood's, and Rotheld's Refuge.
+const MERCHANTS_PURSE: ResourceConfig = {
+  resource: "treasury_merchants",
+  title: "The Merchants' Purse",
+  description: "What the Merchants' shops keep after tax: Ephedra's, The Boy's, Dan Lockwood's, and Rotheld's Refuge. Out of it they pay their Crafts & Trades workers, and the Refuge pays the Council's Wholesale Price for its food. Nothing else draws on it, so it is where the gold players spend at those counters comes to rest. The Council does not see it in game.",
+  gains: [
+    { key: "trades", label: "Takings of the Merchants' shops", color: "var(--eco-orange)", reasons: ["trades"] },
+  ],
+  losses: [
+    { key: "wages", label: "Crafts & Trades wages", color: "var(--eco-aqua)", reasons: ["wages"] },
+    { key: "wholesale", label: "Wholesale food (the Refuge)", color: "var(--eco-vermilion)", reasons: ["wholesale"] },
   ],
 };
 
@@ -2111,6 +2126,7 @@ function EconomyPage({ authToken }: EconomyPageProps) {
                 stats={<PurseStats detail={data.treasury_purse.latest?.detail as PurseDetail | null | undefined} />} />
             )}
             {data.treasury_villagers && <ResourceSection config={VILLAGERS_PURSE} history={data.treasury_villagers} />}
+            {data.treasury_merchants && <ResourceSection config={MERCHANTS_PURSE} history={data.treasury_merchants} />}
             {data.treasury_tax && (
               <ResourceSection config={SALES_TAX} history={data.treasury_tax}>
                 <TaxBoxesCard boxes={(data.treasury_tax.latest?.detail?.boxes ?? {}) as Record<string, number>} />
