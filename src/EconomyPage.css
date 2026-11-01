@@ -330,6 +330,19 @@
 .eco-kind--soup      { background: var(--eco-olive); }
 .eco-kind--fragments { background: var(--eco-blue); }
 
+/* The Material Stores' materials. Lumber and Timber sit side by side in a
+   timber yard's bar, so they take two colours well apart. */
+.eco-mat--lumber { background: var(--eco-brown); }
+.eco-mat--timber { background: var(--eco-gold); }
+.eco-mat--stone  { background: var(--eco-blue); }
+.eco-mat--pitch  { background: var(--eco-violet); }
+
+/* A store's cap after its count in the Material Stores table. */
+.economy__cell-note {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 /* A heading row inside a table, naming the rows under it: the ration groups
    by who feeds them. */
 .economy__table-wrap .economy__row-head th {

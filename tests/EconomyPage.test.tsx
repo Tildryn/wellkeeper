@@ -172,10 +172,27 @@ const JOURNAL = {
   now: T,
 }
 
+// The Material Stores, as a wkserver sampling them sends them: each store's
+// each material a resource of its own, its cap in the detail, and its flows
+// as the game names them, sends between stores among them.
+const material = (resource: string, value: number, cap: number | null, flows: (string | number)[][] = []) =>
+  ({ resource, levels: [[T - 900, value], [T, value]], flows, latest: { t: T, value, detail: { cap } } })
+const MATERIALS: Record<string, object> = {
+  lumber: material('lumber', 683, 10000, [[T - 3600, 'handin', 40, 3], [T - 3600, 'sawpit', -30, 6], [T - 3600, 'to_reeves', -10, 1]]),
+  lumber_dredgers: material('lumber_dredgers', 68, 150, [[T - 3600, 'handin', 12, 2]]),
+  lumber_millers: material('lumber_millers', 97, 400),
+  lumber_reeves: material('lumber_reeves', 152, 10000, [[T - 3600, 'from_town', 10, 1]]),
+  timber: material('timber', 2946, 10000, [[T - 3600, 'sawpit', 30, 4]]),
+  timber_dredgers: material('timber_dredgers', 500, 500, [[T - 3600, 'prize', -86, 1]]),
+  pitch: material('pitch', 0, null),
+  pitch_dredgers: material('pitch_dredgers', 250, 250),
+}
+
 // Without `contributors`, the contributors answer 404, as a wkserver from
-// before them does, and so do the food model's resources without `model`
-// and the Treasury's without `treasury`.
-function mockEconomy(requested: string[] = [], contributors: object | null = null, model: Record<string, object> = {}, treasury = false) {
+// before them does, and so do the food model's resources without `model`,
+// the Treasury's without `treasury`, and the Material Stores' without
+// `materials`.
+function mockEconomy(requested: string[] = [], contributors: object | null = null, model: Record<string, object> = {}, treasury = false, materials: Record<string, object> = {}) {
   server.use(
     http.get(`${API}/economy/food/contributors`, () =>
       contributors ? HttpResponse.json(contributors) : new HttpResponse(null, { status: 404 })),
@@ -188,6 +205,7 @@ function mockEconomy(requested: string[] = [], contributors: object | null = nul
       const resource = String(params.resource)
       if (resource in MODEL || resource in SOUP) return model[resource] ? HttpResponse.json(model[resource]) : new HttpResponse(null, { status: 404 })
       if (resource in TREASURY) return treasury ? HttpResponse.json(TREASURY[resource as keyof typeof TREASURY]) : new HttpResponse(null, { status: 404 })
+      if (/^(lumber|timber|stone|pitch)/.test(resource)) return materials[resource] ? HttpResponse.json(materials[resource]) : new HttpResponse(null, { status: 404 })
       return HttpResponse.json(resource === 'food' ? FOOD : GOLD)
     })
   )
@@ -417,6 +435,41 @@ describe('EconomyPage', () => {
     expect(within(food).queryByText('Lost to Full Stores')).not.toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Villagers' })).not.toBeInTheDocument()
     expect(screen.queryByRole('region', { name: "The Dredgers' Larder" })).not.toBeInTheDocument()
+  })
+
+  it('shows every store\'s materials on the Material Stores tab', async () => {
+    mockEconomy([], null, {}, false, MATERIALS)
+    render(<EconomyPage authToken="test-token" />)
+    await screen.findByRole('region', { name: 'Food Stores' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Material Stores' }))
+
+    const stores = screen.getByRole('region', { name: 'The Material Stores' })
+    const dredgers = within(stores).getByRole('row', { name: /^The Dredgers/ })
+    expect(dredgers).toHaveTextContent('68 / 150')
+    expect(dredgers).toHaveTextContent('250 / 250')
+    expect(within(stores).getByRole('row', { name: /^All Four/ })).toHaveTextContent('1,000')
+    // The town's yard: 683 Lumber at 310 L and 2,946 Timber at 140 L.
+    expect(within(stores).getByText('624 m³ / 1,200 m³')).toBeInTheDocument()
+
+    // Each material's total is all four stores' together, and the sends
+    // between stores are left out of its flows.
+    const lumber = screen.getByRole('region', { name: 'Lumber' })
+    expect(within(lumber).getByText('1,000', { selector: '.economy__stat-value--hero' })).toBeInTheDocument()
+    const table = within(lumber).getByRole('table')
+    expect(within(table).getByRole('columnheader', { name: 'Handed in: the Dredgers' })).toBeInTheDocument()
+    expect(within(table).getByRole('columnheader', { name: 'Fetched to the saw pits, less put back: the town' })).toBeInTheDocument()
+    expect(within(table).queryByRole('columnheader', { name: /to reeves|from town/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Timber' })).toHaveTextContent('3,446')
+    expect(screen.getByRole('region', { name: 'Pitch' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Building Stone' })).not.toBeInTheDocument()
+  })
+
+  it('says the Material Stores are not sampled yet for a wkserver without them', async () => {
+    mockEconomy()
+    render(<EconomyPage authToken="test-token" />)
+    await screen.findByRole('region', { name: 'Food Stores' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Material Stores' }))
+    expect(screen.getByText('The Material Stores have not been sampled yet.')).toBeInTheDocument()
   })
 
   it('shows an error when the server refuses', async () => {

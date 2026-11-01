@@ -1898,15 +1898,215 @@ function JournalSection({ data }: { data: Journal }) {
 }
 
 
+// --- The Material Stores ---------------------------------------------------
+//
+// The Lumber, Timber, Building Stone, and Pitch kept by the town and by each
+// of the Dredgers, the Millers, and the Reeves (pw_inc_material in the
+// module). wkserver samples each store's each material as a resource of its
+// own, named as the game names it when it writes its flows: the material for
+// the town's ("lumber"), the material and the store for a faction's
+// ("lumber_dredgers"). Each level's detail is `{ cap }`, the most the store
+// takes in from hand-ins, or null for one it takes in only by a send.
+
+// The stores as the game keys them (GetMaterialStoreKey), with the size of
+// each one's timber yard in litres (MATERIAL_*_YARD_LITRES).
+const MATERIAL_STORES: { key: string; name: string; of: string; yard: number }[] = [
+  { key: "town", name: "The Town", of: "the town", yard: 1200000 },
+  { key: "dredgers", name: "The Dredgers", of: "the Dredgers", yard: 100000 },
+  { key: "millers", name: "The Millers", of: "the Millers", yard: 250000 },
+  { key: "reeves", name: "The Reeves", of: "the Reeves", yard: 100000 },
+];
+
+// The materials (GetMaterialName), with the litres one takes up
+// (GetMaterialUnitVolume) and whether it is stacked in a store's timber yard
+// (GetMaterialInYard) or kept indoors.
+const MATERIAL_KINDS: { key: string; label: string; litres: number; yard: boolean }[] = [
+  { key: "lumber", label: "Lumber", litres: 310, yard: true },
+  { key: "timber", label: "Timber", litres: 140, yard: true },
+  { key: "stone", label: "Building Stone", litres: 10, yard: false },
+  { key: "pitch", label: "Pitch", litres: 15, yard: false },
+];
+
+// The cap a store has when its owner has set none (MATERIAL_CAP_MOST): no
+// store has the room for it, so it is no cap at all.
+const MATERIAL_CAP_MOST = 10000;
+
+const materialResource = (material: string, store: string) => (store === "town" ? material : `${material}_${store}`);
+const MATERIAL_RESOURCES = MATERIAL_KINDS.flatMap((m) => MATERIAL_STORES.map((s) => materialResource(m.key, s.key)));
+
+// Every store's flows of one material are drawn together, each reason tagged
+// with its store ("handin:dredgers"), so the table can still say whose it
+// was. A series claims a reason at every store.
+const atStores = (reason: string) => MATERIAL_STORES.map((s) => `${reason}:${s.key}`);
+const atStoreLabels = (reason: string, label: string) =>
+  Object.fromEntries(MATERIAL_STORES.map((s) => [`${reason}:${s.key}`, `${label}: ${s.of}`]));
+const materialSeries = (reason: string, label: string, color: string): Series =>
+  ({ key: reason, label, color, reasons: atStores(reason), reasonLabels: atStoreLabels(reason, label) });
+
+const materialConfig = (material: string, title: string, description: string, gains: Series[], losses: Series[]): ResourceConfig =>
+  ({ resource: material, title, description, gains, losses, otherLabels: atStoreLabels("dm", "DM changes") });
+
+const THROWN_OUT = materialSeries("discard", "Thrown out", "var(--eco-rot)");
+const TO_PROJECTS = materialSeries("project", "Delivered to projects, less refunds", "var(--eco-violet)");
+const TO_PRIZE = materialSeries("prize", "Taken aboard the Prize", "var(--eco-aqua)");
+
+const MATERIAL_CONFIGS: ResourceConfig[] = [
+  materialConfig("lumber", "Lumber",
+    "The Lumber in all four stores' timber yards together: the town's, the Dredgers', the Millers', and the Reeves'. A felled tree is cut into four logs, each taken up as a Lumber, and the felling is paid where the Lumber first goes in: handed in at a store (to Osei for the town or the mill, to the Dredgers' Provisioner or Kelo, or to the Reeve Provisioner), or put straight onto a saw pit's log pile, which is not counted here. It leaves a yard when it is fetched to a saw pit to be sawn into Timber, a pit putting back what it did not saw, and when it is delivered to a project. Lumber sent from one store to another changes no total, so it is left out. Each Lumber takes 0.31 m³ of its yard.",
+    [materialSeries("handin", "Handed in", "var(--eco-green)")],
+    [materialSeries("sawpit", "Fetched to the saw pits, less put back", "var(--eco-brown)"), TO_PROJECTS, THROWN_OUT]),
+  materialConfig("timber", "Timber",
+    "The Timber in all four stores' timber yards together. Timber is Lumber sawn into planks at a saw pit, one for one, and the pit's plank stack sends it to a yard; Sawn Timber can be handed in as well, for no pay, since its felling and its sawing were paid already. Projects use it, and the Dredgers' goes aboard the Prize, one for one, to restock her Patching Planks whenever she puts out. Timber sent from one store to another is left out. Each Timber takes 0.14 m³ of its yard.",
+    [materialSeries("sawpit", "Sawn at the saw pits", "var(--eco-brown)"), materialSeries("handin", "Handed in", "var(--eco-green)")],
+    [TO_PROJECTS, TO_PRIZE, THROWN_OUT]),
+  materialConfig("stone", "Building Stone",
+    "The Building Stone in all four stores together, kept indoors: the town's in the storehouse beside its food, the Dredgers' and the Millers' in their larders, and the Reeves' in their storeroom. It is handed in, and projects use it. Stone sent from one store to another is left out. Each block takes 10 litres of the room it shares.",
+    [materialSeries("handin", "Handed in", "var(--eco-green)")],
+    [TO_PROJECTS, THROWN_OUT]),
+  materialConfig("pitch", "Pitch",
+    "Pitch is made, not gathered: a Red, a Blue, and a Green Ichor handed in to Kelo or to the Dredgers' Provisioner make a pail of it in the Dredgers' stores, the only ones that take it in; the others hold only what is sent them. It goes aboard the Prize, one for one, to patch her hull whenever she puts out. Each pail takes 15 litres, barrelled, of the Dredgers' larder.",
+    [materialSeries("handin", "Made from ichor", "var(--eco-yellow)")],
+    [TO_PRIZE, THROWN_OUT]),
+];
+
+// One material in all four stores as a single history: the levels summed at
+// each sample (wkserver samples them all at once), and the flows tagged with
+// their store, leaving out the sends between stores, which change no total.
+// Null until wkserver has sampled the material at all.
+function combineStores(material: string, data: Record<string, History>): History | null {
+  const parts = MATERIAL_STORES.map((s) => [s.key, data[materialResource(material, s.key)]] as const).filter(([, h]) => h);
+  if (!parts.some(([, h]) => h.latest)) return null;
+
+  const levels = new Map<number, number>();
+  const flows = new Map<string, Flow>();
+  for (const [store, h] of parts) {
+    for (const [t, v] of h.levels) levels.set(t, (levels.get(t) ?? 0) + v);
+    for (const [t, reason, amount, events] of h.flows) {
+      if (reason.startsWith("to_") || reason.startsWith("from_")) continue;
+      const tagged = `${reason}:${store}`;
+      const f = flows.get(`${t} ${tagged}`);
+      if (f) { f[2] += amount; f[3] += events; } else flows.set(`${t} ${tagged}`, [t, tagged, amount, events]);
+    }
+  }
+  const latest = parts.filter(([, h]) => h.latest).map(([, h]) => h.latest!);
+  return {
+    resource: material,
+    levels: [...levels].sort((a, b) => a[0] - b[0]).map(([t, v]): Level => [t, v]),
+    flows: [...flows.values()].sort((a, b) => a[0] - b[0] || a[1].localeCompare(b[1])),
+    latest: { t: Math.max(...latest.map((l) => l.t)), value: latest.reduce((s, l) => s + l.value, 0), detail: null },
+  };
+}
+
+// A store's material as last sampled: how many, and its cap.
+const storeStock = (data: Record<string, History>, material: string, store: string) => {
+  const latest = data[materialResource(material, store)]?.latest;
+  const cap = latest?.detail?.cap;
+  return { amount: latest?.value ?? 0, cap: typeof cap === "number" ? cap : null };
+};
+const capNote = (cap: number | null) =>
+  cap === null ? "Takes none in; holds only what is sent it" : cap >= MATERIAL_CAP_MOST ? "No cap set" : `Takes in up to ${fmt(cap)}`;
+
+// Every store's materials now, and the room its Lumber and Timber take in
+// its timber yard.
+function MaterialStoresSection({ data }: { data: Record<string, History> }) {
+  const sampled = Math.max(0, ...MATERIAL_RESOURCES.map((r) => data[r]?.latest?.t ?? 0));
+  const yardKinds = MATERIAL_KINDS.filter((m) => m.yard);
+  return (
+    <section className="economy__section" aria-labelledby="eco-material-stores">
+      <h3 id="eco-material-stores">The Material Stores</h3>
+      <p className="economy__sub">
+        What each store holds now{sampled ? `, as of ${timeLabel(sampled)}` : ""}. Lumber and Timber are stacked out of doors in each store's own timber yard, which they share with nothing else; Building Stone and Pitch are kept indoors, in the town's storehouse and the factions' larders beside the food, and in the Reeves' storeroom. A store's owner sets a cap on what it takes in from hand-ins in their Material Stores window, so one material does not crowd out another; a send from another store, a project's refund, or a DM is not held to it.
+      </p>
+      <div className="economy__card">
+        <h4>Held Now</h4>
+        <div className="economy__table-wrap">
+          <table>
+            <thead>
+              <tr><th>Store</th>{MATERIAL_KINDS.map((m) => <th key={m.key}>{m.label}</th>)}</tr>
+            </thead>
+            <tbody>
+              {MATERIAL_STORES.map((s) => (
+                <tr key={s.key}>
+                  <td>{s.name}</td>
+                  {MATERIAL_KINDS.map((m) => {
+                    const { amount, cap } = storeStock(data, m.key, s.key);
+                    return (
+                      <td key={m.key} title={capNote(cap)}>
+                        {fmt(amount)}
+                        {cap !== null && cap < MATERIAL_CAP_MOST && <span className="economy__cell-note"> / {fmt(cap)}</span>}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+              <tr>
+                <td>All Four</td>
+                {MATERIAL_KINDS.map((m) => (
+                  <td key={m.key}>{fmt(MATERIAL_STORES.reduce((sum, s) => sum + storeStock(data, m.key, s.key).amount, 0))}</td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="demo-note">A figure after a slash is the cap its owner set on hand-ins; the rest have none set.</p>
+      </div>
+      <div className="economy__card">
+        <h4>Room Used in the Timber Yards</h4>
+        <div className="demo-bars">
+          {MATERIAL_STORES.map((s) => {
+            const room = (m: { key: string; litres: number }) => storeStock(data, m.key, s.key).amount * m.litres;
+            const used = yardKinds.reduce((sum, m) => sum + room(m), 0);
+            return (
+              <BarRow key={s.key} label={s.name} value={`${volume(used)} / ${volume(s.yard)}`} max={s.yard}
+                segments={yardKinds.map((m) => ({ n: room(m), className: `eco-mat--${m.key}` }))}
+                tip={<>
+                  <strong>{share(used, s.yard)} full</strong>
+                  <span>Room for {yardKinds.map((m) => `${fmt(Math.max(0, s.yard - used) / m.litres)} ${m.label}`).join(" more, or ")}</span>
+                  {yardKinds.map((m) => (
+                    <span key={m.key} className="economy__tip-row"><i className={`eco-mat--${m.key}`} />{fmt(storeStock(data, m.key, s.key).amount)} {m.label}<b>{volume(room(m))}</b></span>
+                  ))}
+                </>} />
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// One material in each store now, under its section.
+function MaterialByStoreCard({ data, material }: { data: Record<string, History>; material: (typeof MATERIAL_KINDS)[number] }) {
+  const stocks = MATERIAL_STORES.map((s) => ({ s, ...storeStock(data, material.key, s.key) }));
+  const total = stocks.reduce((sum, x) => sum + x.amount, 0);
+  const most = Math.max(1, ...stocks.map((x) => x.amount));
+  return (
+    <div className="economy__card">
+      <h4>In Each Store Now</h4>
+      <div className="demo-bars">
+        {stocks.map(({ s, amount, cap }) => (
+          <BarRow key={s.key} label={s.name} value={fmt(amount)} max={most}
+            segments={[{ n: amount, className: `eco-mat--${material.key}` }]}
+            tip={<>
+              <strong>{s.name}</strong>
+              <span>{fmt(amount)} {material.label}, {share(amount, total)} of all four stores' · {volume(amount * material.litres)}{material.yard ? `, ${share(amount * material.litres, s.yard)} of its yard` : ""}</span>
+              <span>{capNote(cap)}</span>
+            </>} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 interface EconomyPageProps {
   authToken: string;
 }
 
-// The page's two halves: food (the stores, the larders, the Grey Soup, and
-// the villagers who eat it all) and gold (the Treasury, and the gold the
-// characters hold, spend, and are paid). Both are fetched together, so a
-// switch shows the other at once, for the same range.
-const TABS = [["granaries", "Granaries"], ["treasuries", "Treasuries"]] as const;
+// The page's three parts: food (the stores, the larders, the Grey Soup, and
+// the villagers who eat it all), gold (the Treasury, and the gold the
+// characters hold, spend, and are paid), and the materials the stores keep
+// for building. All are fetched together, so a switch shows another at
+// once, for the same range.
+const TABS = [["granaries", "Granaries"], ["treasuries", "Treasuries"], ["materials", "Material Stores"]] as const;
 type Tab = typeof TABS[number][0];
 
 // A tab list as the ARIA practices have it: one tab in the Tab order, and the
@@ -1961,8 +2161,8 @@ function EconomyPage({ authToken }: EconomyPageProps) {
   useEffect(() => {
     let current = true;
     // A wkserver from before the average gold, the spending, the
-    // contributors, the food model, the Treasury, or the Grey Soup answers
-    // 404 for them, and the page shows the rest.
+    // contributors, the food model, the Treasury, the Grey Soup, or the
+    // Material Stores answers 404 for them, and the page shows the rest.
     const get = <T,>(path: string, d: number, optional = false) =>
       fetch(`${import.meta.env.VITE_API_URL}/economy/${path}?days=${d}`, {
         cache: "no-store",
@@ -1977,7 +2177,7 @@ function EconomyPage({ authToken }: EconomyPageProps) {
         ...RESOURCES.map((c) => get<History>(c.resource, days)),
         get<History>("gold_average", days ? Math.max(days, 31) : 0, true),
         get<History>("gold_spent", days, true),
-        ...["food_dredgers", "food_millers", "food_lost", "villagers", "gold_paid", ...TREASURY_RESOURCES, ...GREY_SOUP_RESOURCES].map((r) => get<History>(r, days, true)),
+        ...["food_dredgers", "food_millers", "food_lost", "villagers", "gold_paid", ...TREASURY_RESOURCES, ...GREY_SOUP_RESOURCES, ...MATERIAL_RESOURCES].map((r) => get<History>(r, days, true)),
       ]),
       get<Contributions>("food/contributors", days, true),
       get<Payroll>("treasury/members", days, true),
@@ -2031,6 +2231,12 @@ function EconomyPage({ authToken }: EconomyPageProps) {
   const granary = data.granary_taken && (soupRunning || data.granary_taken.flows.length > 0) ? data.granary_taken : null;
   const granaries = !loading && !error && tab === "granaries";
   const treasuries = !loading && !error && tab === "treasuries";
+  const materials = !loading && !error && tab === "materials";
+  // Each material in all four stores together, once wkserver samples them.
+  const materialHistories = useMemo(
+    () => MATERIAL_CONFIGS.map((config) => ({ config, history: combineStores(config.resource, data) })),
+    [data]);
+  const materialsSampled = materialHistories.some((m) => m.history);
 
   return (
     <div className="economy">
@@ -2141,6 +2347,17 @@ function EconomyPage({ authToken }: EconomyPageProps) {
         {treasuries && data.gold_average && <AverageGoldSection history={data.gold_average} rangeDays={days} />}
         {treasuries && data.gold_spent && <PaymentsSection history={data.gold_spent} now={fetchedAt} config={SPENDING} words={SPEND_WORDS} nameOf={spendLabel} />}
         {treasuries && data.gold_paid && <PaymentsSection history={data.gold_paid} now={fetchedAt} config={PAID} words={PAID_WORDS} nameOf={paidLabel} />}
+        {materials && !materialsSampled && <p className="economy__empty">The Material Stores have not been sampled yet.</p>}
+        {materials && materialsSampled && (
+          <>
+            <MaterialStoresSection data={data} />
+            {materialHistories.map(({ config, history }) => history && (
+              <ResourceSection key={config.resource} config={config} history={history}>
+                <MaterialByStoreCard data={data} material={MATERIAL_KINDS.find((m) => m.key === config.resource)!} />
+              </ResourceSection>
+            ))}
+          </>
+        )}
       </div>
     </div>
   );
