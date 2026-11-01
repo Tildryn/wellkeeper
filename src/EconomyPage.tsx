@@ -1123,8 +1123,27 @@ function FoodLostStat({ history, now }: { history: History; now: number }) {
       <span className="economy__stat-value">{week.length ? fmt(-perDay((f) => f[2])) : "0"}</span>
       <span className="economy__stat-note">
         {week.length
-          ? `A day, with no room in store or larder: fish ${fmt(by("fishing"))}, potatoes ${fmt(by("farming"))}, meat ${fmt(by("livestock"))}`
+          ? `A day, with no room in store or larder: fish ${fmt(by("fishing"))}, the Prize's fish ${fmt(by("prize"))}, potatoes ${fmt(by("farming"))}, meat ${fmt(by("livestock"))}`
           : "None in the last 7 days"}
+      </span>
+    </div>
+  );
+}
+
+// How much of what comes into the Dredgers' larder is a Prize's catch: its
+// "prize" against every gain but DM changes, a daily average over the last
+// 7 days. A week reaching back before Nov 1 understates it, as the game
+// recorded the catch as "handin" until then.
+function PrizeShareStat({ history, now }: { history: History; now: number }) {
+  const { perDay } = perDayOverWeek(history.flows, now);
+  const prize = perDay((f) => (f[1] === "prize" ? f[2] : 0));
+  const incoming = perDay((f) => (f[1] !== "dm" && f[2] > 0 ? f[2] : 0));
+  return (
+    <div className="economy__stat">
+      <span className="economy__stat-label">From the Prize</span>
+      <span className="economy__stat-value">{incoming > 0 ? share(prize, incoming) : "–"}</span>
+      <span className="economy__stat-note">
+        {incoming > 0 ? `Of what came in, ${fmt(prize)} a day of ${fmt(incoming)} over the last 7 days` : "Nothing came in over the last 7 days"}
       </span>
     </div>
   );
@@ -1212,19 +1231,30 @@ const larderConfig = (faction: string, title: string, description: string, worke
 // model's: the Dredgers' 32 fishers at 18 and 9 at 14, the fish processors and their Provisioner, 702
 // a day; the Millers' 30 farm hands and Blight Control at 18 and 23 at the
 // mill at 14, 904 a day, against a harvest of about 660.
+// Players hand Foodstock in to either larder (pw_inc_foodbnty), and a
+// Prize's catch goes into the Dredgers' (pw_dredglarder in the module). The
+// game recorded the catch as "handin" from Oct 19 until Nov 1 and as "prize"
+// since, so the hand-ins before then have it mixed in.
 const FACTION_LARDERS: LarderInfo[] = [
   {
     faction: "dredgers", name: "the Dredgers",
     config: larderConfig("dredgers", "The Dredgers' Larder",
-      "What the Dredgers keep back of the fish they land: everything their share does not send to the town's stores, a share set by the holder of a Dredger Trustee's Badge, 70% to start. It feeds their own 41 workers, the 32 fishers and the 9 fish processors and Provisioner, at rations the Trustee sets: 702 a day at the baselines. The Council can send it food from the town's stores, without seeing inside. It has room in the hold of their ship and the barrels at their camp, 8 m³, about 53,000 fish, and rots as the town's stores do, until it is released to the town. Kelo sells snacks and meals from it aboard the ship, to feed the faction's members, at the Refuge's prices while it is well stocked and dearer as it runs low. The Dredgers keep no Grey Soup, so their workers have nothing to fall back on when it runs short.",
-      ["fishers (Labourers)", "fish processors (Tradespeople)"]),
+      "What the Dredgers keep back of the fish they land: everything their share does not send to the town's stores, a share set by the holder of a Dredger Trustee's Badge, 70% to start. The catch of every Prize that comes home from the Dredge comes into it as fish, all of it, as far as there is room, and so does the Foodstock players hand in at their Provisioner beside Osei or to Kelo, at the price the Trustee sets. Until Nov 1 the game recorded the Prize's catch as handed in, so the hand-ins before then include it. It feeds their own 41 workers, the 32 fishers and the 9 fish processors and Provisioner, at rations the Trustee sets: 702 a day at the baselines. The Council can send it food from the town's stores, without seeing inside. It has room in the hold of their ship and the barrels at their camp, 8 m³, about 53,000 fish, and rots as the town's stores do, until it is released to the town. Kelo sells snacks and meals from it aboard the ship, to feed the faction's members, at the Refuge's prices while it is well stocked and dearer as it runs low. The Dredgers keep no Grey Soup, so their workers have nothing to fall back on when it runs short.",
+      ["fishers (Labourers)", "fish processors (Tradespeople)"],
+      [
+        { key: "prize", label: "Landed by the Prize", color: "var(--eco-orange)", reasons: ["prize"] },
+        { key: "handin", label: "Handed in at the Provisioner and Kelo's", color: "var(--eco-lavender)", reasons: ["handin"] },
+      ]),
   },
   {
     faction: "millers", name: "the Millers",
     config: larderConfig("millers", "The Millers' Larder",
-      "What the Millers keep back of the potatoes and meat their farms bring in: everything their share does not send to the town's stores, a share set by the holder of a Miller Logistics Badge, nothing to start. It feeds their own 56 workers, the 30 farm hands and Blight Control and the 26 at the mill, at rations the officer sets: 904 a day at the baselines, more than the whole harvest at full strength (about 660), so the Millers cannot feed their own without the Council's supplies or the granary, which they guard and can quietly take from. Their Scar Fragments and Grey Soup take room in it too, and their hungry workers fall back on the soup. It has room on the mill's floor and in its basement, 12 m³, about 28,500 potatoes, and rots as the town's stores do, until it is released to the town. The Provisioner sells snacks, meals, and Grey Soup from it at the mill, to feed the faction's members, the food at the Refuge's prices while it is well stocked and dearer as it runs low.",
+      "What the Millers keep back of the potatoes and meat their farms bring in: everything their share does not send to the town's stores, a share set by the holder of a Miller Logistics Badge, nothing to start. It feeds their own 56 workers, the 30 farm hands and Blight Control and the 26 at the mill, at rations the officer sets: 904 a day at the baselines, more than the whole harvest at full strength (about 660), so the Millers cannot feed their own without the Council's supplies or the granary, which they guard and can quietly take from. Foodstock players hand in through Osei comes into it too, at the price the officer sets. Their Scar Fragments and Grey Soup take room in it too, and their hungry workers fall back on the soup. It has room on the mill's floor and in its basement, 12 m³, about 28,500 potatoes, and rots as the town's stores do, until it is released to the town. The Provisioner sells snacks, meals, and Grey Soup from it at the mill, to feed the faction's members, the food at the Refuge's prices while it is well stocked and dearer as it runs low.",
       ["farm hands and Blight Control (Labourers)", "the mill (Tradespeople)"],
-      [{ key: "granary", label: "Taken from the town's granary", color: "var(--eco-vermilion)", reasons: ["granary"] }]),
+      [
+        { key: "granary", label: "Taken from the town's granary", color: "var(--eco-vermilion)", reasons: ["granary"] },
+        { key: "handin", label: "Handed in through Osei", color: "var(--eco-lavender)", reasons: ["handin"] },
+      ]),
   },
 ];
 
@@ -2283,6 +2313,7 @@ function EconomyPage({ authToken }: EconomyPageProps) {
                       <span className="economy__stat-value">{Number(history.latest?.detail?.share ?? 100)}%</span>
                       <span className="economy__stat-note">Of what it produces; it keeps the rest</span>
                     </div>
+                    {faction === "dredgers" && <PrizeShareStat history={history} now={fetchedAt} />}
                     {workers.people > 0 && (
                       <div className="economy__stat">
                         <span className="economy__stat-label">Workers' Rations</span>
