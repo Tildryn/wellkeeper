@@ -51,7 +51,9 @@ function serve(names: unknown[] = [], editing: Record<string, string[]> = {}) {
   server.use(
     http.get(`${API}/runes/catalogue`, () => HttpResponse.json(CATALOGUE)),
     http.get(`${API}/runes/usage`, () => HttpResponse.json(USAGE)),
-    http.get(`${API}/runes/images/:file`, () => new HttpResponse(new Blob(['x']), { headers: { 'Content-Type': 'image/webp' } })),
+    // A string body, not a Blob: under Node 22 jsdom's Blob cannot be
+    // streamed ("object.stream is not a function"), and the image never came.
+    http.get(`${API}/runes/images/:file`, () => new HttpResponse('img', { headers: { 'Content-Type': 'image/webp' } })),
     http.get(`${API}/runes/names`, ({ request }) => {
       const since = new URL(request.url).searchParams.get('since')
       const next = polls.length ? [] : names
