@@ -17,6 +17,13 @@ import "./RuneIndexPage.css";
 // other; nothing is overwritten unseen. While a rune's panel is open the page
 // says so every 10 s (POST .../editing), and the panel and the grid show who
 // else has a rune open.
+//
+// Many runes are one glyph in several textures (the Futhark letters turn up
+// in half a dozen sets). DMs link those (POST .../same) into a group that is
+// one rune from then on: one meaning, notes, and shortlist, written to every
+// rune in it. The panel suggests lookalikes from the export's matcher, but
+// a DM decides: no score can tell an M-shaped rune from an N-shaped one in a
+// 7 px ring. Hide Duplicates shows each group once, by its clearest rune.
 
 const API = import.meta.env.VITE_API_URL;
 const auth = (token: string | null) => ({ Authorization: `Bearer ${token ?? ""}` });
@@ -50,11 +57,18 @@ type UsageDoc = {
   textures: Record<string, Usage>;
   areas: Record<string, { resref: string; name: string }>;
   placed: { resref: string; area: string; count: number }[];
+  lookalikes?: Record<string, [string, number][]>;
 };
 
 type Fields = { meaning: string; notes: string; shortlist: boolean };
-type RuneName = Fields & { rune: string; version: number; updated_by: string; updated_at: number };
+type RuneName = Fields & { rune: string; group_id: string | null; version: number; updated_by: string; updated_at: number };
 const BLANK: Fields = { meaning: "", notes: "", shortlist: false };
+
+// Which of a group's runes stands for it with duplicates hidden: the
+// clearest drawing, then the lowest id. The Spell Turning and Abjuration
+// rings are 7 px a glyph, so they come last.
+const SET_PRIORITY = ["hunt", "fut", "qpr", "cep", "arc2", "arc1", "arc3", "obl", "rcir", "plate", "tdm", "lay", "scr", "s16", "s1a", "s1b", "s1c"];
+const priority = (r: Rune) => { const k = SET_PRIORITY.indexOf(r.set); return k < 0 ? SET_PRIORITY.length : k; };
 
 const FAMILY_ORDER = ["Invented cursive", "Futhark-like", "Alchemical and zodiac", "Indic-looking", "Other", "Whole sigils"];
 
@@ -254,6 +268,7 @@ export default function RuneIndexPage({ authToken }: { authToken: string | null 
   const [textureFilter, setTextureFilter] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [onlyShort, setOnlyShort] = useState(false);
+  const [hideDupes, setHideDupes] = useState(true);
   const [named, setNamed] = useState<"all" | "named" | "unnamed">("all");
   const [seen, setSeen] = useState<"all" | Seen>("all");
   const [current, setCurrent] = useState<string | null>(null);
@@ -331,10 +346,27 @@ export default function RuneIndexPage({ authToken }: { authToken: string | null 
     return out;
   }, [catalogue, usage, placedBy]);
 
+  const runeById = useMemo(() => Object.fromEntries((catalogue?.runes ?? []).map((r) => [r.id, r])), [catalogue]);
+  // group id -> its runes, the one that stands for it first.
+  const groups = useMemo(() => {
+    const out: Record<string, Rune[]> = {};
+    for (const n of Object.values(names)) if (n.group_id && runeById[n.rune]) (out[n.group_id] ??= []).push(runeById[n.rune]);
+    for (const g of Object.values(out)) g.sort((a, b) => priority(a) - priority(b) || a.id.localeCompare(b.id));
+    return out;
+  }, [names, runeById]);
+  const groupOf = useCallback((id: string) => {
+    const g = names[id]?.group_id;
+    return g && groups[g] && groups[g].length > 1 ? groups[g] : null;
+  }, [names, groups]);
+
   const visible = useMemo(() => {
     if (!catalogue) return [];
     const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
     return catalogue.runes.filter((r) => {
+      if (hideDupes && !textureFilter && setFilter === "all") {
+        const g = groupOf(r.id);
+        if (g && g[0].id !== r.id) return false;
+      }
       if (setFilter !== "all" && r.set !== setFilter) return false;
       if (textureFilter && r.texture !== textureFilter) return false;
       const n = names[r.id];
@@ -348,7 +380,7 @@ export default function RuneIndexPage({ authToken }: { authToken: string | null 
       }
       return true;
     });
-  }, [catalogue, setFilter, textureFilter, query, onlyShort, named, seen, names, seenBy, setsById]);
+  }, [catalogue, setFilter, textureFilter, query, onlyShort, named, seen, names, seenBy, setsById, hideDupes, groupOf]);
 
   // --- The open rune ---------------------------------------------------------
   const rune = useMemo(() => catalogue?.runes.find((r) => r.id === current) ?? null, [catalogue, current]);
@@ -420,6 +452,10 @@ export default function RuneIndexPage({ authToken }: { authToken: string | null 
           <input className="runes__search" type="search" value={query} onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by id, texture, set, meaning, or notes" aria-label="Search runes" />
           <button type="button" className="runes__toggle" aria-pressed={onlyShort} onClick={() => setOnlyShort(!onlyShort)}>★ Shortlist</button>
+          <button type="button" className="runes__toggle" aria-pressed={hideDupes} onClick={() => setHideDupes(!hideDupes)}
+            title="Show each group of runes DMs have found to be the same once, by its clearest drawing. Within one set or texture every rune shows.">
+            Hide Duplicates
+          </button>
           <div className="runes__seg" role="group" aria-label="Meanings">
             {(["all", "named", "unnamed"] as const).map((v) => (
               <button key={v} type="button" aria-pressed={named === v} onClick={() => setNamed(v)}>
@@ -472,6 +508,7 @@ export default function RuneIndexPage({ authToken }: { authToken: string | null 
           {visible.map((r) => {
             const n = names[r.id];
             const others = editing[r.id];
+            const group = groupOf(r.id);
             return (
               <button key={r.id} id={`rune-${r.id}`} type="button" className={`runes__tile${r.set === "whole" ? " runes__tile--whole" : ""}`}
                 aria-current={r.id === current ? "true" : undefined} onClick={() => setCurrent(r.id)}
@@ -481,6 +518,7 @@ export default function RuneIndexPage({ authToken }: { authToken: string | null 
                   <img src={r.thumb} alt="" loading="lazy" decoding="async" />
                   {n?.shortlist && <span className="runes__star" aria-hidden="true">★</span>}
                   {seenBy[r.texture] === "shown" && <span className="runes__eye" title={SEEN_TIPS.shown} aria-hidden="true" />}
+                  {group && <span className="runes__dupes" title={`The same rune as ${group.filter((g) => g.id !== r.id).map((g) => g.id).join(", ")}`}>×{group.length}</span>}
                   {others && <span className="runes__busy" title={`${others.join(", ")} ${others.length === 1 ? "has" : "have"} this open`} aria-hidden="true" />}
                 </span>
                 <span className="runes__id">{r.id}</span>
@@ -496,7 +534,10 @@ export default function RuneIndexPage({ authToken }: { authToken: string | null 
             canSave={!namesError?.includes("no table")} seen={seenBy[rune.texture]}
             usage={usage?.textures[rune.texture]} placed={placedBy[rune.texture] ?? []} areaNames={usage?.areas ?? {}}
             siblings={catalogue.runes.filter((r) => r.texture === rune.texture).length}
-            onSaved={(n) => mergeNames([n])} onStep={step} onClose={() => setCurrent(null)}
+            group={groupOf(rune.id)} runeById={runeById} setsById={setsById}
+            lookalikes={(usage?.lookalikes?.[rune.id] ?? []).filter(([id]) => runeById[id])}
+            onOpen={(id) => { setCurrent(id); document.getElementById(`rune-${id}`)?.scrollIntoView({ block: "nearest" }); }}
+            onSaved={(n) => mergeNames(Array.isArray(n) ? n : [n])} onStep={step} onClose={() => setCurrent(null)}
             onShowTexture={() => { setTextureFilter(rune.texture); setSetFilter("all"); }} />
         )}
       </div>
@@ -504,11 +545,14 @@ export default function RuneIndexPage({ authToken }: { authToken: string | null 
   );
 }
 
-function RunePanel({ rune, set, texture, name, others, authToken, clock, canSave, seen, usage, placed, areaNames, siblings, onSaved, onStep, onClose, onShowTexture }: {
+function RunePanel({ rune, set, texture, name, others, authToken, clock, canSave, seen, usage, placed, areaNames, siblings,
+  group, runeById, setsById, lookalikes, onOpen, onSaved, onStep, onClose, onShowTexture }: {
   rune: Rune; set: RuneSet | undefined; texture: Texture; name: RuneName | undefined; others: string[];
   authToken: string | null; clock: number; canSave: boolean; seen: Seen;
   usage: Usage | undefined; placed: UsageDoc["placed"]; areaNames: UsageDoc["areas"]; siblings: number;
-  onSaved: (n: RuneName) => void; onStep: (d: number) => void; onClose: () => void; onShowTexture: () => void;
+  group: Rune[] | null; runeById: Record<string, Rune>; setsById: Record<string, RuneSet>; lookalikes: [string, number][];
+  onOpen: (id: string) => void;
+  onSaved: (n: RuneName | RuneName[]) => void; onStep: (d: number) => void; onClose: () => void; onShowTexture: () => void;
 }) {
   const server: Fields = name ?? BLANK;
   // `base` is what the server had when the DM began typing over each field:
@@ -550,8 +594,11 @@ function RunePanel({ rune, set, texture, name, others, authToken, clock, canSave
       const body = await res.json().catch(() => ({})) as { error?: string };
       throw new Error(body.error ?? `The server said ${res.status}.`);
     }
-    return ((await res.json()) as { name: RuneName }).name;
-  }, [rune.id, authToken]);
+    const body = (await res.json()) as { name: RuneName; names?: RuneName[] };
+    // A rune in a group saves to them all; take every one in.
+    if (body.names?.length) onSaved(body.names);
+    return body.name;
+  }, [rune.id, authToken, onSaved]);
 
   const flush = useCallback(async () => {
     if (timer.current) { clearTimeout(timer.current); timer.current = null; }
@@ -689,6 +736,9 @@ function RunePanel({ rune, set, texture, name, others, authToken, clock, canSave
           : ""}
       </p>
 
+      <SameRune rune={rune} group={group} runeById={runeById} setsById={setsById} lookalikes={lookalikes}
+        authToken={authToken} canSave={canSave} onOpen={onOpen} onSaved={onSaved} />
+
       <h4 className="runes__h">Source</h4>
       <SourceTexture texture={rune.texture} info={texture} rune={rune} token={authToken} />
       {siblings > 1 && (
@@ -700,5 +750,94 @@ function RunePanel({ rune, set, texture, name, others, authToken, clock, canSave
       <p className={`runes__seen runes__seen--${seen}`}>{SEEN_LINE[seen]}</p>
       <UsageView usage={usage} placed={placed} areaNames={areaNames} models={texture.models} />
     </aside>
+  );
+}
+
+// The runes this one is the same as, and the ones it looks like, to link.
+function SameRune({ rune, group, runeById, setsById, lookalikes, authToken, canSave, onOpen, onSaved }: {
+  rune: Rune; group: Rune[] | null; runeById: Record<string, Rune>; setsById: Record<string, RuneSet>;
+  lookalikes: [string, number][]; authToken: string | null; canSave: boolean;
+  onOpen: (id: string) => void; onSaved: (n: RuneName[]) => void;
+}) {
+  const [choose, setChoose] = useState<{ other: string; meanings: string[] } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const inGroup = new Set((group ?? []).map((r) => r.id));
+  const suggestions = lookalikes.filter(([id]) => !inGroup.has(id) && id !== rune.id);
+
+  const call = async (method: "POST" | "DELETE", target: string, body?: object) => {
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch(`${API}/runes/names/${target}/same`, {
+        method, headers: { ...auth(authToken), "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined,
+      });
+      const out = await res.json().catch(() => ({})) as { names?: RuneName[]; meanings?: string[]; error?: string };
+      if (res.status === 409 && out.meanings) return out.meanings;
+      if (!res.ok) throw new Error(out.error ?? `The server said ${res.status}.`);
+      if (out.names) onSaved(out.names);
+      return null;
+    } catch (e) {
+      setError((e as Error).message);
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  };
+  const link = async (other: string, meaning?: string) => {
+    const meanings = await call("POST", rune.id, meaning === undefined ? { with: other } : { with: other, meaning });
+    setChoose(meanings ? { other, meanings } : null);
+  };
+
+  const chip = (r: Rune, extra: ReactNode) => (
+    <li key={r.id} className="runes__like">
+      <button type="button" className="runes__like-plate" onClick={() => onOpen(r.id)} aria-label={`Open rune ${r.id}`}>
+        <img src={r.thumb} alt="" />
+      </button>
+      <span className="runes__like-id"><code>{r.id}</code><small>{setsById[r.set]?.label}</small></span>
+      {extra}
+    </li>
+  );
+
+  return (
+    <>
+      {group && (
+        <>
+          <h4 className="runes__h">The Same Rune As</h4>
+          <ul className="runes__likes">
+            {group.filter((r) => r.id !== rune.id).map((r) => chip(r,
+              <button type="button" className="runes__ghost runes__small" disabled={busy || !canSave}
+                onClick={() => call("DELETE", r.id)} title={`Take ${r.id} out of this group; it keeps the meaning.`}>Not the Same</button>))}
+          </ul>
+        </>
+      )}
+      {suggestions.length > 0 && (
+        <>
+          <h4 className="runes__h">Looks Like</h4>
+          <p className="runes__notes">The closest drawings by shape. Only link the ones that are truly the same rune.</p>
+          <ul className="runes__likes">
+            {suggestions.map(([id, score]) => {
+              const r = runeById[id];
+              return chip(r, <>
+                <span className="runes__score" title="How alike the two drawings are, by shape alone">{Math.round(score * 100)}%</span>
+                <button type="button" className="runes__toggle runes__small" disabled={busy || !canSave} onClick={() => link(id)}>Same Rune</button>
+              </>);
+            })}
+          </ul>
+        </>
+      )}
+      {choose && (
+        <div className="runes__conflict" role="alert">
+          <p>These two have different meanings. Keep which for both?</p>
+          <div className="runes__row">
+            {choose.meanings.map((m) => (
+              <button key={m} type="button" className="runes__toggle" disabled={busy} onClick={() => link(choose.other, m)}>{m}</button>
+            ))}
+            <button type="button" className="runes__ghost" onClick={() => setChoose(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {error && <p className="runes__saved">Not linked: {error}</p>}
+    </>
   );
 }

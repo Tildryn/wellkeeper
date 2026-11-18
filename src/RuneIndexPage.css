@@ -80,6 +80,23 @@
 .runes__id { font-family: var(--mono); font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .runes__star { position: absolute; top: 3px; right: 5px; color: var(--accent); font-size: 13px; line-height: 1; }
 .runes__eye { position: absolute; top: 6px; left: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--rune-shown); }
+.runes__dupes {
+  position: absolute; bottom: 3px; left: 4px; font-size: 11px; font-weight: 600; line-height: 1;
+  color: var(--text-h); background: rgba(0, 0, 0, 0.6); border-radius: 4px; padding: 2px 4px;
+}
+.runes__likes { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.runes__like { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; }
+.runes__like-plate {
+  width: 44px; height: 44px; padding: 0; border: 1px solid var(--rune-plate-line); border-radius: 6px;
+  background: var(--rune-plate); display: grid; place-items: center; cursor: pointer;
+}
+.runes__like-plate:hover { border-color: var(--accent); }
+.runes__like-plate img { width: 80%; height: 80%; object-fit: contain; }
+.runes__like-id { display: grid; min-width: 0; font-size: 13px; }
+.runes__like-id code { font-family: var(--mono); font-size: 12px; color: var(--text-h); }
+.runes__like-id small { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.runes__score { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.runes__small { font-size: 12px; padding: 4px 10px; }
 .runes__busy {
   position: absolute; bottom: 5px; right: 5px; width: 8px; height: 8px; border-radius: 50%;
   background: var(--rune-busy); box-shadow: 0 0 0 3px rgba(110, 168, 255, 0.25);

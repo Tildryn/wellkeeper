@@ -36,10 +36,11 @@ const USAGE = {
   },
   areas: { PW_AR_TOWN: { resref: 'pw_ar_town', name: 'Risenholm, Town' } },
   placed: [{ resref: 'pw_pl_arcircle2b', area: 'PW_AR_TOWN', count: 2 }],
+  lookalikes: { 'arc2-001': [['arc2-002', 0.91]], 'arc2-002': [['arc2-001', 0.91]] },
 }
 
-const named = (rune: string, fields: Partial<{ meaning: string, notes: string, shortlist: boolean }>, version = 1, by = 'Ada') =>
-  ({ rune, meaning: '', notes: '', shortlist: false, version, updated_by: by, updated_at: 1794965041801, ...fields })
+const named = (rune: string, fields: Partial<{ meaning: string, notes: string, shortlist: boolean, group_id: string | null }>, version = 1, by = 'Ada') =>
+  ({ rune, meaning: '', notes: '', shortlist: false, group_id: null, version, updated_by: by, updated_at: 1794965041801, ...fields })
 
 let polls: { since: string | null, names: unknown[] }[]
 type Save = { changes: Record<string, unknown>, base: Record<string, unknown> }
@@ -179,5 +180,52 @@ describe('RuneIndexPage', () => {
       http.get(`${API}/runes/names`, () => HttpResponse.json({ error: 'none' }, { status: 404 })))
     render(<RuneIndexPage authToken="t" />)
     expect(await screen.findByText('This server has no Rune Index yet.')).toBeInTheDocument()
+  })
+
+  it('shows a group of the same rune once, and its runes in the panel', async () => {
+    serve([named('arc2-001', { meaning: 'Gate', group_id: 'arc2-001' }), named('arc2-002', { meaning: 'Gate', group_id: 'arc2-001' })])
+    const user = userEvent.setup()
+    render(<RuneIndexPage authToken="t" />)
+
+    await screen.findByRole('button', { name: 'Rune arc2-001, Gate' })
+    expect(screen.queryByRole('button', { name: /^Rune arc2-002/ })).not.toBeInTheDocument()
+    expect(within(tile('arc2-001')).getByText('×2')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Hide Duplicates' }))
+    expect(tile('arc2-002')).toBeInTheDocument()
+
+    await user.click(tile('arc2-001'))
+    const panel = screen.getByRole('complementary', { name: 'Rune arc2-001' })
+    expect(within(panel).getByText('The Same Rune As')).toBeInTheDocument()
+    expect(within(panel).getByRole('button', { name: 'Not the Same' })).toBeInTheDocument()
+    expect(within(panel).queryByText('Looks Like')).not.toBeInTheDocument()
+  })
+
+  it('links a lookalike, asking which meaning to keep when they differ', async () => {
+    serve([named('arc2-001', { meaning: 'Soul' }), named('arc2-002', { meaning: 'Spirit' })])
+    const links: unknown[] = []
+    server.use(http.post(`${API}/runes/names/:rune/same`, async ({ params, request }) => {
+      const body = await request.json() as { with: string, meaning?: string }
+      links.push({ rune: params.rune, ...body })
+      if (!body.meaning) return HttpResponse.json({ meanings: ['Soul', 'Spirit'] }, { status: 409 })
+      return HttpResponse.json({ names: [
+        named('arc2-001', { meaning: body.meaning, group_id: 'arc2-001' }, 3),
+        named('arc2-002', { meaning: body.meaning, group_id: 'arc2-001' }, 3),
+      ] })
+    }))
+    const user = userEvent.setup()
+    render(<RuneIndexPage authToken="t" />)
+    await user.click(await screen.findByRole('button', { name: 'Rune arc2-001, Soul' }))
+
+    const panel = screen.getByRole('complementary', { name: 'Rune arc2-001' })
+    expect(within(panel).getByText('91%')).toBeInTheDocument()
+    await user.click(within(panel).getByRole('button', { name: 'Same Rune' }))
+    const ask = await within(panel).findByRole('alert')
+    expect(ask).toHaveTextContent('different meanings')
+    await user.click(within(ask).getByRole('button', { name: 'Spirit' }))
+
+    await waitFor(() => expect(within(tile('arc2-001')).getByText('Spirit')).toBeInTheDocument())
+    expect(links).toEqual([{ rune: 'arc2-001', with: 'arc2-002' }, { rune: 'arc2-001', with: 'arc2-002', meaning: 'Spirit' }])
+    expect(screen.queryByRole('button', { name: /^Rune arc2-002/ })).not.toBeInTheDocument()
   })
 })
