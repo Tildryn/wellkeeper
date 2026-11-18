@@ -23,6 +23,7 @@ import SettingsPage from "./SettingsPage";
 import EconomyPage from "./EconomyPage";
 import DemographicsPage from "./DemographicsPage";
 import MetricsPage from "./MetricsPage";
+import RuneIndexPage from "./RuneIndexPage";
 import { IconRefresh } from "./Icons";
 import { PAGES, PAGE_TITLES, type Page } from "./pages";
 import type { OnlinePlayer, OnlineDM, Ban, BanBase, BanDetails, PlayerData, PlayerSession, CdKey, BanTarget, BanPayload, BanEditFields, ExpandGen, CharacterView, InnerWorldState, LocationView, NotesView, NoteCounts } from "./types";
@@ -753,6 +754,7 @@ function App() {
         {isDM && activePage === PAGES.ECONOMY && <EconomyPage authToken={authToken} />}
         {isDM && activePage === PAGES.DEMOGRAPHICS && <DemographicsPage authToken={authToken} />}
         {isDM && activePage === PAGES.METRICS && <MetricsPage authToken={authToken} />}
+        {isDM && activePage === PAGES.RUNES && <RuneIndexPage authToken={authToken} />}
         {activePage === PAGES.MY_CD_KEYS && (
           <MyCDKeysPage
             authToken={authToken}

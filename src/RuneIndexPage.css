@@ -1,0 +1,160 @@
+/* The Rune Index: a header of search and filters over a dense grid of dark
+   rune plates, each with its meaning above it; a rune's panel docks to the
+   right on a wide screen and rises as a sheet on a narrow one. */
+.runes {
+  --rune-plate: #0b0c10;
+  --rune-plate-line: #24262f;
+  --rune-shown: #4fb07a;
+  --rune-possible: #d4a843;
+  --rune-busy: #6ea8ff;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  text-align: left;
+  font-size: 15px;
+}
+
+.runes__header { display: grid; gap: 12px; }
+.runes__titlebar { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; }
+.runes__title { margin: 0; font-size: 26px; font-weight: 600; color: var(--text-h); }
+.runes__tally { margin: 0; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.runes__tally b { color: var(--text-h); font-weight: 600; }
+.runes__muted { color: var(--text-muted); }
+
+.runes__controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.runes__search {
+  flex: 1 1 260px; min-width: 0; padding: 8px 12px; font: inherit; color: var(--text-h);
+  background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+}
+.runes__search:focus-visible, .runes button:focus-visible, .runes__field input:focus-visible, .runes__field textarea:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
+.runes__toggle, .runes__ghost, .runes__seg button, .runes__chip {
+  font: inherit; font-size: 14px; color: var(--text-h); cursor: pointer;
+  border: 1px solid var(--border); background: var(--code-bg); border-radius: 999px; padding: 6px 12px;
+}
+.runes__ghost { border-radius: 8px; background: transparent; }
+.runes__toggle[aria-pressed="true"], .runes__seg button[aria-pressed="true"], .runes__chip[aria-pressed="true"] {
+  background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent);
+}
+.runes__toggle:disabled { opacity: 0.5; cursor: default; }
+.runes__seg { display: inline-flex; flex-wrap: wrap; max-width: 100%; }
+.runes__seg button { border-radius: 0; margin-left: -1px; }
+.runes__seg button:first-child { border-radius: 999px 0 0 999px; margin-left: 0; }
+.runes__seg button:last-child { border-radius: 0 999px 999px 0; }
+
+.runes__families { display: grid; gap: 6px; }
+.runes__family { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: start; gap: 6px; }
+.runes__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.runes__family > span {
+  padding-top: 5px; font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-muted);
+}
+.runes__chip { padding: 3px 10px; font-size: 13px; }
+.runes__chip small { color: var(--text-muted); margin-left: 4px; font-variant-numeric: tabular-nums; }
+.runes__chip[aria-pressed="true"] small { color: inherit; opacity: 0.8; }
+.runes__status { margin: 0; min-height: 1.2em; font-size: 13px; color: var(--text-muted); }
+
+.runes__layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+.runes__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 10px 8px; align-content: start; }
+.runes__empty { grid-column: 1 / -1; text-align: center; padding: 40px 0; color: var(--text-muted); }
+
+.runes__tile {
+  display: grid; gap: 3px; padding: 0; border: 0; background: none; color: var(--text-h);
+  cursor: pointer; text-align: center; font: inherit; min-width: 0;
+}
+.runes__meaning {
+  font-size: 13px; font-weight: 600; color: var(--accent); line-height: 1.25; min-height: 1.25em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.runes__meaning--none { color: transparent; }
+.runes__plate {
+  position: relative; aspect-ratio: 1; display: grid; place-items: center; overflow: hidden;
+  background: var(--rune-plate); border: 1px solid var(--rune-plate-line); border-radius: 6px; transition: border-color 0.12s;
+}
+.runes__plate img { width: 78%; height: 78%; object-fit: contain; }
+.runes__tile--whole .runes__plate img { width: 96%; height: 96%; }
+.runes__tile:hover .runes__plate, .runes__tile[aria-current="true"] .runes__plate { border-color: var(--accent); }
+.runes__tile:focus-visible { outline: none; }
+.runes__tile:focus-visible .runes__plate { outline: 2px solid var(--accent); outline-offset: 2px; }
+.runes__id { font-family: var(--mono); font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.runes__star { position: absolute; top: 3px; right: 5px; color: var(--accent); font-size: 13px; line-height: 1; }
+.runes__eye { position: absolute; top: 6px; left: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--rune-shown); }
+.runes__busy {
+  position: absolute; bottom: 5px; right: 5px; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--rune-busy); box-shadow: 0 0 0 3px rgba(110, 168, 255, 0.25);
+}
+
+.runes__panel {
+  background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+  display: grid; gap: 12px; align-content: start; min-width: 0;
+}
+.runes__row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.runes__close { margin-left: auto; }
+.runes__panel-head { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 14px; align-items: center; }
+.runes__panel-head p { margin: 2px 0 8px; }
+.runes__big { aspect-ratio: 1; background: var(--rune-plate); border-radius: 8px; display: grid; place-items: center; }
+.runes__big img { width: 76%; height: 76%; object-fit: contain; }
+.runes__big--whole img { width: 96%; height: 96%; }
+.runes__panel-id { margin: 0; font-family: var(--mono); font-size: 18px; font-weight: 500; color: var(--text-h); }
+.runes__others {
+  margin: 0; padding: 8px 10px; border-radius: 8px; font-size: 14px;
+  color: var(--text-h); background: rgba(110, 168, 255, 0.12); border: 1px solid rgba(110, 168, 255, 0.4);
+}
+
+.runes__field { display: grid; gap: 4px; font-size: 13px; color: var(--text-muted); }
+.runes__field input, .runes__field textarea {
+  font: inherit; font-size: 15px; color: var(--text-h); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; width: 100%; box-sizing: border-box;
+}
+.runes__field input { font-size: 17px; font-weight: 600; }
+.runes__field textarea { resize: vertical; min-height: 64px; }
+.runes__field :disabled { opacity: 0.6; }
+.runes__saved { margin: -4px 0 0; min-height: 1.2em; font-size: 13px; color: var(--text-muted); }
+.runes__conflict {
+  padding: 10px 12px; border-radius: 8px; background: rgba(229, 85, 101, 0.1); border: 1px solid rgba(229, 85, 101, 0.45);
+  color: var(--text-h); font-size: 14px; display: grid; gap: 8px;
+}
+.runes__conflict p { margin: 0; }
+.runes__conflict blockquote { margin: 0; padding: 6px 10px; background: var(--bg); border-radius: 6px; white-space: pre-wrap; }
+
+.runes__h {
+  margin: 6px 0 -4px; font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-muted); font-weight: 600;
+}
+.runes__source { margin: 0; display: grid; gap: 6px; }
+.runes__source-plate {
+  position: relative; width: 100%; background: var(--rune-plate); border-radius: 8px; overflow: hidden;
+  display: grid; place-items: center;
+}
+.runes__source-plate img, .runes__source-plate svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.runes__source-plate svg rect, .runes__source-plate svg path {
+  fill: rgba(212, 168, 67, 0.12); stroke: var(--accent); vector-effect: non-scaling-stroke; stroke-width: 2px;
+}
+.runes__source figcaption { font-size: 12px; color: var(--text-muted); overflow-wrap: anywhere; }
+.runes__notes { margin: 0; font-size: 13px; color: var(--text-muted); }
+
+.runes__seen { margin: 0; font-size: 14px; padding-left: 10px; border-left: 3px solid var(--border); color: var(--text-h); }
+.runes__seen--shown { border-left-color: var(--rune-shown); }
+.runes__seen--possible { border-left-color: var(--rune-possible); }
+.runes__usage { display: grid; gap: 6px; }
+.runes__section { border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 13px; }
+.runes__section summary { cursor: pointer; color: var(--text-h); font-weight: 500; }
+.runes__section ul { margin: 6px 0 2px; padding-left: 1.1em; display: grid; gap: 3px; }
+.runes__section li { overflow-wrap: anywhere; }
+.runes__section code, .runes__source code { font-family: var(--mono); font-size: 12px; }
+.runes__count { color: var(--text-muted); font-weight: 400; margin-left: 4px; font-variant-numeric: tabular-nums; }
+
+@media (min-width: 1100px) {
+  .runes__layout--open { grid-template-columns: minmax(0, 1fr) 440px; }
+  .runes__panel { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; }
+}
+@media (max-width: 1099px) {
+  .runes__panel {
+    position: fixed; left: 0; right: 0; bottom: 0; max-height: 82vh; overflow: auto; z-index: 20;
+    border-radius: 14px 14px 0 0; box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.5);
+  }
+  .runes__family { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .runes * { transition: none !important; }
+}
